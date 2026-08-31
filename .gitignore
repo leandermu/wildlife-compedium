@@ -1,0 +1,20 @@
+# Abhängigkeiten und Build-Artefakte
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Persönliche Daten: Datenbank und eigene Fotos gehören niemandem sonst
+backend/data/
+
+# Referenzbilder werden nicht mitgeliefert, sondern nachgeladen:
+#   python backend/scripts/fetch_reference_images.py
+# images/credits.json bleibt versioniert – dort stehen Urheber und Lizenzen.
+images/original/
+images/preview/
+
+.DS_Store

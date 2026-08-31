@@ -1,0 +1,6 @@
+# nur das Laufzeitverzeichnis (Datenbank + eigene Fotos), nicht app/data/
+/data/
+__pycache__/
+*.pyc
+.venv/
+.env

@@ -1,0 +1,4250 @@
+[
+ {
+  "common_name": "Rotkehlchen",
+  "scientific_name": "Erithacus rubecula",
+  "group": "bird",
+  "family": "Fliegenschnäpper",
+  "order_name": "Sperlingsvögel",
+  "size": "13–14 cm",
+  "wingspan": "20–22 cm",
+  "weight": "16–22 g",
+  "habitats": [
+   "garden",
+   "forest",
+   "park",
+   "city"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "standvogel",
+   "singvogel",
+   "haeufig"
+  ],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Der zutrauliche Gartenvogel mit der orangeroten Brust. Folgt oft dem Spaten und kommt Menschen näher als fast jeder andere Wildvogel – der perfekte erste Eintrag."
+ },
+ {
+  "common_name": "Amsel",
+  "scientific_name": "Turdus merula",
+  "group": "bird",
+  "family": "Drosseln",
+  "order_name": "Sperlingsvögel",
+  "size": "24–27 cm",
+  "wingspan": "34–38 cm",
+  "weight": "80–110 g",
+  "habitats": [
+   "garden",
+   "forest",
+   "park",
+   "city"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "standvogel",
+   "singvogel"
+  ],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Das Männchen tiefschwarz mit leuchtend gelbem Schnabel, das Weibchen erdbraun. Singt im Frühjahr von Dachfirsten und Antennen – ideal für Gegenlichtaufnahmen."
+ },
+ {
+  "common_name": "Buchfink",
+  "scientific_name": "Fringilla coelebs",
+  "group": "bird",
+  "family": "Finken",
+  "order_name": "Sperlingsvögel",
+  "size": "14–16 cm",
+  "wingspan": "24–28 cm",
+  "weight": "18–25 g",
+  "habitats": [
+   "forest",
+   "garden",
+   "park"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "singvogel"
+  ],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Häufigster Waldvogel Mitteleuropas. Der schmetternde Gesang endet in einem charakteristischen Schnörkel."
+ },
+ {
+  "common_name": "Kohlmeise",
+  "scientific_name": "Parus major",
+  "group": "bird",
+  "family": "Meisen",
+  "order_name": "Sperlingsvögel",
+  "size": "13–15 cm",
+  "wingspan": "22–25 cm",
+  "weight": "16–21 g",
+  "habitats": [
+   "garden",
+   "forest",
+   "park",
+   "city"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "futterhaus"
+  ],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Größte heimische Meise, kenntlich am schwarzen Bauchstreif. Am Futterhaus beinahe garantiert."
+ },
+ {
+  "common_name": "Blaumeise",
+  "scientific_name": "Cyanistes caeruleus",
+  "group": "bird",
+  "family": "Meisen",
+  "order_name": "Sperlingsvögel",
+  "size": "11–12 cm",
+  "wingspan": "18–20 cm",
+  "weight": "9–12 g",
+  "habitats": [
+   "garden",
+   "forest",
+   "park",
+   "city"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "futterhaus"
+  ],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Klein, quirlig, azurblau gekappt. Turnt kopfüber an dünnen Zweigen."
+ },
+ {
+  "common_name": "Haussperling",
+  "scientific_name": "Passer domesticus",
+  "group": "bird",
+  "family": "Sperlinge",
+  "order_name": "Sperlingsvögel",
+  "size": "14–16 cm",
+  "wingspan": "21–25 cm",
+  "weight": "24–35 g",
+  "habitats": [
+   "city",
+   "garden",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "stadtvogel"
+  ],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Der Spatz. Gesellig, laut und trotz Rückgang noch immer überall dort, wo Menschen wohnen."
+ },
+ {
+  "common_name": "Star",
+  "scientific_name": "Sturnus vulgaris",
+  "group": "bird",
+  "family": "Stare",
+  "order_name": "Sperlingsvögel",
+  "size": "19–22 cm",
+  "wingspan": "37–42 cm",
+  "weight": "75–90 g",
+  "habitats": [
+   "field",
+   "garden",
+   "city"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "zugvogel",
+   "schwarm"
+  ],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Im Prachtkleid metallisch grün-violett schillernd. Bildet im Herbst spektakuläre Schwärme."
+ },
+ {
+  "common_name": "Elster",
+  "scientific_name": "Pica pica",
+  "group": "bird",
+  "family": "Rabenvögel",
+  "order_name": "Sperlingsvögel",
+  "size": "44–46 cm",
+  "wingspan": "52–60 cm",
+  "weight": "200–250 g",
+  "habitats": [
+   "city",
+   "garden",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Schwarz-weiß mit langem, blaugrün schimmerndem Schwanz. Klug, wachsam und erstaunlich schwer formatfüllend zu erwischen."
+ },
+ {
+  "common_name": "Eichelhäher",
+  "scientific_name": "Garrulus glandarius",
+  "group": "bird",
+  "family": "Rabenvögel",
+  "order_name": "Sperlingsvögel",
+  "size": "32–35 cm",
+  "wingspan": "52–58 cm",
+  "weight": "150–190 g",
+  "habitats": [
+   "forest",
+   "park"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Die „Wachtel des Waldes\" warnt mit rauem Krächzen vor jedem Spaziergänger. Das blau gebänderte Flügelfeld ist ein Sammlerstück für sich."
+ },
+ {
+  "common_name": "Rabenkrähe",
+  "scientific_name": "Corvus corone",
+  "group": "bird",
+  "family": "Rabenvögel",
+  "order_name": "Sperlingsvögel",
+  "size": "45–49 cm",
+  "wingspan": "93–104 cm",
+  "weight": "440–600 g",
+  "habitats": [
+   "field",
+   "city",
+   "forest"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Einfarbig schwarz, sehr intelligent. In Bayern flächendeckend verbreitet."
+ },
+ {
+  "common_name": "Kolkrabe",
+  "scientific_name": "Corvus corax",
+  "group": "bird",
+  "family": "Rabenvögel",
+  "order_name": "Sperlingsvögel",
+  "size": "54–67 cm",
+  "wingspan": "115–130 cm",
+  "weight": "0,8–1,5 kg",
+  "habitats": [
+   "forest",
+   "alps",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Größter Rabenvogel der Welt, erkennbar am keilförmigen Schwanz und dem tiefen „krock\". In den Alpen segelt er entlang der Felswände."
+ },
+ {
+  "common_name": "Zaunkönig",
+  "scientific_name": "Troglodytes troglodytes",
+  "group": "bird",
+  "family": "Zaunkönige",
+  "order_name": "Sperlingsvögel",
+  "size": "9–11 cm",
+  "wingspan": "13–17 cm",
+  "weight": "8–13 g",
+  "habitats": [
+   "forest",
+   "garden",
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Winziger brauner Kobold mit aufgestelltem Schwanz und unglaublich lautem Gesang. Hält sich meist im Dickicht – Geduld nötig."
+ },
+ {
+  "common_name": "Kleiber",
+  "scientific_name": "Sitta europaea",
+  "group": "bird",
+  "family": "Kleiber",
+  "order_name": "Sperlingsvögel",
+  "size": "12–15 cm",
+  "wingspan": "23–27 cm",
+  "weight": "20–25 g",
+  "habitats": [
+   "forest",
+   "park",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Der einzige heimische Vogel, der kopfüber Stämme hinabläuft. Blaugrauer Rücken, schwarzer Augenstreif."
+ },
+ {
+  "common_name": "Gartenbaumläufer",
+  "scientific_name": "Certhia brachydactyla",
+  "group": "bird",
+  "family": "Baumläufer",
+  "order_name": "Sperlingsvögel",
+  "size": "12–13 cm",
+  "wingspan": "17–20 cm",
+  "weight": "8–12 g",
+  "habitats": [
+   "forest",
+   "park",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Rindenfarben getarnt, spiralt in kurzen Rucken am Stamm nach oben. Vom Waldbaumläufer fast nur am Gesang zu trennen."
+ },
+ {
+  "common_name": "Rotmilan",
+  "scientific_name": "Milvus milvus",
+  "group": "bird",
+  "family": "Habichtartige",
+  "order_name": "Greifvögel",
+  "size": "60–70 cm",
+  "wingspan": "155–180 cm",
+  "weight": "0,8–1,3 kg",
+  "habitats": [
+   "field",
+   "forest"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "greifvogel",
+   "zugvogel"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Der Gabelweih – rostrot, mit tief gegabeltem Schwanz. Über der Hälfte des Weltbestands brütet in Deutschland."
+ },
+ {
+  "common_name": "Schwarzmilan",
+  "scientific_name": "Milvus migrans",
+  "group": "bird",
+  "family": "Habichtartige",
+  "order_name": "Greifvögel",
+  "size": "55–60 cm",
+  "wingspan": "150–170 cm",
+  "weight": "0,6–1 kg",
+  "habitats": [
+   "water",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "greifvogel",
+   "zugvogel"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Dunkler und mit nur flach gekerbtem Schwanz. Jagt gern über Seen und Flüssen."
+ },
+ {
+  "common_name": "Mäusebussard",
+  "scientific_name": "Buteo buteo",
+  "group": "bird",
+  "family": "Habichtartige",
+  "order_name": "Greifvögel",
+  "size": "46–58 cm",
+  "wingspan": "110–130 cm",
+  "weight": "0,6–1,2 kg",
+  "habitats": [
+   "field",
+   "forest"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "greifvogel"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Häufigster Greifvogel Deutschlands. Sitzt im Winter auf Zaunpfählen und Feldrainen – ein guter erster Greifvogel fürs Kompendium."
+ },
+ {
+  "common_name": "Turmfalke",
+  "scientific_name": "Falco tinnunculus",
+  "group": "bird",
+  "family": "Falken",
+  "order_name": "Greifvögel",
+  "size": "32–39 cm",
+  "wingspan": "65–80 cm",
+  "weight": "150–250 g",
+  "habitats": [
+   "field",
+   "city"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "greifvogel"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Der Rüttelfalke: steht sekundenlang scheinbar bewegungslos in der Luft. Brütet auch an Kirchtürmen mitten in der Stadt."
+ },
+ {
+  "common_name": "Wanderfalke",
+  "scientific_name": "Falco peregrinus",
+  "group": "bird",
+  "family": "Falken",
+  "order_name": "Greifvögel",
+  "size": "38–50 cm",
+  "wingspan": "90–115 cm",
+  "weight": "0,6–1,3 kg",
+  "habitats": [
+   "alps",
+   "city"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "greifvogel"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Schnellstes Tier der Erde – im Sturzflug über 300 km/h. Brütet an Felswänden und hohen Bauwerken."
+ },
+ {
+  "common_name": "Habicht",
+  "scientific_name": "Accipiter gentilis",
+  "group": "bird",
+  "family": "Habichtartige",
+  "order_name": "Greifvögel",
+  "size": "48–62 cm",
+  "wingspan": "95–125 cm",
+  "weight": "0,6–1,4 kg",
+  "habitats": [
+   "forest"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "greifvogel"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Heimlicher Waldjäger mit breiten Flügeln und langem Schwanz. Wird meist nur für Sekunden sichtbar."
+ },
+ {
+  "common_name": "Sperber",
+  "scientific_name": "Accipiter nisus",
+  "group": "bird",
+  "family": "Habichtartige",
+  "order_name": "Greifvögel",
+  "size": "28–40 cm",
+  "wingspan": "55–75 cm",
+  "weight": "100–320 g",
+  "habitats": [
+   "forest",
+   "garden",
+   "city"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "greifvogel"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Kleiner Vogeljäger, der im Winter auch am Futterhaus auftaucht. Fliegt blitzschnell zwischen Hecken hindurch."
+ },
+ {
+  "common_name": "Seeadler",
+  "scientific_name": "Haliaeetus albicilla",
+  "group": "bird",
+  "family": "Habichtartige",
+  "order_name": "Greifvögel",
+  "size": "70–90 cm",
+  "wingspan": "200–245 cm",
+  "weight": "3,5–6 kg",
+  "habitats": [
+   "water",
+   "coast"
+  ],
+  "regions": [
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "greifvogel"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Der „fliegende Türflügel\" mit weißem Stoßschwanz. In Bayern seit wenigen Jahren wieder Brutvogel."
+ },
+ {
+  "common_name": "Steinadler",
+  "scientific_name": "Aquila chrysaetos",
+  "group": "bird",
+  "family": "Habichtartige",
+  "order_name": "Greifvögel",
+  "size": "75–90 cm",
+  "wingspan": "190–230 cm",
+  "weight": "3–6,5 kg",
+  "habitats": [
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "greifvogel",
+   "alpen"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "König der Alpen. In Bayern brüten nur etwa 50 Paare – ein echtes Trophäenfoto."
+ },
+ {
+  "common_name": "Bartgeier",
+  "scientific_name": "Gypaetus barbatus",
+  "group": "bird",
+  "family": "Habichtartige",
+  "order_name": "Greifvögel",
+  "size": "100–115 cm",
+  "wingspan": "250–290 cm",
+  "weight": "4,5–7 kg",
+  "habitats": [
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "greifvogel",
+   "alpen",
+   "legende"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Größter Vogel der Alpen, seit 2021 in Berchtesgaden wieder ausgewildert. Rostrot gefärbtes Gefieder, rautenförmiger Schwanz."
+ },
+ {
+  "common_name": "Fischadler",
+  "scientific_name": "Pandion haliaetus",
+  "group": "bird",
+  "family": "Fischadler",
+  "order_name": "Greifvögel",
+  "size": "55–65 cm",
+  "wingspan": "145–170 cm",
+  "weight": "1,2–2 kg",
+  "habitats": [
+   "water"
+  ],
+  "regions": [
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "greifvogel",
+   "zugvogel"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Stößt aus dem Rüttelflug mit den Fängen voran ins Wasser. In Bayern vor allem als Durchzügler an großen Seen."
+ },
+ {
+  "common_name": "Uhu",
+  "scientific_name": "Bubo bubo",
+  "group": "bird",
+  "family": "Eigentliche Eulen",
+  "order_name": "Eulen",
+  "size": "59–73 cm",
+  "wingspan": "155–180 cm",
+  "weight": "1,5–4 kg",
+  "habitats": [
+   "forest",
+   "alps",
+   "night"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "eule",
+   "nacht"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Größte Eule der Welt mit orangefarbenen Augen und Federohren. Brütet in Steinbrüchen und Felswänden."
+ },
+ {
+  "common_name": "Waldkauz",
+  "scientific_name": "Strix aluco",
+  "group": "bird",
+  "family": "Eigentliche Eulen",
+  "order_name": "Eulen",
+  "size": "37–43 cm",
+  "wingspan": "94–104 cm",
+  "weight": "400–600 g",
+  "habitats": [
+   "forest",
+   "park",
+   "night"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "eule",
+   "nacht"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Der Ruf aus jedem Gruselfilm. Häufigste Eule Bayerns, ruht tagsüber gern an Stammhöhlen – dort auch fotografierbar."
+ },
+ {
+  "common_name": "Schleiereule",
+  "scientific_name": "Tyto alba",
+  "group": "bird",
+  "family": "Schleiereulen",
+  "order_name": "Eulen",
+  "size": "33–39 cm",
+  "wingspan": "85–95 cm",
+  "weight": "290–340 g",
+  "habitats": [
+   "field",
+   "night"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "eule",
+   "nacht"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Herzförmiger weißer Gesichtsschleier. Brütet in Scheunen und Kirchtürmen, jagt lautlos über Wiesen."
+ },
+ {
+  "common_name": "Waldohreule",
+  "scientific_name": "Asio otus",
+  "group": "bird",
+  "family": "Eigentliche Eulen",
+  "order_name": "Eulen",
+  "size": "31–37 cm",
+  "wingspan": "86–98 cm",
+  "weight": "220–350 g",
+  "habitats": [
+   "forest",
+   "field",
+   "night"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "eule",
+   "nacht"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Lange Federohren, orangegelbe Augen. Bildet im Winter Schlafgemeinschaften in Ortschaften."
+ },
+ {
+  "common_name": "Sperlingskauz",
+  "scientific_name": "Glaucidium passerinum",
+  "group": "bird",
+  "family": "Eigentliche Eulen",
+  "order_name": "Eulen",
+  "size": "15–19 cm",
+  "wingspan": "32–39 cm",
+  "weight": "50–80 g",
+  "habitats": [
+   "forest",
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "eule"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Kleinste Eule Europas, kaum größer als ein Star. Bergwälder des Bayerischen Waldes und der Alpen."
+ },
+ {
+  "common_name": "Raufußkauz",
+  "scientific_name": "Aegolius funereus",
+  "group": "bird",
+  "family": "Eigentliche Eulen",
+  "order_name": "Eulen",
+  "size": "22–27 cm",
+  "wingspan": "50–62 cm",
+  "weight": "90–200 g",
+  "habitats": [
+   "forest",
+   "alps",
+   "night"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "eule",
+   "nacht"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Erstaunt blickender Bergwaldbewohner mit befiederten Zehen. Nutzt alte Schwarzspechthöhlen."
+ },
+ {
+  "common_name": "Eisvogel",
+  "scientific_name": "Alcedo atthis",
+  "group": "bird",
+  "family": "Eisvögel",
+  "order_name": "Rackenvögel",
+  "size": "17–19 cm",
+  "wingspan": "24–26 cm",
+  "weight": "35–45 g",
+  "habitats": [
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "gewaesser",
+   "farbenpracht"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Der fliegende Edelstein. Sitzt reglos über klarem Wasser und stürzt sich pfeilschnell auf Kleinfische. Ansitz mit Tarnung lohnt sich."
+ },
+ {
+  "common_name": "Buntspecht",
+  "scientific_name": "Dendrocopos major",
+  "group": "bird",
+  "family": "Spechte",
+  "order_name": "Spechtvögel",
+  "size": "22–23 cm",
+  "wingspan": "34–39 cm",
+  "weight": "70–98 g",
+  "habitats": [
+   "forest",
+   "garden",
+   "park"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "specht"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Häufigster Specht Mitteleuropas. Trommelt ab Februar an Resonanzästen."
+ },
+ {
+  "common_name": "Schwarzspecht",
+  "scientific_name": "Dryocopus martius",
+  "group": "bird",
+  "family": "Spechte",
+  "order_name": "Spechtvögel",
+  "size": "45–47 cm",
+  "wingspan": "64–73 cm",
+  "weight": "250–370 g",
+  "habitats": [
+   "forest"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "specht"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "So groß wie eine Krähe, tiefschwarz mit roter Kappe. Seine Höhlen sind Wohnungen für Raufußkauz und Hohltaube."
+ },
+ {
+  "common_name": "Grünspecht",
+  "scientific_name": "Picus viridis",
+  "group": "bird",
+  "family": "Spechte",
+  "order_name": "Spechtvögel",
+  "size": "30–36 cm",
+  "wingspan": "45–51 cm",
+  "weight": "150–250 g",
+  "habitats": [
+   "park",
+   "garden",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "specht"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Lacht laut über Streuobstwiesen und sucht am Boden nach Ameisen."
+ },
+ {
+  "common_name": "Graureiher",
+  "scientific_name": "Ardea cinerea",
+  "group": "bird",
+  "family": "Reiher",
+  "order_name": "Ruderfüßer",
+  "size": "84–102 cm",
+  "wingspan": "155–195 cm",
+  "weight": "1–2 kg",
+  "habitats": [
+   "water",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Steht stundenlang bewegungslos im Flachwasser. Der geduldigste Fotomodel-Kandidat unter den großen Wasservögeln."
+ },
+ {
+  "common_name": "Silberreiher",
+  "scientific_name": "Ardea alba",
+  "group": "bird",
+  "family": "Reiher",
+  "order_name": "Ruderfüßer",
+  "size": "85–100 cm",
+  "wingspan": "145–170 cm",
+  "weight": "1–1,5 kg",
+  "habitats": [
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Strahlend weiß mit gelbem Schnabel im Winter. In Bayern inzwischen regelmäßiger Wintergast."
+ },
+ {
+  "common_name": "Kormoran",
+  "scientific_name": "Phalacrocorax carbo",
+  "group": "bird",
+  "family": "Kormorane",
+  "order_name": "Ruderfüßer",
+  "size": "77–94 cm",
+  "wingspan": "121–149 cm",
+  "weight": "2–3 kg",
+  "habitats": [
+   "water",
+   "coast"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Trocknet sein Gefieder mit ausgebreiteten Flügeln – ein grafisch starkes Motiv."
+ },
+ {
+  "common_name": "Haubentaucher",
+  "scientific_name": "Podiceps cristatus",
+  "group": "bird",
+  "family": "Lappentaucher",
+  "order_name": "Lappentaucher",
+  "size": "46–51 cm",
+  "wingspan": "59–73 cm",
+  "weight": "600–1500 g",
+  "habitats": [
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Im Frühjahr zeigt das Paar den berühmten Pinguintanz mit Wasserpflanzen im Schnabel. Junge reiten auf dem Rücken."
+ },
+ {
+  "common_name": "Weißstorch",
+  "scientific_name": "Ciconia ciconia",
+  "group": "bird",
+  "family": "Störche",
+  "order_name": "Schreitvögel",
+  "size": "100–115 cm",
+  "wingspan": "195–215 cm",
+  "weight": "2,5–4,5 kg",
+  "habitats": [
+   "field",
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "zugvogel"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Adebar. Klappert auf dem Horst und schreitet über feuchte Wiesen."
+ },
+ {
+  "common_name": "Höckerschwan",
+  "scientific_name": "Cygnus olor",
+  "group": "bird",
+  "family": "Entenvögel",
+  "order_name": "Gänsevögel",
+  "size": "125–160 cm",
+  "wingspan": "200–240 cm",
+  "weight": "8–14 kg",
+  "habitats": [
+   "water",
+   "park"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Schwerster flugfähiger Vogel Europas. Im Gegenlicht über Wasserdampf ein Klassiker."
+ },
+ {
+  "common_name": "Stockente",
+  "scientific_name": "Anas platyrhynchos",
+  "group": "bird",
+  "family": "Entenvögel",
+  "order_name": "Gänsevögel",
+  "size": "50–65 cm",
+  "wingspan": "81–98 cm",
+  "weight": "0,8–1,5 kg",
+  "habitats": [
+   "water",
+   "park",
+   "city"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Der grün schillernde Erpelkopf ist eine gute Übung für Belichtung auf irisierenden Federn."
+ },
+ {
+  "common_name": "Reiherente",
+  "scientific_name": "Aythya fuligula",
+  "group": "bird",
+  "family": "Entenvögel",
+  "order_name": "Gänsevögel",
+  "size": "40–47 cm",
+  "wingspan": "65–72 cm",
+  "weight": "550–900 g",
+  "habitats": [
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Tauchente mit langem Nackenschopf und leuchtend gelbem Auge."
+ },
+ {
+  "common_name": "Gänsesäger",
+  "scientific_name": "Mergus merganser",
+  "group": "bird",
+  "family": "Entenvögel",
+  "order_name": "Gänsevögel",
+  "size": "58–68 cm",
+  "wingspan": "78–94 cm",
+  "weight": "1–2 kg",
+  "habitats": [
+   "water",
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Fischjäger mit gezähntem Hakenschnabel. Brütet an bayerischen Voralpenflüssen in Baumhöhlen."
+ },
+ {
+  "common_name": "Blässhuhn",
+  "scientific_name": "Fulica atra",
+  "group": "bird",
+  "family": "Rallen",
+  "order_name": "Kranichvögel",
+  "size": "36–42 cm",
+  "wingspan": "70–80 cm",
+  "weight": "600–900 g",
+  "habitats": [
+   "water",
+   "park"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Schiefergrau mit weißem Stirnschild, streitlustig. An jedem Weiher zu finden."
+ },
+ {
+  "common_name": "Teichhuhn",
+  "scientific_name": "Gallinula chloropus",
+  "group": "bird",
+  "family": "Rallen",
+  "order_name": "Kranichvögel",
+  "size": "30–38 cm",
+  "wingspan": "50–55 cm",
+  "weight": "250–400 g",
+  "habitats": [
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Rot-gelber Schnabel, nickender Gang. Bleibt gern in Deckung am Schilfrand."
+ },
+ {
+  "common_name": "Kiebitz",
+  "scientific_name": "Vanellus vanellus",
+  "group": "bird",
+  "family": "Regenpfeifer",
+  "order_name": "Watvögel",
+  "size": "28–31 cm",
+  "wingspan": "70–80 cm",
+  "weight": "150–300 g",
+  "habitats": [
+   "field",
+   "moor",
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "wiesenbrueter"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Metallisch grün schillernd mit Federholle. Der taumelnde Balzflug im Frühjahr ist unverwechselbar."
+ },
+ {
+  "common_name": "Flussuferläufer",
+  "scientific_name": "Actitis hypoleucos",
+  "group": "bird",
+  "family": "Schnepfenvögel",
+  "order_name": "Watvögel",
+  "size": "18–21 cm",
+  "wingspan": "32–35 cm",
+  "weight": "40–60 g",
+  "habitats": [
+   "water",
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Wippt unentwegt mit dem Hinterkörper und fliegt mit steifen, flatternden Flügelschlägen dicht über dem Wasser."
+ },
+ {
+  "common_name": "Kranich",
+  "scientific_name": "Grus grus",
+  "group": "bird",
+  "family": "Kraniche",
+  "order_name": "Kranichvögel",
+  "size": "110–130 cm",
+  "wingspan": "200–230 cm",
+  "weight": "4–7 kg",
+  "habitats": [
+   "moor",
+   "field",
+   "water"
+  ],
+  "regions": [
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "zugvogel"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Vogel des Glücks. Zieht im Herbst in Keilformation trompetend über Deutschland."
+ },
+ {
+  "common_name": "Feldlerche",
+  "scientific_name": "Alauda arvensis",
+  "group": "bird",
+  "family": "Lerchen",
+  "order_name": "Sperlingsvögel",
+  "size": "16–18 cm",
+  "wingspan": "30–36 cm",
+  "weight": "30–45 g",
+  "habitats": [
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "wiesenbrueter"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Singt minutenlang im Rüttelflug hoch über dem Acker. Am Boden hervorragend getarnt."
+ },
+ {
+  "common_name": "Rauchschwalbe",
+  "scientific_name": "Hirundo rustica",
+  "group": "bird",
+  "family": "Schwalben",
+  "order_name": "Sperlingsvögel",
+  "size": "17–21 cm",
+  "wingspan": "32–35 cm",
+  "weight": "16–22 g",
+  "habitats": [
+   "field",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "zugvogel"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Tief gegabelter Schwanz, rostrote Kehle. Der Flug fordert schnelle Verschlusszeiten und viel Geduld."
+ },
+ {
+  "common_name": "Mauersegler",
+  "scientific_name": "Apus apus",
+  "group": "bird",
+  "family": "Segler",
+  "order_name": "Seglervögel",
+  "size": "16–18 cm",
+  "wingspan": "40–44 cm",
+  "weight": "36–50 g",
+  "habitats": [
+   "city"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "zugvogel"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Verbringt fast sein ganzes Leben in der Luft – schläft und paart sich im Flug. Ein echtes Können-Foto."
+ },
+ {
+  "common_name": "Wiedehopf",
+  "scientific_name": "Upupa epops",
+  "group": "bird",
+  "family": "Wiedehopfe",
+  "order_name": "Rackenvögel",
+  "size": "25–29 cm",
+  "wingspan": "44–48 cm",
+  "weight": "45–80 g",
+  "habitats": [
+   "field",
+   "heath"
+  ],
+  "regions": [
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Rostorange mit schwarz-weißen Flügeln und aufstellbarer Haube. In Bayern nur sehr lokal – die Begegnung eines Sommers."
+ },
+ {
+  "common_name": "Neuntöter",
+  "scientific_name": "Lanius collurio",
+  "group": "bird",
+  "family": "Würger",
+  "order_name": "Sperlingsvögel",
+  "size": "16–18 cm",
+  "wingspan": "24–27 cm",
+  "weight": "25–35 g",
+  "habitats": [
+   "field",
+   "heath"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "zugvogel"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Spießt Beute auf Dornen. Männchen mit grauer Kappe und schwarzer Räubermaske."
+ },
+ {
+  "common_name": "Goldammer",
+  "scientific_name": "Emberiza citrinella",
+  "group": "bird",
+  "family": "Ammern",
+  "order_name": "Sperlingsvögel",
+  "size": "16–17 cm",
+  "wingspan": "23–29 cm",
+  "weight": "25–35 g",
+  "habitats": [
+   "field",
+   "heath"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "„Wie-wie-wie hab ich dich lieb\" – singt von Heckenspitzen, leuchtend gelber Kopf."
+ },
+ {
+  "common_name": "Stieglitz",
+  "scientific_name": "Carduelis carduelis",
+  "group": "bird",
+  "family": "Finken",
+  "order_name": "Sperlingsvögel",
+  "size": "12–13 cm",
+  "wingspan": "21–25 cm",
+  "weight": "14–19 g",
+  "habitats": [
+   "garden",
+   "field",
+   "park"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "farbenpracht"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Der Distelfink: rote Gesichtsmaske, goldgelbe Flügelbinde. Turnt an Distelköpfen."
+ },
+ {
+  "common_name": "Gimpel",
+  "scientific_name": "Pyrrhula pyrrhula",
+  "group": "bird",
+  "family": "Finken",
+  "order_name": "Sperlingsvögel",
+  "size": "15–17 cm",
+  "wingspan": "22–29 cm",
+  "weight": "21–27 g",
+  "habitats": [
+   "forest",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "winter"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Der Dompfaff mit karminroter Brust – im Schnee eines der schönsten Wintermotive."
+ },
+ {
+  "common_name": "Erlenzeisig",
+  "scientific_name": "Spinus spinus",
+  "group": "bird",
+  "family": "Finken",
+  "order_name": "Sperlingsvögel",
+  "size": "11–12,5 cm",
+  "wingspan": "20–23 cm",
+  "weight": "10–18 g",
+  "habitats": [
+   "forest",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Kleiner gelbgrüner Finke, hängt akrobatisch an Erlenzapfen."
+ },
+ {
+  "common_name": "Wacholderdrossel",
+  "scientific_name": "Turdus pilaris",
+  "group": "bird",
+  "family": "Drosseln",
+  "order_name": "Sperlingsvögel",
+  "size": "22–27 cm",
+  "wingspan": "39–42 cm",
+  "weight": "80–130 g",
+  "habitats": [
+   "field",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "winter"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Grauer Kopf, kastanienbrauner Rücken. Fällt im Winter in Trupps über Beerensträucher her."
+ },
+ {
+  "common_name": "Singdrossel",
+  "scientific_name": "Turdus philomelos",
+  "group": "bird",
+  "family": "Drosseln",
+  "order_name": "Sperlingsvögel",
+  "size": "20–22 cm",
+  "wingspan": "33–36 cm",
+  "weight": "65–90 g",
+  "habitats": [
+   "forest",
+   "garden",
+   "park"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Wiederholt jede Strophe zwei- bis dreimal. Zerschlägt Schnecken an „Drosselschmieden\"."
+ },
+ {
+  "common_name": "Alpendohle",
+  "scientific_name": "Pyrrhocorax graculus",
+  "group": "bird",
+  "family": "Rabenvögel",
+  "order_name": "Sperlingsvögel",
+  "size": "36–39 cm",
+  "wingspan": "65–74 cm",
+  "weight": "200–250 g",
+  "habitats": [
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "alpen"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Gelber Schnabel, rote Beine. Bettelt an jeder Gipfelbrotzeit – die einfachste Alpenart des Kompendiums."
+ },
+ {
+  "common_name": "Alpenschneehuhn",
+  "scientific_name": "Lagopus muta",
+  "group": "bird",
+  "family": "Fasanenartige",
+  "order_name": "Hühnervögel",
+  "size": "34–36 cm",
+  "wingspan": "54–60 cm",
+  "weight": "400–600 g",
+  "habitats": [
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "alpen",
+   "winter"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Im Winter reinweiß, im Sommer felsgrau gesprenkelt. Lebt oberhalb der Baumgrenze und lässt sich kaum finden."
+ },
+ {
+  "common_name": "Auerhuhn",
+  "scientific_name": "Tetrao urogallus",
+  "group": "bird",
+  "family": "Fasanenartige",
+  "order_name": "Hühnervögel",
+  "size": "74–90 cm",
+  "wingspan": "87–125 cm",
+  "weight": "1,5–5 kg",
+  "habitats": [
+   "forest",
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "alpen"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Größtes Waldhuhn Europas. Sehr störungsempfindlich – Balzplätze bitte grundsätzlich meiden."
+ },
+ {
+  "common_name": "Birkhuhn",
+  "scientific_name": "Lyrurus tetrix",
+  "group": "bird",
+  "family": "Fasanenartige",
+  "order_name": "Hühnervögel",
+  "size": "40–55 cm",
+  "wingspan": "65–80 cm",
+  "weight": "0,8–1,4 kg",
+  "habitats": [
+   "moor",
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "alpen",
+   "moor"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Leierförmiger Schwanz, blau schimmerndes Gefieder. Balzt kollektiv auf Moorlichtungen."
+ },
+ {
+  "common_name": "Mauerläufer",
+  "scientific_name": "Tichodroma muraria",
+  "group": "bird",
+  "family": "Mauerläufer",
+  "order_name": "Sperlingsvögel",
+  "size": "15–17 cm",
+  "wingspan": "27–32 cm",
+  "weight": "17–19 g",
+  "habitats": [
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "alpen",
+   "legende"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Der „Schmetterling der Felswand\" mit karminroten Flügelfeldern. Der heilige Gral der Alpenfotografie."
+ },
+ {
+  "common_name": "Wasseramsel",
+  "scientific_name": "Cinclus cinclus",
+  "group": "bird",
+  "family": "Wasseramseln",
+  "order_name": "Sperlingsvögel",
+  "size": "17–20 cm",
+  "wingspan": "25–30 cm",
+  "weight": "50–75 g",
+  "habitats": [
+   "water",
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Taucht und läuft am Grund schnell fließender Bäche. Weißer Latz auf schokobraunem Gefieder."
+ },
+ {
+  "common_name": "Gebirgsstelze",
+  "scientific_name": "Motacilla cinerea",
+  "group": "bird",
+  "family": "Stelzen",
+  "order_name": "Sperlingsvögel",
+  "size": "17–20 cm",
+  "wingspan": "25–27 cm",
+  "weight": "15–23 g",
+  "habitats": [
+   "water",
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Zitronengelbe Unterseite, sehr langer wippender Schwanz. An jedem Wehr und Mühlbach."
+ },
+ {
+  "common_name": "Bachstelze",
+  "scientific_name": "Motacilla alba",
+  "group": "bird",
+  "family": "Stelzen",
+  "order_name": "Sperlingsvögel",
+  "size": "16,5–19 cm",
+  "wingspan": "25–30 cm",
+  "weight": "19–27 g",
+  "habitats": [
+   "water",
+   "field",
+   "city"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Trippelt wippend über Parkplätze und Uferkies."
+ },
+ {
+  "common_name": "Zilpzalp",
+  "scientific_name": "Phylloscopus collybita",
+  "group": "bird",
+  "family": "Laubsängerartige",
+  "order_name": "Sperlingsvögel",
+  "size": "10–12 cm",
+  "wingspan": "15–21 cm",
+  "weight": "6–9 g",
+  "habitats": [
+   "forest",
+   "garden",
+   "park"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "zugvogel"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Benennt sich selbst im Gesang. Unauffällig olivbraun – die Herausforderung liegt in der Bestimmung."
+ },
+ {
+  "common_name": "Mönchsgrasmücke",
+  "scientific_name": "Sylvia atricapilla",
+  "group": "bird",
+  "family": "Grasmücken",
+  "order_name": "Sperlingsvögel",
+  "size": "13–15 cm",
+  "wingspan": "20–23 cm",
+  "weight": "14–20 g",
+  "habitats": [
+   "forest",
+   "garden",
+   "park"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "zugvogel"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Männchen mit schwarzer, Weibchen mit rotbrauner Kappe. Flötender Überschlag am Ende der Strophe."
+ },
+ {
+  "common_name": "Kuckuck",
+  "scientific_name": "Cuculus canorus",
+  "group": "bird",
+  "family": "Kuckucke",
+  "order_name": "Kuckucksvögel",
+  "size": "32–34 cm",
+  "wingspan": "55–65 cm",
+  "weight": "105–130 g",
+  "habitats": [
+   "forest",
+   "moor",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "zugvogel"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Jeder hört ihn, kaum jemand sieht ihn. Im Flug sperberähnlich mit spitzen Flügeln."
+ },
+ {
+  "common_name": "Ringeltaube",
+  "scientific_name": "Columba palumbus",
+  "group": "bird",
+  "family": "Tauben",
+  "order_name": "Taubenvögel",
+  "size": "38–43 cm",
+  "wingspan": "68–80 cm",
+  "weight": "450–550 g",
+  "habitats": [
+   "forest",
+   "park",
+   "city",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Weißer Halsfleck, klatschender Abflug. Größte heimische Taube."
+ },
+ {
+  "common_name": "Graugans",
+  "scientific_name": "Anser anser",
+  "group": "bird",
+  "family": "Entenvögel",
+  "order_name": "Gänsevögel",
+  "size": "75–90 cm",
+  "wingspan": "147–180 cm",
+  "weight": "2,5–4 kg",
+  "habitats": [
+   "water",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Stammform der Hausgans. Familienverbände mit Gösseln sind ein dankbares Motiv."
+ },
+ {
+  "common_name": "Fasan",
+  "scientific_name": "Phasianus colchicus",
+  "group": "bird",
+  "family": "Fasanenartige",
+  "order_name": "Hühnervögel",
+  "size": "70–90 cm",
+  "wingspan": "70–90 cm",
+  "weight": "0,9–1,4 kg",
+  "habitats": [
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Der Hahn ist ein Feuerwerk aus Kupfer, Grün und Rot. Startet mit lautem Poltern."
+ },
+ {
+  "common_name": "Rebhuhn",
+  "scientific_name": "Perdix perdix",
+  "group": "bird",
+  "family": "Fasanenartige",
+  "order_name": "Hühnervögel",
+  "size": "28–32 cm",
+  "wingspan": "45–48 cm",
+  "weight": "350–450 g",
+  "habitats": [
+   "field"
+  ],
+  "regions": [
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Einst überall auf Äckern, heute stark bedroht. Drückt sich bis zum letzten Moment in die Ackerfurche."
+ },
+ {
+  "common_name": "Reh",
+  "scientific_name": "Capreolus capreolus",
+  "group": "mammal",
+  "family": "Hirsche",
+  "order_name": "Paarhufer",
+  "size": "95–140 cm",
+  "wingspan": "",
+  "weight": "15–35 kg",
+  "habitats": [
+   "forest",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "daemmerung"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Häufigstes Wildtier Bayerns. Am besten in der Dämmerung am Waldrand, mit ruhigem Ansitz statt Anpirschen."
+ },
+ {
+  "common_name": "Rothirsch",
+  "scientific_name": "Cervus elaphus",
+  "group": "mammal",
+  "family": "Hirsche",
+  "order_name": "Paarhufer",
+  "size": "160–250 cm",
+  "wingspan": "",
+  "weight": "90–250 kg",
+  "habitats": [
+   "forest",
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "brunft"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Zur Brunft im September röhren die Platzhirsche – akustisch wie fotografisch der Höhepunkt des Wildtierjahres."
+ },
+ {
+  "common_name": "Wildschwein",
+  "scientific_name": "Sus scrofa",
+  "group": "mammal",
+  "family": "Echte Schweine",
+  "order_name": "Paarhufer",
+  "size": "110–160 cm",
+  "wingspan": "",
+  "weight": "50–150 kg",
+  "habitats": [
+   "forest",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "nacht",
+   "vorsicht"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Nachtaktiv und wachsam. Rotten mit Frischlingen immer mit großem Abstand fotografieren."
+ },
+ {
+  "common_name": "Rotfuchs",
+  "scientific_name": "Vulpes vulpes",
+  "group": "mammal",
+  "family": "Hunde",
+  "order_name": "Raubtiere",
+  "size": "60–90 cm",
+  "wingspan": "",
+  "weight": "5–10 kg",
+  "habitats": [
+   "forest",
+   "field",
+   "city"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "raubtier"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Anpassungskünstler bis in die Innenstädte. Das Mäusespringen im Schnee ist das klassische Motiv."
+ },
+ {
+  "common_name": "Dachs",
+  "scientific_name": "Meles meles",
+  "group": "mammal",
+  "family": "Marder",
+  "order_name": "Raubtiere",
+  "size": "60–90 cm",
+  "wingspan": "",
+  "weight": "7–14 kg",
+  "habitats": [
+   "forest",
+   "night"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "raubtier",
+   "nacht"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Dämmerungs- und nachtaktiv. Am Bau mit Tarnzelt und viel Zeit – oder gar nicht."
+ },
+ {
+  "common_name": "Feldhase",
+  "scientific_name": "Lepus europaeus",
+  "group": "mammal",
+  "family": "Hasen",
+  "order_name": "Hasenartige",
+  "size": "50–70 cm",
+  "wingspan": "",
+  "weight": "3–5 kg",
+  "habitats": [
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Lange schwarz gespitzte Löffel, drückt sich in der Sasse. Im März boxen die Rammler."
+ },
+ {
+  "common_name": "Eichhörnchen",
+  "scientific_name": "Sciurus vulgaris",
+  "group": "mammal",
+  "family": "Hörnchen",
+  "order_name": "Nagetiere",
+  "size": "19–25 cm",
+  "wingspan": "",
+  "weight": "200–400 g",
+  "habitats": [
+   "forest",
+   "park",
+   "garden",
+   "city"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "In Bayern von rotbraun bis fast schwarz. In Parks oft erstaunlich zutraulich."
+ },
+ {
+  "common_name": "Europäischer Biber",
+  "scientific_name": "Castor fiber",
+  "group": "mammal",
+  "family": "Biber",
+  "order_name": "Nagetiere",
+  "size": "80–100 cm",
+  "wingspan": "",
+  "weight": "20–30 kg",
+  "habitats": [
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "daemmerung",
+   "gewaesser"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Bayern ist Biberland – über 20.000 Tiere. Aktiv in der Abenddämmerung an Burg und Damm."
+ },
+ {
+  "common_name": "Braunbrustigel",
+  "scientific_name": "Erinaceus europaeus",
+  "group": "mammal",
+  "family": "Igel",
+  "order_name": "Insektenfresser",
+  "size": "20–30 cm",
+  "wingspan": "",
+  "weight": "600–1200 g",
+  "habitats": [
+   "garden",
+   "park",
+   "city",
+   "night"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "nacht"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Nachtaktiver Gartenbewohner. Bitte nie zum Wachwerden zwingen – lieber abends mit Licht aus dem Hintergrund."
+ },
+ {
+  "common_name": "Gämse",
+  "scientific_name": "Rupicapra rupicapra",
+  "group": "mammal",
+  "family": "Hornträger",
+  "order_name": "Paarhufer",
+  "size": "110–130 cm",
+  "wingspan": "",
+  "weight": "25–50 kg",
+  "habitats": [
+   "alps",
+   "forest"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "alpen"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Hakenförmige Krucken, im Winter fast schwarz. Klettert über Schrofen, an denen kein Mensch steht."
+ },
+ {
+  "common_name": "Alpenmurmeltier",
+  "scientific_name": "Marmota marmota",
+  "group": "mammal",
+  "family": "Hörnchen",
+  "order_name": "Nagetiere",
+  "size": "40–55 cm",
+  "wingspan": "",
+  "weight": "3–7 kg",
+  "habitats": [
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "alpen"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Der Pfiff über der Almwiese. Am Wanderweg gewöhnte Kolonien lassen sich gut annähern."
+ },
+ {
+  "common_name": "Alpensteinbock",
+  "scientific_name": "Capra ibex",
+  "group": "mammal",
+  "family": "Hornträger",
+  "order_name": "Paarhufer",
+  "size": "130–150 cm",
+  "wingspan": "",
+  "weight": "40–120 kg",
+  "habitats": [
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "alpen"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Mächtige geknotete Hörner. In Bayern nur in wenigen Kolonien, etwa am Hochvogel und Benediktenwand."
+ },
+ {
+  "common_name": "Steinmarder",
+  "scientific_name": "Martes foina",
+  "group": "mammal",
+  "family": "Marder",
+  "order_name": "Raubtiere",
+  "size": "40–55 cm",
+  "wingspan": "",
+  "weight": "1,1–2,3 kg",
+  "habitats": [
+   "city",
+   "garden",
+   "night"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "raubtier",
+   "nacht"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Weißer, gegabelter Kehlfleck. Der Untermieter unter Motorhauben – tagsüber kaum zu sehen."
+ },
+ {
+  "common_name": "Baummarder",
+  "scientific_name": "Martes martes",
+  "group": "mammal",
+  "family": "Marder",
+  "order_name": "Raubtiere",
+  "size": "45–58 cm",
+  "wingspan": "",
+  "weight": "0,8–1,8 kg",
+  "habitats": [
+   "forest",
+   "night"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "raubtier",
+   "nacht"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Gelblicher Kehlfleck, scheuer Waldbewohner. Eine Sichtung ist bereits ein Ereignis."
+ },
+ {
+  "common_name": "Hermelin",
+  "scientific_name": "Mustela erminea",
+  "group": "mammal",
+  "family": "Marder",
+  "order_name": "Raubtiere",
+  "size": "22–32 cm",
+  "wingspan": "",
+  "weight": "150–300 g",
+  "habitats": [
+   "field",
+   "forest"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "raubtier",
+   "winter"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Im Winter weiß mit schwarzer Schwanzspitze. Bewegt sich in nervösen Sprüngen – kurze Verschlusszeit bereithalten."
+ },
+ {
+  "common_name": "Fischotter",
+  "scientific_name": "Lutra lutra",
+  "group": "mammal",
+  "family": "Marder",
+  "order_name": "Raubtiere",
+  "size": "90–120 cm",
+  "wingspan": "",
+  "weight": "7–12 kg",
+  "habitats": [
+   "water",
+   "night"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "raubtier",
+   "gewaesser"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Kehrt langsam nach Bayern zurück. Dämmerungsaktiv, meist nur als Kopf im dunklen Wasser."
+ },
+ {
+  "common_name": "Eurasischer Luchs",
+  "scientific_name": "Lynx lynx",
+  "group": "mammal",
+  "family": "Katzen",
+  "order_name": "Raubtiere",
+  "size": "80–120 cm",
+  "wingspan": "",
+  "weight": "18–30 kg",
+  "habitats": [
+   "forest",
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "raubtier",
+   "legende"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Pinselohren und Backenbart. Im Bayerischen Wald leben nur wenige Dutzend – die legendärste heimische Art."
+ },
+ {
+  "common_name": "Siebenschläfer",
+  "scientific_name": "Glis glis",
+  "group": "mammal",
+  "family": "Bilche",
+  "order_name": "Nagetiere",
+  "size": "13–18 cm",
+  "wingspan": "",
+  "weight": "70–180 g",
+  "habitats": [
+   "forest",
+   "garden",
+   "night"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "nacht"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Große dunkle Augen, buschiger Schwanz. Nachts auf Dachböden und in Obstgärten."
+ },
+ {
+  "common_name": "Großes Mausohr",
+  "scientific_name": "Myotis myotis",
+  "group": "mammal",
+  "family": "Glattnasen",
+  "order_name": "Fledermäuse",
+  "size": "6,7–8,4 cm",
+  "wingspan": "35–43 cm",
+  "weight": "20–40 g",
+  "habitats": [
+   "forest",
+   "city",
+   "night"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "nacht",
+   "fledermaus"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Größte heimische Fledermaus. Fotografie nur mit Blitz im Flug oder am Quartierausflug – anspruchsvoll."
+ },
+ {
+  "common_name": "Damhirsch",
+  "scientific_name": "Dama dama",
+  "group": "mammal",
+  "family": "Hirsche",
+  "order_name": "Paarhufer",
+  "size": "130–160 cm",
+  "wingspan": "",
+  "weight": "40–100 kg",
+  "habitats": [
+   "forest",
+   "field"
+  ],
+  "regions": [
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Schaufelgeweih und weiß geflecktes Sommerkleid. In Bayern vor allem in Gattern und lokalen Beständen."
+ },
+ {
+  "common_name": "Waschbär",
+  "scientific_name": "Procyon lotor",
+  "group": "mammal",
+  "family": "Kleinbären",
+  "order_name": "Raubtiere",
+  "size": "40–70 cm",
+  "wingspan": "",
+  "weight": "4–9 kg",
+  "habitats": [
+   "forest",
+   "city",
+   "night"
+  ],
+  "regions": [
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "nacht",
+   "neozoon"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Eingebürgerter Neubürger mit schwarzer Gesichtsmaske. Nachtaktiv und neugierig."
+ },
+ {
+  "common_name": "Mauswiesel",
+  "scientific_name": "Mustela nivalis",
+  "group": "mammal",
+  "family": "Marder",
+  "order_name": "Raubtiere",
+  "size": "17–23 cm",
+  "wingspan": "",
+  "weight": "35–130 g",
+  "habitats": [
+   "field",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "raubtier"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Kleinstes Raubtier der Welt. Verschwindet meist schneller, als der Autofokus sitzt."
+ },
+ {
+  "common_name": "Tagpfauenauge",
+  "scientific_name": "Aglais io",
+  "group": "butterfly",
+  "family": "Edelfalter",
+  "order_name": "Schmetterlinge",
+  "size": "5–6 cm Spannweite",
+  "wingspan": "50–60 mm",
+  "weight": "",
+  "habitats": [
+   "garden",
+   "field",
+   "park"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Vier leuchtende Augenflecken schrecken Vögel ab. Überwintert als Falter und fliegt schon an warmen Märztagen."
+ },
+ {
+  "common_name": "Kleiner Fuchs",
+  "scientific_name": "Aglais urticae",
+  "group": "butterfly",
+  "family": "Edelfalter",
+  "order_name": "Schmetterlinge",
+  "size": "4–5 cm Spannweite",
+  "wingspan": "40–50 mm",
+  "weight": "",
+  "habitats": [
+   "garden",
+   "field",
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Ziegelrot mit blauem Saumfleckenband. Raupen leben gesellig an Brennnesseln."
+ },
+ {
+  "common_name": "Admiral",
+  "scientific_name": "Vanessa atalanta",
+  "group": "butterfly",
+  "family": "Edelfalter",
+  "order_name": "Schmetterlinge",
+  "size": "5,5–6,5 cm Spannweite",
+  "wingspan": "55–65 mm",
+  "weight": "",
+  "habitats": [
+   "garden",
+   "forest",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "wanderfalter"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Wanderfalter aus dem Mittelmeerraum. Saugt im Spätsommer an Fallobst und ist dann sehr zutraulich."
+ },
+ {
+  "common_name": "Distelfalter",
+  "scientific_name": "Vanessa cardui",
+  "group": "butterfly",
+  "family": "Edelfalter",
+  "order_name": "Schmetterlinge",
+  "size": "5–6 cm Spannweite",
+  "wingspan": "50–60 mm",
+  "weight": "",
+  "habitats": [
+   "field",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "wanderfalter"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Fliegt in manchen Jahren zu Millionen aus Nordafrika ein."
+ },
+ {
+  "common_name": "Zitronenfalter",
+  "scientific_name": "Gonepteryx rhamni",
+  "group": "butterfly",
+  "family": "Weißlinge",
+  "order_name": "Schmetterlinge",
+  "size": "5–6 cm Spannweite",
+  "wingspan": "50–60 mm",
+  "weight": "",
+  "habitats": [
+   "forest",
+   "garden",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "fruehling"
+  ],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Der erste Falter des Jahres – oft schon im Februar. Männchen leuchtend schwefelgelb, Weibchen fast weiß."
+ },
+ {
+  "common_name": "Aurorafalter",
+  "scientific_name": "Anthocharis cardamines",
+  "group": "butterfly",
+  "family": "Weißlinge",
+  "order_name": "Schmetterlinge",
+  "size": "3,5–4,5 cm Spannweite",
+  "wingspan": "35–45 mm",
+  "weight": "",
+  "habitats": [
+   "field",
+   "forest",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "fruehling"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Nur das Männchen trägt die orangefarbenen Flügelspitzen. Fliegt in einer kurzen Generation im Mai."
+ },
+ {
+  "common_name": "Großer Kohlweißling",
+  "scientific_name": "Pieris brassicae",
+  "group": "butterfly",
+  "family": "Weißlinge",
+  "order_name": "Schmetterlinge",
+  "size": "5–6,5 cm Spannweite",
+  "wingspan": "50–65 mm",
+  "weight": "",
+  "habitats": [
+   "garden",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Bekanntester Kulturfolger unter den Faltern."
+ },
+ {
+  "common_name": "Schwalbenschwanz",
+  "scientific_name": "Papilio machaon",
+  "group": "butterfly",
+  "family": "Ritterfalter",
+  "order_name": "Schmetterlinge",
+  "size": "6–8 cm Spannweite",
+  "wingspan": "60–80 mm",
+  "weight": "",
+  "habitats": [
+   "field",
+   "garden",
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "farbenpracht"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Segelt an sonnigen Hängen und sammelt sich zur Balz auf Bergkuppen – „Gipfelbalz\"."
+ },
+ {
+  "common_name": "Segelfalter",
+  "scientific_name": "Iphiclides podalirius",
+  "group": "butterfly",
+  "family": "Ritterfalter",
+  "order_name": "Schmetterlinge",
+  "size": "6–8 cm Spannweite",
+  "wingspan": "60–80 mm",
+  "weight": "",
+  "habitats": [
+   "heath",
+   "field"
+  ],
+  "regions": [
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Tigerstreifen und lange Schwänzchen. In Bayern nur an warmen Trockenhängen."
+ },
+ {
+  "common_name": "Kaisermantel",
+  "scientific_name": "Argynnis paphia",
+  "group": "butterfly",
+  "family": "Edelfalter",
+  "order_name": "Schmetterlinge",
+  "size": "5,5–6,5 cm Spannweite",
+  "wingspan": "55–65 mm",
+  "weight": "",
+  "habitats": [
+   "forest"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Größter heimischer Perlmuttfalter. Sammelt sich im Hochsommer an Waldwegdisteln."
+ },
+ {
+  "common_name": "Großer Schillerfalter",
+  "scientific_name": "Apatura iris",
+  "group": "butterfly",
+  "family": "Edelfalter",
+  "order_name": "Schmetterlinge",
+  "size": "6–7,5 cm Spannweite",
+  "wingspan": "60–75 mm",
+  "weight": "",
+  "habitats": [
+   "forest",
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "farbenpracht"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Nur aus bestimmten Winkeln schillern die Flügel elektrisch blau. Männchen saugen an feuchten Waldwegen."
+ },
+ {
+  "common_name": "Trauermantel",
+  "scientific_name": "Nymphalis antiopa",
+  "group": "butterfly",
+  "family": "Edelfalter",
+  "order_name": "Schmetterlinge",
+  "size": "6–7,5 cm Spannweite",
+  "wingspan": "60–75 mm",
+  "weight": "",
+  "habitats": [
+   "forest",
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Samtbraun mit cremeweißem Saum. Überwintert als Falter und erscheint an warmen Vorfrühlingstagen."
+ },
+ {
+  "common_name": "Hauhechel-Bläuling",
+  "scientific_name": "Polyommatus icarus",
+  "group": "butterfly",
+  "family": "Bläulinge",
+  "order_name": "Schmetterlinge",
+  "size": "2,5–3 cm Spannweite",
+  "wingspan": "25–30 mm",
+  "weight": "",
+  "habitats": [
+   "field",
+   "heath"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Häufigster Bläuling. Am frühen Morgen schlafen die Falter an Grashalmen und lassen sich mit Tau fotografieren."
+ },
+ {
+  "common_name": "Apollofalter",
+  "scientific_name": "Parnassius apollo",
+  "group": "butterfly",
+  "family": "Ritterfalter",
+  "order_name": "Schmetterlinge",
+  "size": "7–8,5 cm Spannweite",
+  "wingspan": "70–85 mm",
+  "weight": "",
+  "habitats": [
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "alpen",
+   "legende"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Rote Augenflecken auf durchscheinend weißen Flügeln. Streng geschützt, nur an wenigen Felshängen der Alpen und der Fränkischen Schweiz."
+ },
+ {
+  "common_name": "Landkärtchen",
+  "scientific_name": "Araschnia levana",
+  "group": "butterfly",
+  "family": "Edelfalter",
+  "order_name": "Schmetterlinge",
+  "size": "3–4 cm Spannweite",
+  "wingspan": "30–40 mm",
+  "weight": "",
+  "habitats": [
+   "forest",
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Zwei völlig verschiedene Generationen: orange im Frühling, schwarz-weiß im Sommer."
+ },
+ {
+  "common_name": "Taubenschwänzchen",
+  "scientific_name": "Macroglossum stellatarum",
+  "group": "butterfly",
+  "family": "Schwärmer",
+  "order_name": "Schmetterlinge",
+  "size": "4–4,5 cm Spannweite",
+  "wingspan": "40–45 mm",
+  "weight": "",
+  "habitats": [
+   "garden",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "wanderfalter"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Schwirrt wie ein Kolibri vor Blüten. Verlangt 1/2000 s und viel Übung."
+ },
+ {
+  "common_name": "Blauflügel-Prachtlibelle",
+  "scientific_name": "Calopteryx virgo",
+  "group": "insect",
+  "family": "Prachtlibellen",
+  "order_name": "Libellen",
+  "size": "4,5–5 cm",
+  "wingspan": "60–70 mm",
+  "weight": "",
+  "habitats": [
+   "water",
+   "forest"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "libelle"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Männchen mit vollständig metallblauen Flügeln, gaukelnder Flug über schattigen Bächen."
+ },
+ {
+  "common_name": "Große Königslibelle",
+  "scientific_name": "Anax imperator",
+  "group": "insect",
+  "family": "Edellibellen",
+  "order_name": "Libellen",
+  "size": "6,5–8,5 cm",
+  "wingspan": "95–110 mm",
+  "weight": "",
+  "habitats": [
+   "water",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "libelle"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Patrouilliert unermüdlich über dem Weiher und landet fast nie – Mitzieher üben!"
+ },
+ {
+  "common_name": "Plattbauch",
+  "scientific_name": "Libellula depressa",
+  "group": "insect",
+  "family": "Segellibellen",
+  "order_name": "Libellen",
+  "size": "4–4,5 cm",
+  "wingspan": "70–80 mm",
+  "weight": "",
+  "habitats": [
+   "water",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "libelle"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Breiter, hellblau bereifter Hinterleib. Kehrt gern zum selben Ansitzstock zurück – dankbares Motiv."
+ },
+ {
+  "common_name": "Hirschkäfer",
+  "scientific_name": "Lucanus cervus",
+  "group": "insect",
+  "family": "Schröter",
+  "order_name": "Käfer",
+  "size": "3,5–9 cm",
+  "wingspan": "",
+  "weight": "2–8 g",
+  "habitats": [
+   "forest"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "kaefer",
+   "legende"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Größter Käfer Europas. Fliegt an schwülen Juniabenden um alte Eichen."
+ },
+ {
+  "common_name": "Maikäfer",
+  "scientific_name": "Melolontha melolontha",
+  "group": "insect",
+  "family": "Blatthornkäfer",
+  "order_name": "Käfer",
+  "size": "2,5–3 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "forest",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "kaefer",
+   "fruehling"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Gefächerte Fühler, klassischer Frühlingsbote. Erscheint massenhaft nur alle paar Jahre."
+ },
+ {
+  "common_name": "Siebenpunkt-Marienkäfer",
+  "scientific_name": "Coccinella septempunctata",
+  "group": "insect",
+  "family": "Marienkäfer",
+  "order_name": "Käfer",
+  "size": "5–8 mm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "garden",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "kaefer"
+  ],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Der Glückskäfer. Gute Übung für Makro und Schärfentiefe."
+ },
+ {
+  "common_name": "Hornisse",
+  "scientific_name": "Vespa crabro",
+  "group": "insect",
+  "family": "Faltenwespen",
+  "order_name": "Hautflügler",
+  "size": "2–3,5 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "forest",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "hautfluegler"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Größte heimische Wespe, friedlicher als ihr Ruf. Streng geschützt – Abstand zum Nest halten."
+ },
+ {
+  "common_name": "Dunkle Erdhummel",
+  "scientific_name": "Bombus terrestris",
+  "group": "insect",
+  "family": "Echte Bienen",
+  "order_name": "Hautflügler",
+  "size": "1,5–2,5 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "garden",
+   "field",
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "hautfluegler",
+   "bestaeuber"
+  ],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Fliegt schon bei 5 °C. Die Königinnen im März sind erstaunlich groß."
+ },
+ {
+  "common_name": "Honigbiene",
+  "scientific_name": "Apis mellifera",
+  "group": "insect",
+  "family": "Echte Bienen",
+  "order_name": "Hautflügler",
+  "size": "1,1–1,5 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "garden",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "hautfluegler",
+   "bestaeuber"
+  ],
+  "difficulty": 1,
+  "rarity": "",
+  "description": "Mit Pollenhöschen an der Blüte – ein Klassiker der Nahfotografie."
+ },
+ {
+  "common_name": "Grünes Heupferd",
+  "scientific_name": "Tettigonia viridissima",
+  "group": "insect",
+  "family": "Laubheuschrecken",
+  "order_name": "Heuschrecken",
+  "size": "2,8–4,2 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "field",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "heuschrecke"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Große grüne Langfühlerschrecke, zirpt bis in die Nacht hinein."
+ },
+ {
+  "common_name": "Gottesanbeterin",
+  "scientific_name": "Mantis religiosa",
+  "group": "insect",
+  "family": "Fangschrecken",
+  "order_name": "Fangschrecken",
+  "size": "4–7,5 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "field",
+   "heath"
+  ],
+  "regions": [
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "waermeliebend"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Breitet sich mit dem Klimawandel nach Norden aus und erreicht inzwischen auch Bayern."
+ },
+ {
+  "common_name": "Feuerlibelle",
+  "scientific_name": "Crocothemis erythraea",
+  "group": "insect",
+  "family": "Segellibellen",
+  "order_name": "Libellen",
+  "size": "3,3–4,4 cm",
+  "wingspan": "60–70 mm",
+  "weight": "",
+  "habitats": [
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "libelle",
+   "waermeliebend"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Männchen leuchtend scharlachrot. Ein Gewinner der wärmeren Sommer."
+ },
+ {
+  "common_name": "Erdkröte",
+  "scientific_name": "Bufo bufo",
+  "group": "amphibian",
+  "family": "Kröten",
+  "order_name": "Froschlurche",
+  "size": "8–13 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "forest",
+   "water",
+   "garden",
+   "night"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "fruehling"
+  ],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Die große Wanderung zu den Laichgewässern im März ist die beste Fotogelegenheit – bitte auf der Straße nur mit Warnweste."
+ },
+ {
+  "common_name": "Grasfrosch",
+  "scientific_name": "Rana temporaria",
+  "group": "amphibian",
+  "family": "Echte Frösche",
+  "order_name": "Froschlurche",
+  "size": "6–9 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "water",
+   "forest",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Laicht als Erster, oft noch unter Eisresten. Kehlansicht mit Spiegelung im Laichgewässer."
+ },
+ {
+  "common_name": "Laubfrosch",
+  "scientific_name": "Hyla arborea",
+  "group": "amphibian",
+  "family": "Laubfrösche",
+  "order_name": "Froschlurche",
+  "size": "3–5 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "water",
+   "moor"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "gewaesser"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Leuchtend grün mit Haftscheiben. Der Chor der Männchen ist kilometerweit hörbar."
+ },
+ {
+  "common_name": "Feuersalamander",
+  "scientific_name": "Salamandra salamandra",
+  "group": "amphibian",
+  "family": "Echte Salamander",
+  "order_name": "Schwanzlurche",
+  "size": "14–20 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "forest",
+   "water",
+   "night"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "nacht",
+   "regen"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Schwarz-gelb gemustert wie ein Wappentier. Erscheint nach warmem Regen in Laubwäldern mit Quellbächen."
+ },
+ {
+  "common_name": "Bergmolch",
+  "scientific_name": "Ichthyosaura alpestris",
+  "group": "amphibian",
+  "family": "Echte Salamander",
+  "order_name": "Schwanzlurche",
+  "size": "8–12 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "water",
+   "forest",
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Im Wassertracht orangefarbener Bauch und blau schimmernde Flanken."
+ },
+ {
+  "common_name": "Zauneidechse",
+  "scientific_name": "Lacerta agilis",
+  "group": "reptile",
+  "family": "Echte Eidechsen",
+  "order_name": "Schuppenkriechtiere",
+  "size": "18–24 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "heath",
+   "garden",
+   "field"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "fruehling"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Männchen im Mai leuchtend grün geflankt. Sonnt sich morgens auf Totholz und Steinen."
+ },
+ {
+  "common_name": "Ringelnatter",
+  "scientific_name": "Natrix natrix",
+  "group": "reptile",
+  "family": "Nattern",
+  "order_name": "Schuppenkriechtiere",
+  "size": "70–120 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "water",
+   "moor"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "gewaesser"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Gelbe Halbmondflecken am Hinterkopf. Ungiftig, schwimmt oft mit erhobenem Kopf."
+ },
+ {
+  "common_name": "Kreuzotter",
+  "scientific_name": "Vipera berus",
+  "group": "reptile",
+  "family": "Vipern",
+  "order_name": "Schuppenkriechtiere",
+  "size": "50–80 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "moor",
+   "alps",
+   "heath"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "moor",
+   "vorsicht"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Dunkles Zickzackband, senkrechte Pupille. Einzige Giftschlange Bayerns – nur mit Teleobjektiv und Abstand."
+ },
+ {
+  "common_name": "Blindschleiche",
+  "scientific_name": "Anguis fragilis",
+  "group": "reptile",
+  "family": "Schleichen",
+  "order_name": "Schuppenkriechtiere",
+  "size": "30–50 cm",
+  "wingspan": "",
+  "weight": "",
+  "habitats": [
+   "forest",
+   "garden"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [],
+  "difficulty": 2,
+  "rarity": "",
+  "description": "Keine Schlange, sondern eine beinlose Echse – erkennbar an den beweglichen Augenlidern."
+ },
+ {
+  "common_name": "Bachforelle",
+  "scientific_name": "Salmo trutta fario",
+  "group": "fish",
+  "family": "Lachsfische",
+  "order_name": "Lachsartige",
+  "size": "25–50 cm",
+  "wingspan": "",
+  "weight": "0,3–2 kg",
+  "habitats": [
+   "water",
+   "alps"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "gewaesser"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Rot umrandete Tupfen. Aus dem Uferschatten mit Polfilter über klaren Voralpenbächen."
+ },
+ {
+  "common_name": "Hecht",
+  "scientific_name": "Esox lucius",
+  "group": "fish",
+  "family": "Hechte",
+  "order_name": "Hechtartige",
+  "size": "50–120 cm",
+  "wingspan": "",
+  "weight": "1–15 kg",
+  "habitats": [
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "gewaesser"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Der Standjäger im Schilfgürtel. Im Frühjahr im flachen Laichkraut sichtbar."
+ },
+ {
+  "common_name": "Äsche",
+  "scientific_name": "Thymallus thymallus",
+  "group": "fish",
+  "family": "Lachsfische",
+  "order_name": "Lachsartige",
+  "size": "30–50 cm",
+  "wingspan": "",
+  "weight": "0,3–1,5 kg",
+  "habitats": [
+   "water"
+  ],
+  "regions": [
+   "bavaria",
+   "germany",
+   "europe"
+  ],
+  "countries": [
+   "DE"
+  ],
+  "tags": [
+   "gewaesser"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Die „Fahne\" – die riesige Rückenflosse – macht sie unverwechselbar. Charakterfisch bayerischer Flüsse."
+ },
+ {
+  "common_name": "Löwe",
+  "scientific_name": "Panthera leo",
+  "group": "mammal",
+  "family": "Katzen",
+  "order_name": "Raubtiere",
+  "size": "170–250 cm",
+  "wingspan": "",
+  "weight": "120–250 kg",
+  "habitats": [
+   "savanna"
+  ],
+  "regions": [
+   "world"
+  ],
+  "countries": [
+   "KE",
+   "TZ",
+   "ZA",
+   "BW"
+  ],
+  "tags": [
+   "expedition",
+   "raubtier",
+   "afrika"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Ruht bis zu 20 Stunden am Tag. Das beste Licht gibt es in der ersten halben Stunde nach Sonnenaufgang."
+ },
+ {
+  "common_name": "Leopard",
+  "scientific_name": "Panthera pardus",
+  "group": "mammal",
+  "family": "Katzen",
+  "order_name": "Raubtiere",
+  "size": "125–190 cm",
+  "wingspan": "",
+  "weight": "30–90 kg",
+  "habitats": [
+   "savanna",
+   "forest"
+  ],
+  "regions": [
+   "world"
+  ],
+  "countries": [
+   "KE",
+   "TZ",
+   "ZA",
+   "IN"
+  ],
+  "tags": [
+   "expedition",
+   "raubtier",
+   "afrika"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Heimlichste der großen Katzen. Legt die Beute in Bäumen ab – dort gelingen die stärksten Bilder."
+ },
+ {
+  "common_name": "Afrikanischer Elefant",
+  "scientific_name": "Loxodonta africana",
+  "group": "mammal",
+  "family": "Elefanten",
+  "order_name": "Rüsseltiere",
+  "size": "600–750 cm",
+  "wingspan": "",
+  "weight": "4–6,5 t",
+  "habitats": [
+   "savanna"
+  ],
+  "regions": [
+   "world"
+  ],
+  "countries": [
+   "KE",
+   "TZ",
+   "ZA",
+   "BW"
+  ],
+  "tags": [
+   "expedition",
+   "afrika"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Größtes Landtier der Erde. Ganze Herden am Wasserloch – Weitwinkel und Tele wechseln sich ab."
+ },
+ {
+  "common_name": "Breitmaulnashorn",
+  "scientific_name": "Ceratotherium simum",
+  "group": "mammal",
+  "family": "Nashörner",
+  "order_name": "Unpaarhufer",
+  "size": "340–420 cm",
+  "wingspan": "",
+  "weight": "1,8–2,5 t",
+  "habitats": [
+   "savanna"
+  ],
+  "regions": [
+   "world"
+  ],
+  "countries": [
+   "ZA",
+   "KE",
+   "NA"
+  ],
+  "tags": [
+   "expedition",
+   "afrika"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Grasender Riese mit breiter Maulscheibe. Am eindrucksvollsten im Gegenlichtstaub."
+ },
+ {
+  "common_name": "Afrikanischer Büffel",
+  "scientific_name": "Syncerus caffer",
+  "group": "mammal",
+  "family": "Hornträger",
+  "order_name": "Paarhufer",
+  "size": "220–340 cm",
+  "wingspan": "",
+  "weight": "500–900 kg",
+  "habitats": [
+   "savanna"
+  ],
+  "regions": [
+   "world"
+  ],
+  "countries": [
+   "KE",
+   "TZ",
+   "ZA"
+  ],
+  "tags": [
+   "expedition",
+   "afrika"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Gilt als eines der gefährlichsten Tiere Afrikas. Der Blick über die Hornbasis ist das ikonische Motiv."
+ },
+ {
+  "common_name": "Giraffe",
+  "scientific_name": "Giraffa camelopardalis",
+  "group": "mammal",
+  "family": "Giraffen",
+  "order_name": "Paarhufer",
+  "size": "450–580 cm",
+  "wingspan": "",
+  "weight": "800–1900 kg",
+  "habitats": [
+   "savanna"
+  ],
+  "regions": [
+   "world"
+  ],
+  "countries": [
+   "KE",
+   "TZ",
+   "NA"
+  ],
+  "tags": [
+   "expedition",
+   "afrika"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Beim Trinken spreizt sie die Vorderbeine – die klassische Safariszene."
+ },
+ {
+  "common_name": "Eisbär",
+  "scientific_name": "Ursus maritimus",
+  "group": "mammal",
+  "family": "Bären",
+  "order_name": "Raubtiere",
+  "size": "200–300 cm",
+  "wingspan": "",
+  "weight": "150–700 kg",
+  "habitats": [
+   "coast",
+   "ocean"
+  ],
+  "regions": [
+   "world"
+  ],
+  "countries": [
+   "NO",
+   "CA",
+   "GL"
+  ],
+  "tags": [
+   "expedition",
+   "arktis",
+   "raubtier",
+   "legende"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Größtes Landraubtier. Svalbard oder Churchill – eine Reise nur für dieses eine Bild."
+ },
+ {
+  "common_name": "Braunbär",
+  "scientific_name": "Ursus arctos",
+  "group": "mammal",
+  "family": "Bären",
+  "order_name": "Raubtiere",
+  "size": "150–280 cm",
+  "wingspan": "",
+  "weight": "100–350 kg",
+  "habitats": [
+   "forest",
+   "alps"
+  ],
+  "regions": [
+   "europe",
+   "world"
+  ],
+  "countries": [
+   "RO",
+   "SI",
+   "FI",
+   "SK"
+  ],
+  "tags": [
+   "expedition",
+   "raubtier",
+   "legende"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "In Europa noch in den Karpaten, Skandinavien und Slowenien. In Bayern nur als seltener Durchwanderer."
+ },
+ {
+  "common_name": "Wolf",
+  "scientific_name": "Canis lupus",
+  "group": "mammal",
+  "family": "Hunde",
+  "order_name": "Raubtiere",
+  "size": "100–150 cm",
+  "wingspan": "",
+  "weight": "30–50 kg",
+  "habitats": [
+   "forest",
+   "field"
+  ],
+  "regions": [
+   "germany",
+   "europe",
+   "world"
+  ],
+  "countries": [
+   "DE",
+   "PL",
+   "RO"
+  ],
+  "tags": [
+   "raubtier",
+   "legende"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Kehrt nach Deutschland zurück, auch nach Bayern. Ein freilebender Wolf vor der Linse ist reines Glück."
+ },
+ {
+  "common_name": "Orca",
+  "scientific_name": "Orcinus orca",
+  "group": "mammal",
+  "family": "Delfine",
+  "order_name": "Wale",
+  "size": "600–900 cm",
+  "wingspan": "",
+  "weight": "3–6 t",
+  "habitats": [
+   "ocean",
+   "coast"
+  ],
+  "regions": [
+   "world"
+  ],
+  "countries": [
+   "NO",
+   "IS",
+   "CA"
+  ],
+  "tags": [
+   "expedition",
+   "meer",
+   "legende"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Die hohe Rückenfinne der Bullen ragt bis 1,8 m aus dem Wasser. Norwegen im Winter, Island oder British Columbia."
+ },
+ {
+  "common_name": "Buckelwal",
+  "scientific_name": "Megaptera novaeangliae",
+  "group": "mammal",
+  "family": "Furchenwale",
+  "order_name": "Wale",
+  "size": "1200–1600 cm",
+  "wingspan": "",
+  "weight": "25–30 t",
+  "habitats": [
+   "ocean"
+  ],
+  "regions": [
+   "world"
+  ],
+  "countries": [
+   "IS",
+   "NO",
+   "US"
+  ],
+  "tags": [
+   "expedition",
+   "meer"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Berühmt für spektakuläre Sprünge und die lange, weiße Brustflosse."
+ },
+ {
+  "common_name": "Riesentukan",
+  "scientific_name": "Ramphastos toco",
+  "group": "bird",
+  "family": "Tukane",
+  "order_name": "Spechtvögel",
+  "size": "55–65 cm",
+  "wingspan": "55–60 cm",
+  "weight": "500–860 g",
+  "habitats": [
+   "rainforest"
+  ],
+  "regions": [
+   "world"
+  ],
+  "countries": [
+   "BR",
+   "AR",
+   "BO"
+  ],
+  "tags": [
+   "expedition",
+   "farbenpracht"
+  ],
+  "difficulty": 3,
+  "rarity": "",
+  "description": "Der größte Tukan – der leuchtend orange Schnabel ist fast ein Fünftel der Körperlänge."
+ },
+ {
+  "common_name": "Rubinkehlkolibri",
+  "scientific_name": "Archilochus colubris",
+  "group": "bird",
+  "family": "Kolibris",
+  "order_name": "Seglervögel",
+  "size": "7–9 cm",
+  "wingspan": "8–11 cm",
+  "weight": "2–6 g",
+  "habitats": [
+   "garden",
+   "rainforest"
+  ],
+  "regions": [
+   "world"
+  ],
+  "countries": [
+   "US",
+   "CA",
+   "MX"
+  ],
+  "tags": [
+   "expedition",
+   "farbenpracht"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Über 50 Flügelschläge pro Sekunde. Nur mit sehr kurzer Belichtung oder mehreren Blitzen einzufrieren."
+ },
+ {
+  "common_name": "Blauer Morphofalter",
+  "scientific_name": "Morpho menelaus",
+  "group": "butterfly",
+  "family": "Edelfalter",
+  "order_name": "Schmetterlinge",
+  "size": "12–15 cm Spannweite",
+  "wingspan": "120–150 mm",
+  "weight": "",
+  "habitats": [
+   "rainforest"
+  ],
+  "regions": [
+   "world"
+  ],
+  "countries": [
+   "BR",
+   "CR",
+   "PE"
+  ],
+  "tags": [
+   "expedition",
+   "farbenpracht"
+  ],
+  "difficulty": 4,
+  "rarity": "",
+  "description": "Das Blau entsteht nicht durch Farbe, sondern durch Lichtbrechung an Flügelschuppen. Nur im Flug sichtbar."
+ },
+ {
+  "common_name": "Kleiner Paradiesvogel",
+  "scientific_name": "Paradisaea minor",
+  "group": "bird",
+  "family": "Paradiesvögel",
+  "order_name": "Sperlingsvögel",
+  "size": "32 cm",
+  "wingspan": "—",
+  "weight": "180–300 g",
+  "habitats": [
+   "rainforest"
+  ],
+  "regions": [
+   "world"
+  ],
+  "countries": [
+   "PG",
+   "ID"
+  ],
+  "tags": [
+   "expedition",
+   "legende",
+   "farbenpracht"
+  ],
+  "difficulty": 5,
+  "rarity": "",
+  "description": "Balzt in traditionellen Bäumen Neuguineas mit kaskadierenden Schmuckfedern."
+ }
+]

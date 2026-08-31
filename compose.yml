@@ -22,6 +22,8 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  # Caddy liefert den Vite-Build aus und ist zugleich der Reverse Proxy
+  # für /api und /media (siehe frontend/Caddyfile).
   frontend:
     build: ./frontend
     image: wildlife-compendium-frontend:latest

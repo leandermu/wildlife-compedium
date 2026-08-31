@@ -38,14 +38,14 @@ docker compose up --build     #  →  http://localhost:8080
 ```
 
 Zwei Images: `backend` (FastAPI unter Uvicorn) und `frontend` (Vite-Build,
-ausgeliefert von nginx). nginx übernimmt dabei die Rolle des Dev-Proxys und
+ausgeliefert von Caddy). Caddy übernimmt dabei die Rolle des Dev-Proxys und
 reicht `/api` und `/media` an das Backend durch – die App bleibt also auch im
 Container einorigin. Die API ist zusätzlich direkt unter
 `http://localhost:8000` erreichbar (Doku: `/docs`).
 
 Datenbank und Fotos liegen im Volume `wildlife-data` (im Container
 `/app/data`); ein Rebuild lässt die Sammlung unangetastet. Wer sie stattdessen
-im Dateisystem sehen will, ersetzt in `docker-compose.yml`:
+im Dateisystem sehen will, ersetzt in `compose.yml`:
 
 ```yaml
     volumes:
@@ -53,6 +53,21 @@ im Dateisystem sehen will, ersetzt in `docker-compose.yml`:
 ```
 
 `docker compose down -v` löscht das Volume – und damit die Sammlung.
+
+#### PostgreSQL statt SQLite
+
+Optional, über eine zweite Compose-Datei:
+
+```bash
+docker compose -f compose.yml -f compose.postgres.yml up --build
+```
+
+Das startet einen `db`-Container und setzt `WC_DATABASE_URL` um; die Fotos
+bleiben im Dateivolume. **Für den Einzelplatz lohnt sich das nicht** – SQLite ist
+hier keine Notlösung, sondern die passende Wahl: eine Datei, die man kopieren
+kann, ein Dienst weniger, kein Backup-Konzept. Sinnvoll wird Postgres erst,
+wenn mehrere Personen gleichzeitig schreiben oder die Sammlung auf einen Server
+zieht.
 
 ## Was drin ist
 

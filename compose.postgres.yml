@@ -1,0 +1,35 @@
+# Optional: PostgreSQL statt SQLite.
+#
+#   docker compose -f compose.yml -f compose.postgres.yml up --build
+#
+# Nur sinnvoll, wenn mehrere Personen gleichzeitig schreiben oder die Sammlung
+# auf einen Server zieht. Für den Einzelplatz bleibt SQLite die bessere Wahl:
+# eine Datei, die man kopieren kann, ein Dienst weniger.
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: wildlife
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wildlife}
+      POSTGRES_DB: wildlife
+    volumes:
+      # Postgres 18+ will den Mount eine Ebene höher; die Daten landen dann in
+      # einem versionierten Unterverzeichnis (nötig für spätere pg_upgrades).
+      - wildlife-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wildlife -d wildlife"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    # Die Fotos bleiben im Volume unter /app/data/media – nur die Datenbank zieht um.
+    environment:
+      WC_DATABASE_URL: postgresql+psycopg://wildlife:${POSTGRES_PASSWORD:-wildlife}@db:5432/wildlife
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  wildlife-db:

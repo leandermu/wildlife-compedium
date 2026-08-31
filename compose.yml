@@ -1,15 +1,36 @@
 services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: wildlife
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wildlife}
+      POSTGRES_DB: wildlife
+    volumes:
+      # Postgres 18+ will den Mount eine Ebene über dem Datenverzeichnis; die
+      # Daten landen dann in einem versionierten Unterverzeichnis (nötig für
+      # spätere pg_upgrades).
+      - wildlife-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wildlife -d wildlife"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   backend:
     build: ./backend
     image: wildlife-compendium-backend:latest
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
-      # SQLite und Medien liegen im Volume unter /app/data
-      WC_DATABASE_URL: sqlite:////app/data/compendium.db
+      WC_DATABASE_URL: postgresql+psycopg://wildlife:${POSTGRES_PASSWORD:-wildlife}@db:5432/wildlife
       WC_STORAGE_LOCAL_DIR: /app/data/media
       WC_MEDIA_BASE_URL: /media
       WC_CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
     volumes:
-      - wildlife-data:/app/data
+      # Nur die Fotos – die Datenbank liegt im db-Dienst.
+      - wildlife-media:/app/data/media
     ports:
       # nur für direkten API-Zugriff / Swagger unter /docs
       - "8000:8000"
@@ -40,4 +61,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  wildlife-data:
+  wildlife-db:
+  wildlife-media:

@@ -37,37 +37,25 @@ Ein Befehl, kein Python und kein Node auf dem Rechner nötig:
 docker compose up --build     #  →  http://localhost:8080
 ```
 
-Zwei Images: `backend` (FastAPI unter Uvicorn) und `frontend` (Vite-Build,
-ausgeliefert von Caddy). Caddy übernimmt dabei die Rolle des Dev-Proxys und
-reicht `/api` und `/media` an das Backend durch – die App bleibt also auch im
-Container einorigin. Die API ist zusätzlich direkt unter
+Drei Dienste: `db` (PostgreSQL), `backend` (FastAPI unter Uvicorn) und
+`frontend` (Vite-Build, ausgeliefert von Caddy). Caddy übernimmt dabei die Rolle
+des Dev-Proxys und reicht `/api` und `/media` an das Backend durch – die App
+bleibt also auch im Container einorigin. Die API ist zusätzlich direkt unter
 `http://localhost:8000` erreichbar (Doku: `/docs`).
 
-Datenbank und Fotos liegen im Volume `wildlife-data` (im Container
-`/app/data`); ein Rebuild lässt die Sammlung unangetastet. Wer sie stattdessen
-im Dateisystem sehen will, ersetzt in `compose.yml`:
+Im Container läuft immer PostgreSQL, nicht SQLite: ein Pfad, der gepflegt und
+getestet wird. Die 152 Arten werden beim ersten Start wie gewohnt geseedet.
 
-```yaml
-    volumes:
-      - ./backend/data:/app/data
-```
-
-`docker compose down -v` löscht das Volume – und damit die Sammlung.
-
-#### PostgreSQL statt SQLite
-
-Optional, über eine zweite Compose-Datei:
+Zwei Volumes: `wildlife-db` für die Datenbank, `wildlife-media` für die Fotos.
+Ein Rebuild lässt beide unangetastet, `docker compose down -v` löscht sie – und
+damit die Sammlung. Ein Backup der Datenbank geht so:
 
 ```bash
-docker compose -f compose.yml -f compose.postgres.yml up --build
+docker compose exec db pg_dump -U wildlife wildlife > backup.sql
 ```
 
-Das startet einen `db`-Container und setzt `WC_DATABASE_URL` um; die Fotos
-bleiben im Dateivolume. **Für den Einzelplatz lohnt sich das nicht** – SQLite ist
-hier keine Notlösung, sondern die passende Wahl: eine Datei, die man kopieren
-kann, ein Dienst weniger, kein Backup-Konzept. Sinnvoll wird Postgres erst,
-wenn mehrere Personen gleichzeitig schreiben oder die Sammlung auf einen Server
-zieht.
+Das Passwort ist per `POSTGRES_PASSWORD` überschreibbar (Standard `wildlife`);
+der Datenbank-Port wird nicht nach außen veröffentlicht.
 
 ## Was drin ist
 
@@ -153,8 +141,8 @@ in `backend/app/data/seed_species.json`; erzeugt wird sie aus
   Storage-Präfixe.
 - `backend/app/storage.py` kapselt die Ablage – ein Wechsel auf S3 o. Ä. ist
   eine neue Unterklasse, kein Umbau.
-- SQLite ist Standard; `WC_DATABASE_URL` auf PostgreSQL umzustellen genügt
-  (`uv pip install -e ".[postgres]"`).
+- Lokal ist SQLite der Standard, im Container läuft PostgreSQL; beides hängt
+  allein an `WC_DATABASE_URL`.
 
 ## Konfiguration
 

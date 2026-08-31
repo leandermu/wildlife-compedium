@@ -21,15 +21,14 @@ COPY scripts ./scripts
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --no-deps -e .
 
-# Database and personal photos live here; compose mounts a volume on it so the
-# collection survives a rebuild.
+# Personal photos live here; compose mounts a volume on it so they survive a
+# rebuild. The database is a separate service (see compose.yml).
 RUN mkdir -p /app/data/media \
     && useradd --create-home --uid 10001 wildlife \
     && chown -R wildlife:wildlife /app
 USER wildlife
 
-ENV WC_DATABASE_URL=sqlite:////app/data/compendium.db \
-    WC_STORAGE_LOCAL_DIR=/app/data/media
+ENV WC_STORAGE_LOCAL_DIR=/app/data/media
 
 EXPOSE 8000
 

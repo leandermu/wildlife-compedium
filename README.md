@@ -46,6 +46,15 @@ bleibt also auch im Container einorigin. Die API ist zusätzlich direkt unter
 Im Container läuft immer PostgreSQL, nicht SQLite: ein Pfad, der gepflegt und
 getestet wird. Die 152 Arten werden beim ersten Start wie gewohnt geseedet.
 
+Die Referenzbilder werden **beim Bauen** von Wikipedia geladen und liegen im
+Image unter `/images/original`; der erste Start macht daraus die Platten (siehe
+unten). Der erste `--build` dauert dadurch ein paar Minuten – jeder weitere
+greift auf den Build-Cache zurück. Wer das nicht will, baut ohne:
+
+```bash
+docker compose build --build-arg REFERENCE_IMAGES=0
+```
+
 Zwei Volumes: `wildlife-db` für die Datenbank, `wildlife-media` für die Fotos.
 Ein Rebuild lässt beide unangetastet, `docker compose down -v` löscht sie – und
 damit die Sammlung. Ein Backup der Datenbank geht so:
@@ -101,6 +110,18 @@ Die Bilder liegen **nicht** im Repository, sondern werden nachgeladen:
 cd backend
 python scripts/fetch_reference_images.py     # Wikipedia → images/original/ + credits.json
 python scripts/process_reference_images.py   # → S/W-Platten + Einträge in der Datenbank
+```
+
+Mit Docker passiert beides von selbst, aufgeteilt auf die beiden Zeitpunkte, an
+die es jeweils gehört: Der **Download** ist ein Build-Schritt (`fetch` läuft in
+einer eigenen Stage, das Ergebnis landet im Image unter `/images`). Das
+**Verarbeiten** kann es nicht sein, denn es schreibt Urheber und Pfade in die
+Datenbank – die es zur Bauzeit noch nicht gibt. Das erledigt der einmalige
+Dienst `reference-images` beim ersten `up`; er überspringt sich, sobald die
+Platten im Medien-Volume liegen. Neu erzeugen lassen sie sich jederzeit:
+
+```bash
+docker compose run --rm reference-images python scripts/process_reference_images.py
 ```
 
 Der Downloader nimmt das kuratierte Titelbild des Wikipedia-Artikels – das ist

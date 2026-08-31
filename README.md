@@ -29,6 +29,34 @@ npm run dev
 
 Das Frontend leitet `/api` und `/media` automatisch an das Backend weiter.
 
+### Mit Docker
+
+Ein Befehl, kein Python und kein Node auf dem Rechner nötig:
+
+```bash
+docker compose up --build     #  →  http://localhost:8080
+```
+
+Drei Dienste: `db` (PostgreSQL), `backend` (FastAPI unter Uvicorn) und
+`frontend` (Vite-Build, ausgeliefert von Caddy). Caddy übernimmt dabei die Rolle
+des Dev-Proxys und reicht `/api` und `/media` an das Backend durch – die App
+bleibt also auch im Container einorigin. Die API ist zusätzlich direkt unter
+`http://localhost:8000` erreichbar (Doku: `/docs`).
+
+Im Container läuft immer PostgreSQL, nicht SQLite: ein Pfad, der gepflegt und
+getestet wird. Die 152 Arten werden beim ersten Start wie gewohnt geseedet.
+
+Zwei Volumes: `wildlife-db` für die Datenbank, `wildlife-media` für die Fotos.
+Ein Rebuild lässt beide unangetastet, `docker compose down -v` löscht sie – und
+damit die Sammlung. Ein Backup der Datenbank geht so:
+
+```bash
+docker compose exec db pg_dump -U wildlife wildlife > backup.sql
+```
+
+Das Passwort ist per `POSTGRES_PASSWORD` überschreibbar (Standard `wildlife`);
+der Datenbank-Port wird nicht nach außen veröffentlicht.
+
 ## Was drin ist
 
 **Sammeln.** 152 echte Arten mit Schwerpunkt Bayern/Deutschland plus eine
@@ -113,8 +141,8 @@ in `backend/app/data/seed_species.json`; erzeugt wird sie aus
   Storage-Präfixe.
 - `backend/app/storage.py` kapselt die Ablage – ein Wechsel auf S3 o. Ä. ist
   eine neue Unterklasse, kein Umbau.
-- SQLite ist Standard; `WC_DATABASE_URL` auf PostgreSQL umzustellen genügt
-  (`uv pip install -e ".[postgres]"`).
+- Lokal ist SQLite der Standard, im Container läuft PostgreSQL; beides hängt
+  allein an `WC_DATABASE_URL`.
 
 ## Konfiguration
 

@@ -29,6 +29,31 @@ npm run dev
 
 Das Frontend leitet `/api` und `/media` automatisch an das Backend weiter.
 
+### Mit Docker
+
+Ein Befehl, kein Python und kein Node auf dem Rechner nötig:
+
+```bash
+docker compose up --build     #  →  http://localhost:8080
+```
+
+Zwei Images: `backend` (FastAPI unter Uvicorn) und `frontend` (Vite-Build,
+ausgeliefert von nginx). nginx übernimmt dabei die Rolle des Dev-Proxys und
+reicht `/api` und `/media` an das Backend durch – die App bleibt also auch im
+Container einorigin. Die API ist zusätzlich direkt unter
+`http://localhost:8000` erreichbar (Doku: `/docs`).
+
+Datenbank und Fotos liegen im Volume `wildlife-data` (im Container
+`/app/data`); ein Rebuild lässt die Sammlung unangetastet. Wer sie stattdessen
+im Dateisystem sehen will, ersetzt in `docker-compose.yml`:
+
+```yaml
+    volumes:
+      - ./backend/data:/app/data
+```
+
+`docker compose down -v` löscht das Volume – und damit die Sammlung.
+
 ## Was drin ist
 
 **Sammeln.** 152 echte Arten mit Schwerpunkt Bayern/Deutschland plus eine

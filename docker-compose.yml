@@ -1,0 +1,41 @@
+services:
+  backend:
+    build: ./backend
+    image: wildlife-compendium-backend:latest
+    environment:
+      # SQLite und Medien liegen im Volume unter /app/data
+      WC_DATABASE_URL: sqlite:////app/data/compendium.db
+      WC_STORAGE_LOCAL_DIR: /app/data/media
+      WC_MEDIA_BASE_URL: /media
+      WC_CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+    volumes:
+      - wildlife-data:/app/data
+    ports:
+      # nur für direkten API-Zugriff / Swagger unter /docs
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    image: wildlife-compendium-frontend:latest
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  wildlife-data:

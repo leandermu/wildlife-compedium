@@ -60,14 +60,9 @@ export function StatusSeal({ status }: { status: string }) {
       </span>
     );
   }
-  const mastered = status === "mastered";
   return (
-    <span
-      className={`label-caps inline-flex items-center gap-1.5 ${
-        mastered ? "text-ochre-2" : "text-moss-2"
-      }`}
-    >
-      {mastered ? "★" : "✓"} {mastered ? "Meisterhaft" : "Freigeschaltet"}
+    <span className="label-caps inline-flex items-center gap-1.5 text-moss-2">
+      ✓ Freigeschaltet
     </span>
   );
 }

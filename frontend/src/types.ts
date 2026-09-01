@@ -1,4 +1,4 @@
-export type Status = "locked" | "unlocked" | "mastered";
+export type Status = "locked" | "unlocked";
 
 export interface Profile {
   id: number;
@@ -115,7 +115,6 @@ export interface ProgressBucket {
 export interface Dashboard {
   total_species: number;
   collected: number;
-  mastered: number;
   photo_count: number;
   observation_count: number;
   by_group: ProgressBucket[];
@@ -130,6 +129,16 @@ export interface Dashboard {
     thumb_url: string | null;
     date: string | null;
     location_name: string;
+  }[];
+  activity: {
+    kind: "photographed" | "seen" | "added";
+    profile_id: number;
+    profile_name: string;
+    profile_avatar: string;
+    species_id: number;
+    species_slug: string;
+    species_name: string;
+    occurred_at: string;
   }[];
   challenges: { label: string; remaining: number; filter: Record<string, string> }[];
   achievements_unlocked: number;

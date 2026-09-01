@@ -95,6 +95,8 @@ sich oben in der Navigation direkt anlegen und wechseln. Artenkatalog und
 Referenzbilder sind gemeinsam; Fotos, Begegnungen, Freischaltungen,
 Auszeichnungen und Statistiken gehören jeweils zum aktiven Profil. Das
 Gesamtbackup umfasst dagegen immer alle Profile.
+Die Startseite zeigt außerdem einen gemeinsamen Aktivitätsverlauf mit neuen
+Fotos, Sichtungen ohne Foto und von einem Profil hinzugefügten Arten.
 In den Profileinstellungen kann außerdem die männliche oder weibliche Form für
 Auszeichnungsnamen gewählt werden (zum Beispiel Alpenjäger/Alpenjägerin).
 Beim Upgrade werden vorhandene persönliche Daten automatisch dem Profil
@@ -102,21 +104,21 @@ Beim Upgrade werden vorhandene persönliche Daten automatisch dem Profil
 Fotos oder Begegnungen schützt die App vor versehentlichem Löschen.
 
 **Sammeln.** 152 echte Arten mit Schwerpunkt Bayern/Deutschland plus eine
-„Welt & Expedition"-Kategorie. Drei Zustände pro Art:
+„Welt & Expedition"-Kategorie. Zwei Zustände pro Art:
 
 | Status | Bedeutung |
 |---|---|
 | `locked` | kein eigenes Foto – Referenzskizze wird gezeigt |
 | `unlocked` | mindestens ein eigenes Foto |
-| `mastered` | mehrere Fotos und ein ausgewähltes „Bestes Foto" |
 
 **Fotos & Begegnungen** sind getrennt: Es kann eine Begegnung ohne Foto geben
 (gehört, aber nicht abgelichtet). Beim Upload liest der Server Bildmaße und
 EXIF-Daten aus (Kamera, Objektiv, ISO, Blende) und legt automatisch eine
 Begegnung an; ein fehlendes Datum wird aus den EXIF-Daten übernommen. Thumbnails
 werden serverseitig erzeugt, damit auch Rasterseiten mit tausenden Fotos schnell
-bleiben. HEIC/HEIF-Dateien werden als Original aufbewahrt und erhalten zusätzlich
-eine browserfähige JPEG-Anzeigeversion. Alle lesbaren EXIF-Bereiche werden in der
+bleiben. HEIC/HEIF- und TIFF-Dateien werden als Original aufbewahrt und erhalten
+zusätzlich eine browserfähige JPEG-Anzeigeversion. Fehlende Anzeigeversionen und
+Vorschaubilder älterer Uploads repariert das Backend beim Start. Alle lesbaren EXIF-Bereiche werden in der
 Datenbank gesichert und sind über den „i“-Schalter der Fotoansicht einsehbar.
 Datum, Uhrzeit, Ort und Notiz von Fotos und Begegnungen lassen sich nachträglich
 bearbeiten.

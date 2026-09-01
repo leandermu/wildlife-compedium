@@ -18,15 +18,11 @@ from .storage import media_url
 from .text import normalize
 from .vocab import GROUPS
 
-MASTERED_MIN_PHOTOS = 2
-
-
 def _photo_agg(profile_id: int):
     return (
         select(
             UserPhoto.species_id.label("sid"),
             func.count(UserPhoto.id).label("photo_count"),
-            func.max(case((UserPhoto.is_best_photo.is_(True), 1), else_=0)).label("has_best"),
             func.max(UserPhoto.created_at).label("last_photo_at"),
         )
         .where(UserPhoto.profile_id == profile_id)
@@ -47,20 +43,15 @@ def _obs_agg(profile_id: int):
     )
 
 
-def status_expr(photo_count, has_best):
+def status_expr(photo_count):
     return case(
         (photo_count == 0, "locked"),
-        (and_(photo_count >= MASTERED_MIN_PHOTOS, has_best == 1), "mastered"),
         else_="unlocked",
     )
 
 
-def derive_status(photo_count: int, has_best: bool) -> str:
-    if photo_count == 0:
-        return "locked"
-    if photo_count >= MASTERED_MIN_PHOTOS and has_best:
-        return "mastered"
-    return "unlocked"
+def derive_status(photo_count: int) -> str:
+    return "locked" if photo_count == 0 else "unlocked"
 
 
 class SpeciesQuery:
@@ -71,9 +62,8 @@ class SpeciesQuery:
         self.photos = _photo_agg(profile_id)
         self.obs = _obs_agg(profile_id)
         self.photo_count = func.coalesce(self.photos.c.photo_count, 0)
-        self.has_best = func.coalesce(self.photos.c.has_best, 0)
         self.obs_count = func.coalesce(self.obs.c.obs_count, 0)
-        self.status = status_expr(self.photo_count, self.has_best)
+        self.status = status_expr(self.photo_count)
 
     def base(self, *cols) -> Select:
         stmt = select(*cols) if cols else select(Species)
@@ -121,7 +111,7 @@ class SpeciesQuery:
                     )
                 )
         if status:
-            wanted = [s for s in status if s in {"locked", "unlocked", "mastered"}]
+            wanted = [s for s in status if s in {"locked", "unlocked"}]
             if wanted:
                 conds = []
                 for s in wanted:
@@ -129,10 +119,6 @@ class SpeciesQuery:
                         conds.append(self.photo_count == 0)
                     elif s == "unlocked":
                         conds.append(self.photo_count > 0)
-                    else:
-                        conds.append(
-                            and_(self.photo_count >= MASTERED_MIN_PHOTOS, self.has_best == 1)
-                        )
                 stmt = stmt.where(or_(*conds))
         if seen:
             wanted_seen = {value for value in seen if value in {"seen", "unseen"}}
@@ -226,7 +212,7 @@ def photo_out(photo: UserPhoto) -> dict[str, Any]:
 
 # ----------------------------------------------------------- serialisation --
 def to_list_item(
-    sp: Species, photo_count: int, obs_count: int, has_best: bool, photo: UserPhoto | None
+    sp: Species, photo_count: int, obs_count: int, photo: UserPhoto | None
 ) -> SpeciesListItem:
     return SpeciesListItem(
         id=sp.id,
@@ -241,11 +227,13 @@ def to_list_item(
         size=sp.size,
         reference_image_url=media_url(sp.reference_image),
         reference_thumb_url=media_url(sp.reference_thumb or sp.reference_image),
-        status=derive_status(photo_count, has_best),
+        status=derive_status(photo_count),
         photo_count=photo_count,
         observation_count=obs_count,
-        best_photo_url=media_url(photo.storage_key) if photo else None,
-        best_photo_thumb_url=media_url(photo.thumb_key or photo.storage_key) if photo else None,
+        best_photo_url=media_url(photo.display_key or photo.storage_key) if photo else None,
+        best_photo_thumb_url=media_url(
+            photo.thumb_key or photo.display_key or photo.storage_key
+        ) if photo else None,
         display_photo_date=photo.date if photo else None,
         display_photo_location=photo.location_name if photo else "",
     )
@@ -258,11 +246,8 @@ def to_detail(sp: Species, profile_id: int) -> SpeciesDetail:
         profile_photos,
         key=lambda p: (not p.is_best_photo, p.date is None, p.date or p.created_at.date()),
     )
-    has_best = any(p.is_best_photo for p in profile_photos)
     display = photos[0] if photos else None
-    base = to_list_item(
-        sp, len(profile_photos), len(profile_observations), has_best, display
-    )
+    base = to_list_item(sp, len(profile_photos), len(profile_observations), display)
     return SpeciesDetail(
         **base.model_dump(),
         order_name=sp.order_name,

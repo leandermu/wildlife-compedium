@@ -47,7 +47,6 @@ DIFFICULTIES: dict[int, dict] = {
 STATUSES: dict[str, dict] = {
     "locked": {"label": "Noch nicht fotografiert", "icon": "🔒", "order": 1},
     "unlocked": {"label": "Fotografiert", "icon": "✓", "order": 2},
-    "mastered": {"label": "Meisterhaft", "icon": "★", "order": 3},
 }
 
 

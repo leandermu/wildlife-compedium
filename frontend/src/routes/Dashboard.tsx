@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import type { Dashboard as DashboardData } from "../types";
-import { formatDate, formatNumber, percent } from "../lib/format";
+import { formatDate, formatNumber, formatRelativeTime, percent } from "../lib/format";
 import { ProgressBar, SectionTitle, Spinner } from "../components/ui";
 
 const GROUP_ICON: Record<string, string> = {
@@ -52,11 +52,10 @@ export function Dashboard() {
           </div>
         </div>
 
-        <dl className="mx-auto mt-10 grid max-w-3xl grid-cols-2 gap-y-6 sm:grid-cols-4">
+        <dl className="mx-auto mt-10 grid max-w-3xl grid-cols-2 gap-y-6 sm:grid-cols-3">
           {[
             ["Eigene Fotos", formatNumber(data.photo_count)],
             ["Begegnungen", formatNumber(data.observation_count)],
-            ["Meisterhaft", formatNumber(data.mastered)],
             ["Auszeichnungen", `${data.achievements_unlocked} / ${data.achievements_total}`],
           ].map(([label, value]) => (
             <div key={label}>
@@ -66,6 +65,41 @@ export function Dashboard() {
           ))}
         </dl>
       </section>
+
+      {/* Gemeinsame Aktivität */}
+      {data.activity.length > 0 && (
+        <section>
+          <SectionTitle>Aktivität</SectionTitle>
+          <ol className="divide-y divide-rule border-y border-rule">
+            {data.activity.map((entry, index) => {
+              const action = entry.kind === "photographed"
+                ? "fotografiert"
+                : entry.kind === "seen" ? "gesehen" : "hinzugefügt";
+              return (
+                <li key={`${entry.kind}-${entry.species_id}-${entry.occurred_at}-${index}`}>
+                  <Link
+                    to={`/arten/${entry.species_slug}`}
+                    className="flex items-center gap-3 px-2 py-3 transition-colors hover:bg-paper-2"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-paper-2 text-lg" aria-hidden>
+                      {entry.profile_avatar}
+                    </span>
+                    <p className="min-w-0 flex-1 text-[14px] text-ink-2">
+                      <strong className="font-semibold text-ink">{entry.profile_name}</strong>
+                      {` hat `}
+                      <span className="font-serif text-[15px] text-ink">{entry.species_name}</span>
+                      {` ${action}`}
+                    </p>
+                    <time dateTime={entry.occurred_at} className="shrink-0 text-[12px] text-ink-3">
+                      {formatRelativeTime(entry.occurred_at)}
+                    </time>
+                  </Link>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )}
 
       {/* Sammlung nach Gruppe */}
       <section>
@@ -157,6 +191,12 @@ export function Dashboard() {
                       src={r.thumb_url}
                       alt={r.common_name}
                       loading="lazy"
+                      onError={(event) => {
+                        if (r.photo_url && !event.currentTarget.dataset.fallback) {
+                          event.currentTarget.dataset.fallback = "true";
+                          event.currentTarget.src = r.photo_url;
+                        }
+                      }}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   )}

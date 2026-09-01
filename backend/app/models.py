@@ -56,7 +56,6 @@ class Difficulty(int, enum.Enum):
 class SpeciesStatus(str, enum.Enum):
     locked = "locked"
     unlocked = "unlocked"
-    mastered = "mastered"
 
 
 class Profile(Base):
@@ -108,6 +107,11 @@ class Species(Base):
 
     active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     sort_index: Mapped[int] = mapped_column(Integer, default=0)
+    # Used only for the shared activity feed. Kept nullable so bundled and
+    # imported legacy species do not pretend to have been added by a profile.
+    created_by_profile_id: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, index=True
+    )
 
     search_text: Mapped[str] = mapped_column(Text, default="", index=True)
 

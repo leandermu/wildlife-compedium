@@ -11,9 +11,13 @@ const EMPTY = {
   habitats: [] as string[], regions: [] as string[], tags: [] as string[],
 };
 
+const parseTags = (value: string) =>
+  value.split(",").map((tag) => tag.trim()).filter(Boolean);
+
 export function AdminPage() {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [form, setForm] = useState({ ...EMPTY });
+  const [tagInput, setTagInput] = useState("");
   const [editing, setEditing] = useState<SpeciesDetail | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [isSavingSpecies, setIsSavingSpecies] = useState(false);
@@ -63,13 +67,14 @@ export function AdminPage() {
           fd.append("data", JSON.stringify({
             ...form,
             difficulty: Number(form.difficulty),
-            tags: form.tags,
+            tags: parseTags(tagInput),
           }));
           if (referenceImage) fd.append("image", referenceImage);
           imported = await api.createSpeciesManual(fd);
         }
         setMessage({ kind: "ok", text: `„${imported.common_name}" wurde angelegt.` });
         setForm({ ...EMPTY });
+        setTagInput("");
         setReferenceImage(null);
         refresh();
         return;
@@ -77,11 +82,12 @@ export function AdminPage() {
       const payload = {
         ...form,
         difficulty: Number(form.difficulty),
-        tags: form.tags,
+        tags: parseTags(tagInput),
       };
       await api.updateSpecies(editing.slug, payload);
       setMessage({ kind: "ok", text: `„${form.common_name}" aktualisiert.` });
       setForm({ ...EMPTY });
+      setTagInput("");
       setEditing(null);
       refresh();
     } catch (err) {
@@ -100,6 +106,7 @@ export function AdminPage() {
       size: s.size, wingspan: s.wingspan, weight: s.weight, difficulty: s.difficulty,
       habitats: s.habitats, regions: s.regions, tags: s.tags,
     });
+    setTagInput(s.tags.join(", "));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -159,6 +166,7 @@ export function AdminPage() {
                 onClick={() => {
                   setEditing(null);
                   setForm({ ...EMPTY });
+                  setTagInput("");
                 }}
                 className="text-[13px] text-ink-3 hover:text-ink-2"
               >
@@ -255,8 +263,8 @@ export function AdminPage() {
           <Chips label="Region" options={meta?.regions ?? []} selected={form.regions}
             onToggle={(v) => toggleList("regions", v)} />
 
-          <Input label="Tags (Komma-getrennt)" value={form.tags.join(", ")}
-            onChange={(v) => setForm({ ...form, tags: v.split(",").map((t) => t.trim()).filter(Boolean) })} />
+          <Input label="Tags (Komma-getrennt)" value={tagInput}
+            onChange={setTagInput} />
           {!editing && (
             <label className="block rounded-sm border border-dashed border-rule-2 bg-paper-2/50 p-4">
               <span className="label-caps mb-1.5 block">Referenzbild (optional)</span>

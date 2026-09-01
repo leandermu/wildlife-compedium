@@ -11,7 +11,6 @@ const GROUP_LABEL: Record<string, string> = {
 
 export function SpeciesCard({ species }: { species: SpeciesListItem }) {
   const unlocked = species.status !== "locked";
-  const mastered = species.status === "mastered";
   const photo = species.best_photo_thumb_url ?? species.best_photo_url;
 
   return (
@@ -23,15 +22,6 @@ export function SpeciesCard({ species }: { species: SpeciesListItem }) {
           : "border-rule bg-paper-2/60 hover:border-rule-2 hover:bg-paper-2"
       }`}
     >
-      {mastered && (
-        <span
-          className="absolute right-2.5 top-2.5 z-10 rounded-full bg-ochre px-2 py-0.5 text-[10px] font-semibold tracking-[0.12em] text-paper uppercase"
-          title="Mehrere Fotos und ein Bestes Foto ausgewählt"
-        >
-          ★ Meister
-        </span>
-      )}
-
       {/* Kopfzeile: Name */}
       <div className="px-4 pt-4 text-center">
         <h3
@@ -54,6 +44,12 @@ export function SpeciesCard({ species }: { species: SpeciesListItem }) {
             alt={`Eigenes Foto: ${species.common_name}`}
             loading="lazy"
             decoding="async"
+            onError={(event) => {
+              if (species.best_photo_url && !event.currentTarget.dataset.fallback) {
+                event.currentTarget.dataset.fallback = "true";
+                event.currentTarget.src = species.best_photo_url;
+              }
+            }}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           />
         ) : species.reference_thumb_url ? (
@@ -117,7 +113,7 @@ export function SpeciesCard({ species }: { species: SpeciesListItem }) {
         <div className="mt-auto pt-3">
           {unlocked ? (
             <span className="label-caps text-moss-2">
-              {species.status === "mastered" ? "★ Meisterhaft" : "✓ Freigeschaltet"}
+              ✓ Freigeschaltet
             </span>
           ) : (
             <span className="label-caps inline-flex items-center gap-1.5">

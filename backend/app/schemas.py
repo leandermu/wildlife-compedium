@@ -257,16 +257,27 @@ class ChallengeHint(BaseModel):
     filter: dict[str, str]
 
 
+class ActivityOut(BaseModel):
+    kind: str
+    profile_id: int
+    profile_name: str
+    profile_avatar: str
+    species_id: int
+    species_slug: str
+    species_name: str
+    occurred_at: dt.datetime
+
+
 class DashboardOut(BaseModel):
     total_species: int
     collected: int
-    mastered: int
     photo_count: int
     observation_count: int
     by_group: list[ProgressBucket]
     by_region: list[ProgressBucket]
     by_difficulty: list[ProgressBucket]
     recent: list[RecentUnlock]
+    activity: list[ActivityOut]
     challenges: list[ChallengeHint]
     achievements_unlocked: int
     achievements_total: int

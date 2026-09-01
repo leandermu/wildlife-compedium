@@ -67,15 +67,15 @@ def list_species(
     )
 
     stmt = sq.apply_filters(
-        sq.base(Species, sq.photo_count, sq.has_best, sq.obs_count), **filters
+        sq.base(Species, sq.photo_count, sq.obs_count), **filters
     )
     stmt = sq.apply_sort(stmt, sort).offset((page - 1) * page_size).limit(page_size)
     rows = db.execute(stmt).all()
 
     photos = display_photos(db, [r[0].id for r in rows], profile.id)
     items = [
-        to_list_item(sp, int(pc), int(oc), bool(hb), photos.get(sp.id))
-        for sp, pc, hb, oc in rows
+        to_list_item(sp, int(pc), int(oc), photos.get(sp.id))
+        for sp, pc, oc in rows
     ]
     return Page[SpeciesListItem](
         items=items, total=total, page=page, page_size=page_size,
@@ -108,7 +108,7 @@ def facets(
         stmt = sq.apply_filters(
             sq.base(Species.id, Species.group, Species.family, Species.difficulty,
                     Species.habitats, Species.regions, Species.tags, sq.photo_count,
-                    sq.has_best, sq.obs_count),
+                    sq.obs_count),
             **f,
         )
         return db.execute(stmt).all()
@@ -144,20 +144,18 @@ def facets(
         return out
 
     status_rows = rows_for("status")
-    status_counts = {"locked": 0, "unlocked": 0, "mastered": 0}
+    status_counts = {"locked": 0, "unlocked": 0}
     for row in status_rows:
-        pc, hb = int(row[7]), int(row[8])
+        pc = int(row[7])
         if pc == 0:
             status_counts["locked"] += 1
         else:
             status_counts["unlocked"] += 1
-            if pc >= 2 and hb:
-                status_counts["mastered"] += 1
 
     seen_rows = rows_for("seen")
     seen_counts = {"seen": 0, "unseen": 0}
     for row in seen_rows:
-        has_encounter = int(row[7]) > 0 or int(row[9]) > 0
+        has_encounter = int(row[7]) > 0 or int(row[8]) > 0
         seen_counts["seen" if has_encounter else "unseen"] += 1
 
     return Facets(
@@ -222,7 +220,9 @@ def create_species_automatically(
     slug = slugify(imported.common_name)
     if db.execute(select(Species).where(Species.slug == slug)).scalar_one_or_none():
         raise HTTPException(409, f"„{imported.common_name}“ ist bereits vorhanden")
-    sp = Species(**imported.__dict__, slug=slug)
+    sp = Species(
+        **imported.__dict__, slug=slug, created_by_profile_id=profile.id
+    )
     sp.refresh_derived()
     db.add(sp)
     db.commit()
@@ -239,7 +239,11 @@ def create_species(
     slug = payload.slug or slugify(payload.common_name)
     if db.execute(select(Species).where(Species.slug == slug)).scalar_one_or_none():
         raise HTTPException(409, f"Slug '{slug}' existiert bereits")
-    sp = Species(**payload.model_dump(exclude={"slug"}), slug=slug)
+    sp = Species(
+        **payload.model_dump(exclude={"slug"}),
+        slug=slug,
+        created_by_profile_id=profile.id,
+    )
     sp.refresh_derived()
     db.add(sp)
     db.commit()
@@ -293,7 +297,7 @@ async def create_species_manual(
         )
         values["reference_credit"] = "Eigenes Referenzbild"
 
-    sp = Species(**values, slug=slug)
+    sp = Species(**values, slug=slug, created_by_profile_id=profile.id)
     sp.refresh_derived()
     db.add(sp)
     db.commit()
@@ -349,7 +353,12 @@ def _coerce(row: dict) -> dict:
     return out
 
 
-def upsert_rows(db: Session, rows: list[dict], update_existing: bool = True) -> ImportResult:
+def upsert_rows(
+    db: Session,
+    rows: list[dict],
+    update_existing: bool = True,
+    created_by_profile_id: int | None = None,
+) -> ImportResult:
     created = updated = skipped = 0
     errors: list[str] = []
     for i, raw in enumerate(rows, start=1):
@@ -362,7 +371,11 @@ def upsert_rows(db: Session, rows: list[dict], update_existing: bool = True) -> 
             slug = data.pop("slug", None) or slugify(data["common_name"])
             sp = db.execute(select(Species).where(Species.slug == slug)).scalar_one_or_none()
             if sp is None:
-                sp = Species(slug=slug, **{k: v for k, v in data.items()})
+                sp = Species(
+                    slug=slug,
+                    created_by_profile_id=created_by_profile_id,
+                    **{k: v for k, v in data.items()},
+                )
                 sp.refresh_derived()
                 db.add(sp)
                 created += 1
@@ -383,17 +396,19 @@ def upsert_rows(db: Session, rows: list[dict], update_existing: bool = True) -> 
 @router.post("/import", response_model=ImportResult)
 def import_species(
     db: Annotated[Session, Depends(get_db)],
+    profile: CurrentProfile,
     payload: Annotated[list[dict] | None, Body()] = None,
     update_existing: bool = True,
 ) -> ImportResult:
     if not payload:
         raise HTTPException(400, "Leere Nutzlast")
-    return upsert_rows(db, payload, update_existing)
+    return upsert_rows(db, payload, update_existing, profile.id)
 
 
 @router.post("/import/file", response_model=ImportResult)
 async def import_species_file(
     db: Annotated[Session, Depends(get_db)],
+    profile: CurrentProfile,
     file: UploadFile,
     update_existing: bool = True,
 ) -> ImportResult:
@@ -407,4 +422,4 @@ async def import_species_file(
         rows = list(csv.DictReader(io.StringIO(raw), dialect=dialect))
     if not isinstance(rows, list):
         raise HTTPException(400, "Format nicht erkannt")
-    return upsert_rows(db, rows, update_existing)
+    return upsert_rows(db, rows, update_existing, profile.id)

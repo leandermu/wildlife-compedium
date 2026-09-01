@@ -184,8 +184,12 @@ export function SpeciesList() {
 
         {facets && (
           <>
-            <FacetGroup title="Gesehen" k="seen" facets={facets.seen} searchParams={searchParams} toggle={toggle} />
-            <FacetGroup title="Status" k="status" facets={facets.statuses} searchParams={searchParams} toggle={toggle} />
+            <StatusFacetGroup
+              statuses={facets.statuses}
+              seen={facets.seen}
+              searchParams={searchParams}
+              toggle={toggle}
+            />
             <FacetGroup title="Tiergruppe" k="group" facets={facets.groups} searchParams={searchParams} toggle={toggle} />
             <FacetGroup title="Region" k="region" facets={facets.regions} searchParams={searchParams} toggle={toggle} />
             <FacetGroup title="Lebensraum" k="habitat" facets={facets.habitats} searchParams={searchParams} toggle={toggle} />
@@ -267,6 +271,48 @@ export function SpeciesList() {
           </>
         )}
       </section>
+    </div>
+  );
+}
+
+function StatusFacetGroup({
+  statuses,
+  seen,
+  searchParams,
+  toggle,
+}: {
+  statuses: Facets["statuses"];
+  seen: Facets["seen"];
+  searchParams: URLSearchParams;
+  toggle: (k: MultiKey, v: string) => void;
+}) {
+  const activeStatus = searchParams.getAll("status");
+  const activeSeen = searchParams.getAll("seen");
+  return (
+    <div>
+      <h3 className="label-caps mb-2.5">Status</h3>
+      <div className="flex flex-wrap gap-1.5">
+        {statuses.map((facet) => (
+          <Pill
+            key={`status-${facet.value}`}
+            active={activeStatus.includes(facet.value)}
+            onClick={() => toggle("status", facet.value)}
+            count={facet.count}
+          >
+            {facet.label}
+          </Pill>
+        ))}
+        {seen.map((facet) => (
+          <Pill
+            key={`seen-${facet.value}`}
+            active={activeSeen.includes(facet.value)}
+            onClick={() => toggle("seen", facet.value)}
+            count={facet.count}
+          >
+            {facet.label}
+          </Pill>
+        ))}
+      </div>
     </div>
   );
 }

@@ -36,7 +36,7 @@ _EXIF_FIELDS = {
     # DateTime tag cover phones and editors that omit the original tag.
     36867: "taken_at", 36868: "taken_at_digitized", 306: "taken_at_file",
 }
-_HEIF_SUFFIXES = {".heic", ".heif"}
+_BROWSER_UNSUPPORTED_SUFFIXES = {".heic", ".heif", ".tif", ".tiff"}
 
 
 def _parse_date(value: str | None) -> dt.date | None:
@@ -172,6 +172,52 @@ def _extract(
     return meta, taken, thumb, latitude, longitude, display
 
 
+def ensure_browser_derivatives() -> int:
+    """Repair missing thumbnails and JPEG display copies in local storage."""
+    from ..db import SessionLocal
+
+    storage = get_storage()
+    if not isinstance(storage, LocalStorage):
+        return 0
+    repaired = 0
+    with SessionLocal.begin() as db:
+        for photo in db.execute(select(UserPhoto).order_by(UserPhoto.id)).scalars():
+            suffix = Path(photo.storage_key).suffix.lower()
+            needs_display = suffix in _BROWSER_UNSUPPORTED_SUFFIXES and (
+                not photo.display_key or storage.path(photo.display_key) is None
+            )
+            needs_thumb = not photo.thumb_key or storage.path(photo.thumb_key) is None
+            if not needs_display and not needs_thumb:
+                continue
+            source = storage.path(photo.storage_key)
+            if source is None:
+                continue
+            try:
+                _, _, thumb, _, _, display = _extract(
+                    source.read_bytes(), create_display_copy=needs_display
+                )
+                changed = False
+                if needs_display and display:
+                    photo.display_key = storage.save(
+                        f"display/{photo.profile_id}/repaired",
+                        f"{source.stem}.jpg",
+                        io.BytesIO(display),
+                    )
+                    changed = True
+                if needs_thumb and thumb:
+                    photo.thumb_key = storage.save(
+                        f"thumbs/{photo.profile_id}/repaired",
+                        f"{source.stem}.jpg",
+                        io.BytesIO(thumb),
+                    )
+                    changed = True
+                repaired += int(changed)
+            except OSError:
+                # One damaged file must not prevent the API from starting.
+                continue
+    return repaired
+
+
 @router.post("", response_model=PhotoOut, status_code=201)
 async def upload_photo(
     db: Annotated[Session, Depends(get_db)],
@@ -208,13 +254,13 @@ async def upload_photo(
     if suffix not in ALLOWED_SUFFIXES:
         raise HTTPException(415, f"Dateityp {suffix} wird nicht unterstützt")
 
-    is_heif = suffix in _HEIF_SUFFIXES
+    needs_display_copy = suffix in _BROWSER_UNSUPPORTED_SUFFIXES
     meta, exif_date, thumb, exif_latitude, exif_longitude, display = _extract(
         data,
-        create_display_copy=is_heif,
+        create_display_copy=needs_display_copy,
     )
-    if is_heif and display is None:
-        raise HTTPException(415, "Die HEIC-/HEIF-Datei konnte nicht gelesen werden")
+    if needs_display_copy and display is None:
+        raise HTTPException(415, "Die Bilddatei konnte nicht browserfähig aufbereitet werden")
     meta["encounter_type"] = encounter_type
     storage = get_storage()
     key = storage.save(

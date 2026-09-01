@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from app.achievements import evaluate
 from app.db import Base
 from app.models import Observation, Profile, Species
-from app.queries import SpeciesQuery
+from app.queries import SpeciesQuery, derive_status
+from app.routers.species import facets as species_facets
+from app.vocab import STATUSES
 
 
 class ProfileAndFilterTest(unittest.TestCase):
@@ -55,6 +57,22 @@ class ProfileAndFilterTest(unittest.TestCase):
                 query.apply_filters(query.base(Species), seen=["seen"])
             ).scalars().all()
             self.assertEqual([item.slug for item in seen_rows], ["a"])
+
+            facet_result = species_facets(db, profile)
+            self.assertEqual(
+                {item.value for item in facet_result.statuses},
+                {"locked", "unlocked"},
+            )
+            self.assertEqual(
+                {item.value for item in facet_result.seen},
+                {"seen", "unseen"},
+            )
+
+    def test_species_status_only_has_locked_and_unlocked(self) -> None:
+        self.assertEqual(derive_status(0), "locked")
+        self.assertEqual(derive_status(1), "unlocked")
+        self.assertEqual(derive_status(12), "unlocked")
+        self.assertEqual(set(STATUSES), {"locked", "unlocked"})
 
 
 if __name__ == "__main__":

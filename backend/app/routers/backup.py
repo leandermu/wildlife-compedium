@@ -184,6 +184,11 @@ def _validate_relations(data: dict[str, Any], archive_names: set[str]) -> None:
         if len(profile_ids) != len(data["profiles"]) or len(species_ids) != len(data["species"]):
             raise ValueError
 
+        for row in data["species"]:
+            creator_id = row.get("created_by_profile_id")
+            if creator_id is not None and int(creator_id) not in profile_ids:
+                row["created_by_profile_id"] = None
+
         for row in data["observations"]:
             if int(row["profile_id"]) not in profile_ids or int(row["species_id"]) not in species_ids:
                 raise ValueError

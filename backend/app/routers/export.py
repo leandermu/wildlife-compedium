@@ -118,15 +118,12 @@ def _csv(rows: list[dict], columns: list[str]) -> str:
 
 def _species_csv(species: list[Species], photos: list[UserPhoto]) -> str:
     photo_counts: dict[int, int] = {}
-    best: set[int] = set()
     for p in photos:
         photo_counts[p.species_id] = photo_counts.get(p.species_id, 0) + 1
-        if p.is_best_photo:
-            best.add(p.species_id)
     rows = [
         _species_dict(s) | {
             "photo_count": photo_counts.get(s.id, 0),
-            "status": derive_status(photo_counts.get(s.id, 0), s.id in best),
+            "status": derive_status(photo_counts.get(s.id, 0)),
         }
         for s in species
     ]

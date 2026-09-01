@@ -18,6 +18,20 @@ export function formatDateLong(iso: string | null | undefined): string {
   return month ? `${Number(d)}. ${month} ${y}` : formatDate(iso);
 }
 
+export function formatRelativeTime(iso: string): string {
+  const elapsed = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(elapsed) || elapsed < 0) return formatDate(iso);
+  const minutes = Math.floor(elapsed / 60_000);
+  if (minutes < 1) return "gerade eben";
+  if (minutes < 60) return `vor ${minutes} Min.`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `vor ${hours} Std.`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "gestern";
+  if (days < 14) return `vor ${days} Tagen`;
+  return formatDate(iso);
+}
+
 export function formatNumber(n: number): string {
   return n.toLocaleString("de-DE");
 }
@@ -37,7 +51,6 @@ export const DIFFICULTY_LABEL: Record<number, string> = {
 export const STATUS_LABEL: Record<string, string> = {
   locked: "Noch nicht fotografiert",
   unlocked: "Freigeschaltet",
-  mastered: "Meisterhaft",
 };
 
 /** Stable pseudo-random 0..1 from a string — used for placeholder artwork. */

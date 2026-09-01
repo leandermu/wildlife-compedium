@@ -35,6 +35,7 @@ def ensure_reference_plates() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     ensure_seeded()
+    photos.ensure_browser_derivatives()
     ensure_reference_plates()
     yield
 

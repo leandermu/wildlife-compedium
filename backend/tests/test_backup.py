@@ -37,6 +37,7 @@ class BackupRoundtripTest(unittest.TestCase):
         )
         db.add_all([profile, species])
         db.flush()
+        species.created_by_profile_id = profile.id
         observation = Observation(
             profile_id=profile.id,
             species_id=species.id,
@@ -90,11 +91,13 @@ class BackupRoundtripTest(unittest.TestCase):
             photo = db.scalar(select(UserPhoto))
             observation = db.scalar(select(Observation))
             profile = db.scalar(select(Profile))
+            species = db.scalar(select(Species))
             self.assertIsNotNone(photo)
             self.assertEqual(photo.observation_id, observation.id)
             self.assertEqual(photo.profile_id, profile.id)
             self.assertEqual(profile.avatar, "🦉")
             self.assertEqual(profile.gender, "female")
+            self.assertEqual(species.created_by_profile_id, profile.id)
             self.assertEqual(observation.time, dt.time(7, 45))
             self.assertEqual(photo.time, dt.time(7, 45))
 

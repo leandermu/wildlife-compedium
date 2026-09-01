@@ -174,7 +174,7 @@ export function SpeciesDetailPage() {
               {unlocked ? (
                 <>
                   <span className="label-caps text-moss-2">
-                    {species.status === "mastered" ? "★ Meisterhaft" : "✓ Freigeschaltet"}
+                    ✓ Freigeschaltet
                   </span>
                   <span className="text-[13px] text-ink-3">
                     {hero?.location_name && `📍 ${hero.location_name}`}
@@ -239,6 +239,12 @@ export function SpeciesDetailPage() {
                           src={p.thumb_url}
                           alt={p.caption || species.common_name}
                           loading="lazy"
+                          onError={(event) => {
+                            if (p.url && !event.currentTarget.dataset.fallback) {
+                              event.currentTarget.dataset.fallback = "true";
+                              event.currentTarget.src = p.url;
+                            }
+                          }}
                           className="h-full w-full object-cover"
                         />
                       )}

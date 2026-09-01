@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import Observation, Profile, UserPhoto
+from ..models import Observation, Profile, Species, UserPhoto
 from ..schemas import ProfileCreate, ProfileOut, ProfileUpdate
 
 router = APIRouter(prefix="/api/profiles", tags=["profiles"])
@@ -137,5 +137,10 @@ def delete_profile(
         ).scalars().first()
         if successor:
             successor.is_default = True
+    db.execute(
+        update(Species)
+        .where(Species.created_by_profile_id == profile.id)
+        .values(created_by_profile_id=None)
+    )
     db.delete(profile)
     db.commit()

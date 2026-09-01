@@ -8,7 +8,7 @@ import { formatNumber } from "../lib/format";
 
 const PAGE_SIZE = 48;
 
-const MULTI_KEYS = ["group", "habitat", "region", "family", "tag", "difficulty", "status"] as const;
+const MULTI_KEYS = ["group", "habitat", "region", "family", "tag", "difficulty", "status", "seen"] as const;
 type MultiKey = (typeof MULTI_KEYS)[number];
 
 const SORTS = [
@@ -30,6 +30,7 @@ export function SpeciesList() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [facets, setFacets] = useState<Facets | null>(null);
   const [queryInput, setQueryInput] = useState(searchParams.get("q") ?? "");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const requestId = useRef(0);
 
   const filters = useMemo<SpeciesQueryParams>(() => {
@@ -110,10 +111,55 @@ export function SpeciesList() {
 
   const collected = items.filter((i) => i.status !== "locked").length;
 
+  const facetLabels = useMemo(() => {
+    const labels = new Map<string, string>();
+    if (!facets) return labels;
+    for (const [key, values] of Object.entries(facets)) {
+      for (const value of values) labels.set(`${key}:${value.value}`, value.label);
+    }
+    return labels;
+  }, [facets]);
+
+  const facetProperty: Record<MultiKey, keyof Facets> = {
+    group: "groups", habitat: "habitats", region: "regions", family: "families",
+    tag: "tags", difficulty: "difficulties", status: "statuses", seen: "seen",
+  };
+
   return (
     <div className="grid gap-8 lg:grid-cols-[16rem_1fr]">
+      <div className="no-print space-y-3 lg:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen((open) => !open)}
+            className="inline-flex items-center gap-2 rounded-full border border-rule-2 bg-paper px-4 py-2 text-sm text-ink-2"
+            aria-expanded={mobileFiltersOpen}
+          >
+            <span aria-hidden>☰</span> Filter {activeCount > 0 && `(${activeCount})`}
+          </button>
+          {activeCount > 0 && (
+            <button type="button" onClick={clearAll} className="text-xs text-ink-3 underline underline-offset-4">
+              Zurücksetzen
+            </button>
+          )}
+        </div>
+        {activeCount > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {MULTI_KEYS.flatMap((key) => searchParams.getAll(key).map((value) => (
+              <button
+                key={`${key}-${value}`}
+                type="button"
+                onClick={() => toggle(key, value)}
+                className="rounded-full border border-sage bg-sage/10 px-3 py-1 text-xs text-ink-2"
+              >
+                {facetLabels.get(`${facetProperty[key]}:${value}`) ?? value} ×
+              </button>
+            )))}
+          </div>
+        )}
+      </div>
       {/* Filterspalte */}
-      <aside className="no-print space-y-7 lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] lg:self-start lg:overflow-y-auto lg:pr-2">
+      <aside className={`no-print space-y-7 ${mobileFiltersOpen ? "block" : "hidden"} lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-8rem)] lg:self-start lg:overflow-y-auto lg:pr-2`}>
         <div>
           <label className="label-caps mb-2 block">Suche</label>
           <input
@@ -138,6 +184,7 @@ export function SpeciesList() {
 
         {facets && (
           <>
+            <FacetGroup title="Gesehen" k="seen" facets={facets.seen} searchParams={searchParams} toggle={toggle} />
             <FacetGroup title="Status" k="status" facets={facets.statuses} searchParams={searchParams} toggle={toggle} />
             <FacetGroup title="Tiergruppe" k="group" facets={facets.groups} searchParams={searchParams} toggle={toggle} />
             <FacetGroup title="Region" k="region" facets={facets.regions} searchParams={searchParams} toggle={toggle} />

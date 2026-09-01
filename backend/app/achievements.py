@@ -23,11 +23,25 @@ from typing import Any
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from .models import ProfileAchievementState, Species, UserPhoto
+from .models import Profile, ProfileAchievementState, Species, UserPhoto
 from .queries import SpeciesQuery
 from .vocab import GROUPS
 
 DEFINITIONS_FILE = Path(__file__).with_name("data") / "achievements.json"
+
+MALE_NAMES = {
+    "Vogelbeobachterin": "Vogelbeobachter",
+    "Spurenleserin": "Spurenleser",
+    "Schmetterlingssammlerin": "Schmetterlingssammler",
+    "Freundin der Kleinen": "Freund der Kleinen",
+    "Bayerische Heimatforscherin": "Bayerischer Heimatforscher",
+    "Waldgängerin": "Waldgänger",
+    "Legendenjägerin": "Legendenjäger",
+    "Greifvogelspezialistin": "Greifvogelspezialist",
+    "Meisterin der Nacht": "Meister der Nacht",
+    "Alpenjägerin": "Alpenjäger",
+    "Entdeckerin": "Entdecker",
+}
 
 
 def _tiered(id_, name, desc, icon, category, filt, thresholds):
@@ -204,6 +218,8 @@ def _seasonal_progress(
 
 def evaluate(db: Session, profile_id: int) -> list[dict[str, Any]]:
     definitions = load_definitions()
+    profile = db.get(Profile, profile_id)
+    use_male_names = profile is None or (profile.gender or "male") == "male"
     state = {
         s.achievement_id: s
         for s in db.execute(
@@ -279,7 +295,9 @@ def evaluate(db: Session, profile_id: int) -> list[dict[str, Any]]:
             dirty = True
 
         results.append({
-            "id": d["id"], "name": d["name"], "description": d["description"],
+            "id": d["id"],
+            "name": MALE_NAMES.get(d["name"], d["name"]) if use_male_names else d["name"],
+            "description": d["description"],
             "icon": d.get("icon", "🏅"), "kind": d.get("kind", "achievement"),
             "category": d.get("category", ""),
             "progress": progress, "target": target,

@@ -15,7 +15,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import Date, DateTime, delete, inspect as sa_inspect, text
+from sqlalchemy import Date, DateTime, Time, delete, inspect as sa_inspect, text
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 
@@ -75,7 +75,7 @@ def _local_storage() -> LocalStorage:
 
 
 def _json_value(value: Any) -> Any:
-    if isinstance(value, (dt.datetime, dt.date)):
+    if isinstance(value, (dt.datetime, dt.date, dt.time)):
         return value.isoformat()
     if isinstance(value, Enum):
         return value.value
@@ -247,6 +247,8 @@ def _decode_row(model: type, row: dict[str, Any]) -> Any:
             value = dt.datetime.fromisoformat(value)
         elif value is not None and isinstance(column_type, Date):
             value = dt.date.fromisoformat(value)
+        elif value is not None and isinstance(column_type, Time):
+            value = dt.time.fromisoformat(value)
         values[prop.key] = value
     return model(**values)
 
@@ -263,12 +265,15 @@ def _reset_postgres_sequences(db: Session) -> None:
 
 
 def _replace_database(db: Session, data: dict[str, Any]) -> None:
+    from ..encounters import reconcile_linked_encounters
+
     for model in DELETE_ORDER:
         db.execute(delete(model))
     db.flush()
     for key, model in BACKUP_TABLES:
         db.add_all(_decode_row(model, row) for row in data[key])
         db.flush()
+    reconcile_linked_encounters(db)
     _reset_postgres_sequences(db)
     db.commit()
 

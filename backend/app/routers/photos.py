@@ -14,6 +14,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from ..db import get_db
+from ..encounters import sync_observation_from_photo
 from ..models import Observation, Species, UserPhoto
 from ..profiles import CurrentProfile
 from ..queries import photo_out
@@ -43,6 +44,16 @@ def _parse_date(value: str | None) -> dt.date | None:
         return None
     try:
         return dt.date.fromisoformat(value[:10])
+    except ValueError:
+        return None
+
+
+def _parse_time(value: str | None) -> dt.time | None:
+    if not value:
+        return None
+    cleaned = value.strip().replace(".", ":")
+    try:
+        return dt.time.fromisoformat(cleaned[:8])
     except ValueError:
         return None
 
@@ -168,6 +179,7 @@ async def upload_photo(
     species_id: Annotated[int, Form()],
     file: Annotated[UploadFile, File()],
     date: Annotated[str | None, Form()] = None,
+    time: Annotated[str | None, Form()] = None,
     location_name: Annotated[str, Form()] = "",
     caption: Annotated[str, Form()] = "",
     observation_id: Annotated[int | None, Form()] = None,
@@ -179,6 +191,7 @@ async def upload_photo(
     sp = db.get(Species, species_id)
     if sp is None:
         raise HTTPException(404, "Art nicht gefunden")
+    observation = None
     if observation_id is not None:
         observation = db.get(Observation, observation_id)
         if observation is None or observation.profile_id != profile.id:
@@ -218,19 +231,36 @@ async def upload_photo(
         stem = key.rsplit("/", 1)[-1].rsplit(".", 1)[0]
         thumb_key = storage.save_bytes(f"thumbs/{profile.id}/{sp.slug}/{stem}.jpg", thumb)
 
-    photo_date = _parse_date(date) or exif_date
+    explicit_date = _parse_date(date)
+    exif_time = None
+    for key in ("taken_at", "taken_at_digitized", "taken_at_file"):
+        raw_taken_at = str(meta.get(key) or "")
+        if " " in raw_taken_at:
+            exif_time = _parse_time(raw_taken_at.split(" ", 1)[1])
+            if exif_time:
+                break
+    explicit_time = _parse_time(time)
+    photo_date = explicit_date or (observation.date if observation else None) or exif_date
+    photo_time = explicit_time or (observation.time if observation else None) or exif_time
     latitude = latitude if latitude is not None else exif_latitude
     longitude = longitude if longitude is not None else exif_longitude
-    if not location_name.strip() and latitude is not None and longitude is not None:
+    if not location_name.strip() and observation and observation.location_name:
+        location_name = observation.location_name
+    elif not location_name.strip() and latitude is not None and longitude is not None:
         location_name = f"GPS: {latitude:.5f}, {longitude:.5f}"
+    if observation and not caption.strip():
+        caption = observation.notes
 
     if observation_id is None and create_observation:
         obs = Observation(
-            profile_id=profile.id, species_id=sp.id, date=photo_date, location_name=location_name,
+            profile_id=profile.id, species_id=sp.id, date=photo_date, time=photo_time,
+            location_name=location_name,
             latitude=latitude, longitude=longitude,
+            notes=caption,
         )
         db.add(obs)
         db.flush()
+        observation = obs
         observation_id = obs.id
 
     photo = UserPhoto(
@@ -242,6 +272,7 @@ async def upload_photo(
         thumb_key=thumb_key,
         original_filename=file.filename or "",
         date=photo_date,
+        time=photo_time,
         location_name=location_name,
         caption=caption,
         photo_metadata=meta,
@@ -254,6 +285,9 @@ async def upload_photo(
     ).first()
     photo.is_best_photo = existing is None
     db.add(photo)
+    if observation is not None:
+        photo.observation = observation
+        sync_observation_from_photo(photo)
     db.commit()
     db.refresh(photo)
     return PhotoOut(**photo_out(photo))
@@ -285,12 +319,14 @@ def update_photo(
     if photo is None or photo.profile_id != profile.id:
         raise HTTPException(404, "Foto nicht gefunden")
     data = payload.model_dump(exclude_unset=True)
-    if (new_observation_id := data.get("observation_id")) is not None:
-        observation = db.get(Observation, new_observation_id)
-        if observation is None or observation.profile_id != profile.id:
+    if "observation_id" in data:
+        new_observation_id = data.pop("observation_id")
+        observation = db.get(Observation, new_observation_id) if new_observation_id else None
+        if new_observation_id and (observation is None or observation.profile_id != profile.id):
             raise HTTPException(404, "Begegnung nicht gefunden")
-        if observation.species_id != photo.species_id:
+        if observation is not None and observation.species_id != photo.species_id:
             raise HTTPException(400, "Begegnung gehört zu einer anderen Art")
+        photo.observation = observation
     if data.pop("is_best_photo", None):
         db.execute(
             update(UserPhoto)
@@ -303,6 +339,7 @@ def update_photo(
         photo.is_best_photo = True
     for field, value in data.items():
         setattr(photo, field, value)
+    sync_observation_from_photo(photo)
     db.commit()
     db.refresh(photo)
     return PhotoOut(**photo_out(photo))

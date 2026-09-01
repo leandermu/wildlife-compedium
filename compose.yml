@@ -40,37 +40,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 120s
     restart: unless-stopped
-
-  # Einmaliger Lauf: macht aus den beim Bauen geladenen Wikipedia-Vorlagen
-  # (/images/original im Image) die entsättigten Referenzplatten im Medien-
-  # Volume und trägt Urheber, Lizenz und Quelle bei den Arten ein. Läuft nach
-  # dem Backend, weil dessen Start die Arten anlegt, und überspringt sich
-  # selbst, sobald die Platten vorhanden sind.
-  reference-images:
-    build: ./backend
-    image: wildlife-compedium-backend:latest
-    depends_on:
-      backend:
-        condition: service_healthy
-    environment:
-      WC_DATABASE_URL: postgresql+psycopg://wildlife:${POSTGRES_PASSWORD:-wildlife}@db:5432/wildlife
-      WC_STORAGE_LOCAL_DIR: /app/data/media
-    volumes:
-      - wildlife-media:/app/data/media
-    command:
-      - sh
-      - -c
-      - |
-        if [ -d /app/data/media/reference ] && [ -n "$$(ls -A /app/data/media/reference)" ]; then
-          echo "Referenzplatten liegen bereits im Volume – übersprungen."
-        elif [ -d /images/original ] && [ -n "$$(ls -A /images/original)" ]; then
-          python scripts/process_reference_images.py
-        else
-          echo "Keine Vorlagen im Image (mit REFERENCE_IMAGES=0 gebaut) – übersprungen."
-        fi
-    restart: "no"
 
   # Caddy liefert den Vite-Build aus und ist zugleich der Reverse Proxy
   # für /api und /media (siehe frontend/Caddyfile).

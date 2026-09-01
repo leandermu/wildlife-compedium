@@ -22,6 +22,7 @@ export function Layout() {
   const [newProfileName, setNewProfileName] = useState("");
   const [settingsName, setSettingsName] = useState("");
   const [settingsAvatar, setSettingsAvatar] = useState("🐾");
+  const [settingsGender, setSettingsGender] = useState<"male" | "female">("male");
   const [profileSaving, setProfileSaving] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -118,6 +119,7 @@ export function Layout() {
     if (!activeProfile) return;
     setSettingsName(activeProfile.name);
     setSettingsAvatar(activeProfile.avatar || "🐾");
+    setSettingsGender(activeProfile.gender || "male");
     setProfileView("settings");
   };
 
@@ -129,6 +131,7 @@ export function Layout() {
       const updated = await api.updateProfile(activeProfile.id, {
         name: settingsName.trim(),
         avatar: settingsAvatar,
+        gender: settingsGender,
       });
       setProfiles((items) => items.map((item) => item.id === updated.id ? updated : item));
       setProfileView("profiles");
@@ -339,6 +342,26 @@ export function Layout() {
                           className="w-full rounded-lg border border-rule bg-paper-2 px-3 py-2 text-sm text-ink focus:border-rule-2 focus:bg-paper focus:outline-none"
                         />
                       </label>
+
+                      <fieldset>
+                        <legend className="label-caps mb-2">Anrede für Auszeichnungen</legend>
+                        <div className="grid grid-cols-2 gap-2 rounded-xl bg-paper-2 p-1">
+                          {(["male", "female"] as const).map((gender) => (
+                            <button
+                              key={gender}
+                              type="button"
+                              onClick={() => setSettingsGender(gender)}
+                              aria-pressed={settingsGender === gender}
+                              className={`rounded-lg px-3 py-2 text-sm transition ${settingsGender === gender ? "bg-paper text-ink shadow-sm" : "text-ink-3 hover:text-ink-2"}`}
+                            >
+                              {gender === "male" ? "Männlich" : "Weiblich"}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="mt-1.5 text-[11px] text-ink-3">
+                          Passt Namen wie Alpenjäger oder Alpenjägerin an.
+                        </p>
+                      </fieldset>
 
                       <button
                         type="submit"

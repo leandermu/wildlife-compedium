@@ -18,6 +18,7 @@ from urllib.error import HTTPError
 from dataclasses import dataclass
 
 from PIL import Image, ImageEnhance, ImageOps
+from pillow_heif import register_heif_opener
 
 from .storage import get_storage
 
@@ -26,10 +27,11 @@ THUMB_WIDTH = 1400
 ASPECT = 4 / 3
 INK = (36, 42, 33)
 PAPER = (243, 237, 223)
+register_heif_opener()
 
 
 @dataclass
-class WikipediaSpecies:
+class ImportedSpecies:
     common_name: str
     scientific_name: str
     description: str
@@ -41,6 +43,10 @@ class WikipediaSpecies:
     weight: str
     difficulty: int
     rarity: str
+    habitats: list[str]
+    regions: list[str]
+    countries: list[str]
+    tags: list[str]
     reference_image: str | None
     reference_thumb: str | None
     reference_credit: str | None
@@ -60,6 +66,16 @@ def _api(host: str, params: dict) -> dict:
             # Respect throttling instead of immediately repeating the request.
             time.sleep(min(5, int(exc.headers.get("Retry-After", "2"))))
     raise RuntimeError("Wikipedia-Abfrage fehlgeschlagen")
+
+
+@lru_cache(maxsize=256)
+def _json_api(url: str, params: tuple[tuple[str, str], ...]) -> dict:
+    request = urllib.request.Request(
+        url + "?" + urllib.parse.urlencode(dict(params)),
+        headers={"User-Agent": USER_AGENT},
+    )
+    with urllib.request.urlopen(request, timeout=15) as response:
+        return json.loads(response.read().decode("utf-8"))
 
 
 @lru_cache(maxsize=256)
@@ -376,7 +392,129 @@ def _difficulty_from_article(text: str) -> tuple[int, str]:
     return 2, ""
 
 
-def _make_plate(raw: bytes, width: int) -> bytes:
+def _controlled_habitats_and_tags(text: str, group: str) -> tuple[list[str], list[str]]:
+    """Map explicit German article cues to the app's finite vocabulary."""
+    normalized = text.casefold()
+    habitat_terms = {
+        "forest": ("wald", "wälder", "forst", "gehölz"),
+        "field": ("wiese", "grünland", "acker", "feldflur", "weide"),
+        "water": ("gewässer", "fluss", "bächen", "bach", "see", "teich", "ufer", "sumpf"),
+        "moor": ("moor", "feuchtgebiet"),
+        "heath": ("heide", "trockenrasen", "magerrasen"),
+        "alps": ("alpen", "hochgebirge", "gebirge", "baumgrenze"),
+        "coast": ("küste", "watt", "düne", "salzwiese"),
+        "city": ("stadt", "siedlung", "gebäude"),
+        "garden": ("garten", "gärten"),
+        "park": ("park", "friedhof"),
+        "night": ("nachtaktiv", "dämmerungsaktiv"),
+        "savanna": ("savanne", "steppe"),
+        "rainforest": ("regenwald", "tropischer wald"),
+        "ocean": ("offenes meer", "ozean", "pelagisch"),
+    }
+    habitats = [key for key, terms in habitat_terms.items() if any(t in normalized for t in terms)]
+    tag_terms = {
+        "nachtaktiv": ("nachtaktiv", "dämmerungsaktiv"),
+        "zugvogel": ("zugvogel", "langstreckenzieher", "kurzstreckenzieher"),
+        "greifvogel": ("greifvogel", "habichtartige", "falkenartige"),
+        "raubtier": ("raubtier", "beutegreifer", "fleischfresser"),
+        "wasserbewohner": ("aquatisch", "wasserbewohnend", "gewässer"),
+        "bestäuber": ("bestäuber", "bestäubung"),
+        "giftig": ("giftig", "giftzahn", "hautgift"),
+        "geschützt": ("streng geschützt", "besonders geschützt"),
+    }
+    tags = [key for key, terms in tag_terms.items() if any(t in normalized for t in terms)]
+    if group != "other":
+        tags.insert(0, group)
+    return habitats[:6], tags[:8]
+
+
+def _gbif_enrichment(scientific_name: str, article_text: str, group: str) -> dict:
+    """Supplement taxonomy and regional occurrence signals from GBIF."""
+    if not scientific_name:
+        return {}
+    try:
+        match = _json_api(
+            "https://api.gbif.org/v1/species/match",
+            (("name", scientific_name), ("strict", "false")),
+        )
+    except Exception:
+        return {}
+    if int(match.get("confidence") or 0) < 70 or match.get("matchType") == "NONE":
+        return {}
+    key = match.get("usageKey") or match.get("speciesKey")
+    class_name = str(match.get("class") or "").casefold()
+    gbif_group = {
+        "aves": "bird", "mammalia": "mammal", "insecta": "insect",
+        "amphibia": "amphibian", "reptilia": "reptile",
+        "actinopterygii": "fish", "chondrichthyes": "fish",
+    }.get(class_name, group)
+    if str(match.get("order") or "").casefold() == "lepidoptera":
+        gbif_group = "butterfly"
+
+    def count(**params: str) -> int:
+        if not key:
+            return 0
+        try:
+            result = _json_api(
+                "https://api.gbif.org/v1/occurrence/search",
+                tuple(sorted({"taxon_key": str(key), "limit": "0", **params}.items())),
+            )
+            return int(result.get("count") or 0)
+        except Exception:
+            return 0
+
+    germany = count(country="DE")
+    bavaria = count(country="DE", state_province="Bayern")
+    europe = count(continent="EUROPE") if not germany else germany
+    regions: list[str] = []
+    if bavaria:
+        regions.append("bavaria")
+    if germany:
+        regions.append("germany")
+    if europe:
+        regions.append("europe")
+    if not europe:
+        regions.append("world")
+
+    difficulty = 4
+    rarity = "Keine regionalen GBIF-Nachweise"
+    if germany >= 1000:
+        difficulty, rarity = 1, "Viele Nachweise in Deutschland"
+    elif germany >= 100:
+        difficulty, rarity = 2, "Regelmäßig in Deutschland nachgewiesen"
+    elif germany >= 10:
+        difficulty, rarity = 3, "Wenige Nachweise in Deutschland"
+    elif germany > 0:
+        difficulty, rarity = 4, "Sehr wenige Nachweise in Deutschland"
+    if any(term in article_text.casefold() for term in ("nachtaktiv", "dämmerungsaktiv", "sehr scheu")):
+        difficulty = min(5, difficulty + 1)
+    return {
+        "scientific_name": match.get("canonicalName") or scientific_name,
+        "group": gbif_group,
+        "family": match.get("family") or "",
+        "order_name": match.get("order") or "",
+        "regions": regions,
+        "countries": ["Deutschland"] if germany else [],
+        "difficulty": difficulty,
+        "rarity": rarity,
+    }
+
+
+def _german_fallback_description(
+    common_name: str, group: str, family: str, order_name: str
+) -> str:
+    group_names = {
+        "bird": "eine Vogelart", "mammal": "eine Säugetierart",
+        "butterfly": "eine Schmetterlingsart", "insect": "eine Insektenart",
+        "amphibian": "eine Amphibienart", "reptile": "eine Reptilienart",
+        "fish": "eine Fischart", "other": "eine Tierart",
+    }
+    classification = group_names.get(group, "eine Tierart")
+    detail = f" aus der Familie {family}" if family else (f" aus der Ordnung {order_name}" if order_name else "")
+    return f"Der {common_name} ist {classification}{detail}."
+
+
+def make_reference_plate(raw: bytes, width: int) -> bytes:
     with Image.open(io.BytesIO(raw)) as source:
         image = ImageOps.exif_transpose(source).convert("RGB")
         w, h = image.size
@@ -438,12 +576,14 @@ def _group_from_categories(page: dict) -> str:
     return "other"
 
 
-def import_from_wikipedia(name: str) -> WikipediaSpecies:
+def import_species_automatically(name: str) -> ImportedSpecies:
     page, title, host = _find_page(name.strip())
     # Wikipedia distinguishes an animal article from a family/genus using
     # suffixes such as "(Art)".  They are useful for lookup, but should never
     # become part of the collection's common name.
     common_name = re.sub(r"\s+\((?:art|species)\)$", "", title, flags=re.IGNORECASE)
+    if host != "de.wikipedia.org":
+        common_name = name.strip()
     try:
         scientific, group, family, order_name = _wikidata_taxonomy(page.get("pageprops", {}).get("wikibase_item"))
     except Exception:
@@ -457,6 +597,14 @@ def import_from_wikipedia(name: str) -> WikipediaSpecies:
     except Exception:
         size = wingspan = weight = ""
     difficulty, rarity = _difficulty_from_article(article_text + " " + common_name)
+    enrichment = _gbif_enrichment(scientific, article_text, group)
+    scientific = enrichment.get("scientific_name", scientific)
+    group = enrichment.get("group", group)
+    family = enrichment.get("family") or family
+    order_name = enrichment.get("order_name") or order_name
+    difficulty = enrichment.get("difficulty", difficulty)
+    rarity = enrichment.get("rarity", rarity)
+    habitats, tags = _controlled_habitats_and_tags(article_text, group)
     image = page.get("thumbnail", {})
     image_url, filename = image.get("source"), page.get("pageimage", "")
     if filename and any(marker in filename.lower() for marker in _COLLAGE_MARKERS):
@@ -474,8 +622,12 @@ def import_from_wikipedia(name: str) -> WikipediaSpecies:
         with urllib.request.urlopen(request, timeout=45) as response:
             raw = response.read()
         storage = get_storage()
-        image_key = storage.save("reference", f"{title}.jpg", io.BytesIO(_make_plate(raw, 1000)))
-        thumb_key = storage.save("reference-thumb", f"{title}.jpg", io.BytesIO(_make_plate(raw, 480)))
+        image_key = storage.save(
+            "reference", f"{title}.jpg", io.BytesIO(make_reference_plate(raw, 1000))
+        )
+        thumb_key = storage.save(
+            "reference-thumb", f"{title}.jpg", io.BytesIO(make_reference_plate(raw, 480))
+        )
         try:
             credit, source = _image_metadata(filename)
         except Exception:
@@ -483,10 +635,18 @@ def import_from_wikipedia(name: str) -> WikipediaSpecies:
             # if Commons has a short-lived metadata/API problem.
             credit, source = "Wikimedia Commons", ""
     article_url = f"https://{host}/wiki/{urllib.parse.quote(title.replace(' ', '_'))}"
-    return WikipediaSpecies(
+    description = (
+        _short_description(page.get("extract") or article_text, common_name)
+        if host == "de.wikipedia.org"
+        else _german_fallback_description(common_name, group, family, order_name)
+    )
+    return ImportedSpecies(
         common_name=common_name, scientific_name=scientific,
-        description=_short_description(page.get("extract") or article_text, common_name),
+        description=description,
         group=group, family=family, order_name=order_name, size=size, wingspan=wingspan,
-        weight=weight, difficulty=difficulty, rarity=rarity, reference_image=image_key,
+        weight=weight, difficulty=difficulty, rarity=rarity,
+        habitats=habitats, regions=enrichment.get("regions", []),
+        countries=enrichment.get("countries", []), tags=tags,
+        reference_image=image_key,
         reference_thumb=thumb_key, reference_credit=credit, reference_source=source or article_url,
     )

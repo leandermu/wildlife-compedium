@@ -4,6 +4,7 @@ export interface Profile {
   id: number;
   name: string;
   avatar: string;
+  gender: "male" | "female";
   is_default: boolean;
   photo_count: number;
   observation_count: number;
@@ -41,6 +42,7 @@ export interface Photo {
   thumb_url: string | null;
   original_filename: string;
   date: string | null;
+  time: string | null;
   location_name: string;
   caption: string;
   is_best_photo: boolean;
@@ -52,6 +54,7 @@ export interface Observation {
   id: number;
   species_id: number;
   date: string | null;
+  time: string | null;
   location_name: string;
   latitude: number | null;
   longitude: number | null;
@@ -98,6 +101,7 @@ export interface Facets {
   families: FacetValue[];
   difficulties: FacetValue[];
   statuses: FacetValue[];
+  seen: FacetValue[];
   tags: FacetValue[];
 }
 

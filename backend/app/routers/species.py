@@ -5,7 +5,7 @@ import io
 import json
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -22,11 +22,12 @@ from ..schemas import (
     SpeciesDetail,
     SpeciesListItem,
     SpeciesUpdate,
-    WikipediaSpeciesCreate,
+    AutomaticSpeciesCreate,
 )
 from ..text import slugify
+from ..storage import ALLOWED_SUFFIXES, get_storage
 from ..vocab import DIFFICULTIES, GROUPS, HABITATS, REGIONS, STATUSES
-from ..wikipedia import import_from_wikipedia
+from ..wikipedia import import_species_automatically, make_reference_plate
 
 router = APIRouter(prefix="/api/species", tags=["species"])
 
@@ -45,6 +46,7 @@ def list_species(
     tag: ListFilter = None,
     difficulty: Annotated[list[int] | None, Query()] = None,
     status: ListFilter = None,
+    seen: ListFilter = None,
     sort: str = "default",
     include_inactive: bool = False,
     page: int = Query(1, ge=1),
@@ -53,7 +55,8 @@ def list_species(
     sq = SpeciesQuery(profile.id)
     filters = dict(
         q=q, group=group, habitat=habitat, region=region, family=family, tag=tag,
-        difficulty=difficulty, status=status, include_inactive=include_inactive,
+        difficulty=difficulty, status=status, seen=seen,
+        include_inactive=include_inactive,
     )
 
     total = int(
@@ -92,19 +95,20 @@ def facets(
     tag: ListFilter = None,
     difficulty: Annotated[list[int] | None, Query()] = None,
     status: ListFilter = None,
+    seen: ListFilter = None,
 ) -> Facets:
     """Counts for every filter dimension, each computed *without* the filter it
     describes, so the sidebar never shows a dead end."""
     sq = SpeciesQuery(profile.id)
     active = dict(q=q, group=group, habitat=habitat, region=region, family=family,
-                  tag=tag, difficulty=difficulty, status=status)
+                  tag=tag, difficulty=difficulty, status=status, seen=seen)
 
     def rows_for(exclude: str):
         f = {k: (None if k == exclude else v) for k, v in active.items()}
         stmt = sq.apply_filters(
             sq.base(Species.id, Species.group, Species.family, Species.difficulty,
                     Species.habitats, Species.regions, Species.tags, sq.photo_count,
-                    sq.has_best),
+                    sq.has_best, sq.obs_count),
             **f,
         )
         return db.execute(stmt).all()
@@ -150,6 +154,12 @@ def facets(
             if pc >= 2 and hb:
                 status_counts["mastered"] += 1
 
+    seen_rows = rows_for("seen")
+    seen_counts = {"seen": 0, "unseen": 0}
+    for row in seen_rows:
+        has_encounter = int(row[7]) > 0 or int(row[9]) > 0
+        seen_counts["seen" if has_encounter else "unseen"] += 1
+
     return Facets(
         groups=scalar_facet("group", 1, GROUPS),
         families=sorted(scalar_facet("family", 2, {}), key=lambda f: -f.count),
@@ -160,6 +170,15 @@ def facets(
         statuses=[
             FacetValue(value=k, label=STATUSES[k]["label"], count=v, collected=v)
             for k, v in status_counts.items()
+        ],
+        seen=[
+            FacetValue(
+                value=key,
+                label="Gesehen" if key == "seen" else "Noch nicht gesehen",
+                count=count,
+                collected=seen_counts["seen"] if key == "seen" else 0,
+            )
+            for key, count in seen_counts.items()
         ],
     )
 
@@ -181,19 +200,25 @@ def get_species(
     return to_detail(_get_species(db, key), profile.id)
 
 
-@router.post("/from-wikipedia", response_model=SpeciesDetail, status_code=201)
-def create_species_from_wikipedia(
-    payload: WikipediaSpeciesCreate,
+@router.post("/automatic", response_model=SpeciesDetail, status_code=201)
+@router.post(
+    "/from-wikipedia",
+    response_model=SpeciesDetail,
+    status_code=201,
+    include_in_schema=False,
+)
+def create_species_automatically(
+    payload: AutomaticSpeciesCreate,
     db: Annotated[Session, Depends(get_db)],
     profile: CurrentProfile,
 ):
-    """Create a complete species record from a name and an article on Wikipedia."""
+    """Create a species from validated animal and taxonomy data sources."""
     try:
-        imported = import_from_wikipedia(payload.common_name)
+        imported = import_species_automatically(payload.common_name)
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(502, "Wikipedia oder Wikimedia konnte nicht erreicht werden.") from exc
+        raise HTTPException(502, "Die Artendatenquellen konnten nicht erreicht werden.") from exc
     slug = slugify(imported.common_name)
     if db.execute(select(Species).where(Species.slug == slug)).scalar_one_or_none():
         raise HTTPException(409, f"„{imported.common_name}“ ist bereits vorhanden")
@@ -215,6 +240,60 @@ def create_species(
     if db.execute(select(Species).where(Species.slug == slug)).scalar_one_or_none():
         raise HTTPException(409, f"Slug '{slug}' existiert bereits")
     sp = Species(**payload.model_dump(exclude={"slug"}), slug=slug)
+    sp.refresh_derived()
+    db.add(sp)
+    db.commit()
+    db.refresh(sp)
+    return to_detail(sp, profile.id)
+
+
+@router.post("/manual", response_model=SpeciesDetail, status_code=201)
+async def create_species_manual(
+    db: Annotated[Session, Depends(get_db)],
+    profile: CurrentProfile,
+    data: Annotated[str, Form()],
+    image: Annotated[UploadFile | None, File()] = None,
+) -> SpeciesDetail:
+    """Create explicit species fields and optionally process a reference image."""
+    try:
+        payload = SpeciesCreate.model_validate_json(data)
+    except Exception as exc:
+        raise HTTPException(422, "Die eingegebenen Artdaten sind ungültig") from exc
+    slug = payload.slug or slugify(payload.common_name)
+    if db.execute(select(Species).where(Species.slug == slug)).scalar_one_or_none():
+        raise HTTPException(409, f"„{payload.common_name}“ ist bereits vorhanden")
+
+    values = payload.model_dump(exclude={"slug"})
+    values.update(
+        reference_image=None,
+        reference_thumb=None,
+        reference_credit=None,
+        reference_source=None,
+    )
+    if image is not None:
+        raw = await image.read()
+        if not raw:
+            raise HTTPException(400, "Das Referenzbild ist leer")
+        if len(raw) > 40 * 1024 * 1024:
+            raise HTTPException(413, "Referenzbild größer als 40 MB")
+        suffix = "." + (image.filename or "referenz.jpg").rsplit(".", 1)[-1].lower()
+        if suffix not in ALLOWED_SUFFIXES:
+            raise HTTPException(415, f"Dateityp {suffix} wird nicht unterstützt")
+        try:
+            plate = make_reference_plate(raw, 1000)
+            thumb = make_reference_plate(raw, 480)
+        except Exception as exc:
+            raise HTTPException(415, "Das Referenzbild konnte nicht gelesen werden") from exc
+        storage = get_storage()
+        values["reference_image"] = storage.save(
+            "reference", f"{slug}.jpg", io.BytesIO(plate)
+        )
+        values["reference_thumb"] = storage.save(
+            "reference-thumb", f"{slug}.jpg", io.BytesIO(thumb)
+        )
+        values["reference_credit"] = "Eigenes Referenzbild"
+
+    sp = Species(**values, slug=slug)
     sp.refresh_derived()
     db.add(sp)
     db.commit()

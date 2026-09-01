@@ -15,17 +15,20 @@ class ORMModel(BaseModel):
 # ------------------------------------------------------------------- profiles
 class ProfileCreate(BaseModel):
     name: str = Field(min_length=1, max_length=80)
+    gender: str = Field(default="male", pattern="^(male|female)$")
 
 
 class ProfileUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=80)
     avatar: str | None = Field(default=None, min_length=1, max_length=20)
+    gender: str | None = Field(default=None, pattern="^(male|female)$")
 
 
 class ProfileOut(ORMModel):
     id: int
     name: str
     avatar: str = "🐾"
+    gender: str = "male"
     is_default: bool = False
     photo_count: int = 0
     observation_count: int = 0
@@ -36,6 +39,7 @@ class ProfileOut(ORMModel):
 # --------------------------------------------------------------------- photos
 class PhotoBase(BaseModel):
     date: dt.date | None = None
+    time: dt.time | None = None
     location_name: str = ""
     caption: str = ""
     observation_id: int | None = None
@@ -44,6 +48,7 @@ class PhotoBase(BaseModel):
 
 class PhotoUpdate(BaseModel):
     date: dt.date | None = None
+    time: dt.time | None = None
     location_name: str | None = None
     caption: str | None = None
     observation_id: int | None = None
@@ -59,6 +64,7 @@ class PhotoOut(ORMModel):
     thumb_url: str | None = None
     original_filename: str = ""
     date: dt.date | None = None
+    time: dt.time | None = None
     location_name: str = ""
     caption: str = ""
     is_best_photo: bool = False
@@ -69,6 +75,7 @@ class PhotoOut(ORMModel):
 # --------------------------------------------------------------- observations
 class ObservationBase(BaseModel):
     date: dt.date | None = None
+    time: dt.time | None = None
     location_name: str = ""
     latitude: float | None = None
     longitude: float | None = None
@@ -81,6 +88,7 @@ class ObservationCreate(ObservationBase):
 
 class ObservationUpdate(BaseModel):
     date: dt.date | None = None
+    time: dt.time | None = None
     location_name: str | None = None
     latitude: float | None = None
     longitude: float | None = None
@@ -91,6 +99,7 @@ class ObservationOut(ORMModel):
     id: int
     species_id: int
     date: dt.date | None = None
+    time: dt.time | None = None
     location_name: str = ""
     latitude: float | None = None
     longitude: float | None = None
@@ -128,7 +137,7 @@ class SpeciesCreate(SpeciesBase):
     slug: str | None = None
 
 
-class WikipediaSpeciesCreate(BaseModel):
+class AutomaticSpeciesCreate(BaseModel):
     common_name: str = Field(min_length=1, max_length=160)
 
 
@@ -219,6 +228,7 @@ class Facets(BaseModel):
     families: list[FacetValue]
     difficulties: list[FacetValue]
     statuses: list[FacetValue]
+    seen: list[FacetValue]
     tags: list[FacetValue]
 
 

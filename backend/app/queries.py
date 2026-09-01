@@ -16,6 +16,7 @@ from .models import Observation, Species, UserPhoto
 from .schemas import SpeciesDetail, SpeciesListItem
 from .storage import media_url
 from .text import normalize
+from .vocab import GROUPS
 
 MASTERED_MIN_PHOTOS = 2
 
@@ -93,6 +94,7 @@ class SpeciesQuery:
         tag: Sequence[str] | None = None,
         difficulty: Sequence[int] | None = None,
         status: Sequence[str] | None = None,
+        seen: Sequence[str] | None = None,
         include_inactive: bool = False,
     ) -> Select:
         if not include_inactive:
@@ -132,6 +134,13 @@ class SpeciesQuery:
                             and_(self.photo_count >= MASTERED_MIN_PHOTOS, self.has_best == 1)
                         )
                 stmt = stmt.where(or_(*conds))
+        if seen:
+            wanted_seen = {value for value in seen if value in {"seen", "unseen"}}
+            has_encounter = or_(self.photo_count > 0, self.obs_count > 0)
+            if wanted_seen == {"seen"}:
+                stmt = stmt.where(has_encounter)
+            elif wanted_seen == {"unseen"}:
+                stmt = stmt.where(and_(self.photo_count == 0, self.obs_count == 0))
         return stmt
 
     def apply_sort(self, stmt: Select, sort: str) -> Select:
@@ -153,9 +162,15 @@ class SpeciesQuery:
             )
         if sort == "status":
             return stmt.order_by(self.photo_count.desc(), Species.common_name.asc())
-        # default: taxonomic-ish grouping that still reads like a field guide
+        # Systematic field-guide order. Do not use sort_index here: imported
+        # legacy rows have values that newly created species cannot know.
+        group_order = case(
+            {key: meta.get("order", 99) for key, meta in GROUPS.items()},
+            value=Species.group,
+            else_=99,
+        )
         return stmt.order_by(
-            Species.sort_index.asc(), Species.group.asc(), Species.family.asc(),
+            group_order.asc(), Species.order_name.asc(), Species.family.asc(),
             Species.common_name.asc(),
         )
 
@@ -200,6 +215,7 @@ def photo_out(photo: UserPhoto) -> dict[str, Any]:
         "thumb_url": media_url(photo.thumb_key or photo.display_key or photo.storage_key),
         "original_filename": photo.original_filename,
         "date": photo.date,
+        "time": photo.time,
         "location_name": photo.location_name,
         "caption": photo.caption,
         "is_best_photo": photo.is_best_photo,
@@ -267,6 +283,7 @@ def to_detail(sp: Species, profile_id: int) -> SpeciesDetail:
                     "id": o.id,
                     "species_id": o.species_id,
                     "date": o.date,
+                    "time": o.time,
                     "location_name": o.location_name,
                     "latitude": o.latitude,
                     "longitude": o.longitude,

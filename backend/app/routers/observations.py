@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
+from ..encounters import sync_photos_from_observation
 from ..models import Observation, Species
 from ..profiles import CurrentProfile
 from ..schemas import ObservationCreate, ObservationOut, ObservationUpdate
@@ -16,7 +17,8 @@ router = APIRouter(prefix="/api/observations", tags=["observations"])
 
 def _out(o: Observation) -> ObservationOut:
     return ObservationOut(
-        id=o.id, species_id=o.species_id, date=o.date, location_name=o.location_name,
+        id=o.id, species_id=o.species_id, date=o.date, time=o.time,
+        location_name=o.location_name,
         latitude=o.latitude, longitude=o.longitude, notes=o.notes,
         has_photo=o.has_photo, created_at=o.created_at,
     )
@@ -64,6 +66,7 @@ def update_observation(
         raise HTTPException(404, "Beobachtung nicht gefunden")
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(obs, field, value)
+    sync_photos_from_observation(obs)
     db.commit()
     db.refresh(obs)
     return _out(obs)

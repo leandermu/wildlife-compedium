@@ -14,6 +14,7 @@ export function PhotoUpload({
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
   const [caption, setCaption] = useState("");
   const [encounterType, setEncounterType] = useState<"wild" | "captive">("wild");
@@ -48,6 +49,7 @@ export function PhotoUpload({
       fd.append("species_id", String(species.id));
       fd.append("file", file);
       if (date) fd.append("date", date);
+      if (time) fd.append("time", time);
       if (location) fd.append("location_name", location);
       if (caption) fd.append("caption", caption);
       fd.append("encounter_type", encounterType);
@@ -55,6 +57,7 @@ export function PhotoUpload({
       setFile(null);
       setPreview(null);
       setDate("");
+      setTime("");
       setLocation("");
       setCaption("");
       setEncounterType("wild");
@@ -120,12 +123,20 @@ export function PhotoUpload({
         />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Datum">
           <input
             type="date"
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onInput={(e) => setDate(e.currentTarget.value)}
+            className="w-full rounded-sm border border-rule bg-paper px-3 py-2 text-[14px] focus:border-rule-2 focus:outline-none"
+          />
+        </Field>
+        <Field label="Uhrzeit">
+          <input
+            type="time"
+            value={time}
+            onInput={(e) => setTime(e.currentTarget.value)}
             className="w-full rounded-sm border border-rule bg-paper px-3 py-2 text-[14px] focus:border-rule-2 focus:outline-none"
           />
         </Field>
@@ -146,6 +157,9 @@ export function PhotoUpload({
           className="w-full rounded-sm border border-rule bg-paper px-3 py-2 text-[14px] focus:border-rule-2 focus:outline-none"
         />
       </Field>
+      <p className="-mt-2 text-[12px] text-ink-3">
+        Datum, Uhrzeit, Ort und Notiz gehören zur Fotobegegnung und werden gemeinsam bearbeitet.
+      </p>
 
       <fieldset>
         <legend className="label-caps mb-1.5 block">Beobachtungsart</legend>

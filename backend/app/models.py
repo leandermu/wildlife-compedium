@@ -14,6 +14,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Time,
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -66,6 +67,7 @@ class Profile(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(80), unique=True, index=True)
     avatar: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(12), nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_utcnow)
 
@@ -158,6 +160,7 @@ class Observation(Base):
         ForeignKey("species.id", ondelete="CASCADE"), index=True
     )
     date: Mapped[dt.date | None] = mapped_column(Date, nullable=True, index=True)
+    time: Mapped[dt.time | None] = mapped_column(Time, nullable=True)
     location_name: Mapped[str] = mapped_column(String(200), default="")
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -197,6 +200,7 @@ class UserPhoto(Base):
     original_filename: Mapped[str] = mapped_column(String(300), default="")
 
     date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
+    time: Mapped[dt.time | None] = mapped_column(Time, nullable=True)
     location_name: Mapped[str] = mapped_column(String(200), default="")
     caption: Mapped[str] = mapped_column(Text, default="")
     is_best_photo: Mapped[bool] = mapped_column(Boolean, default=False, index=True)

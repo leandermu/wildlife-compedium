@@ -95,6 +95,8 @@ sich oben in der Navigation direkt anlegen und wechseln. Artenkatalog und
 Referenzbilder sind gemeinsam; Fotos, Begegnungen, Freischaltungen,
 Auszeichnungen und Statistiken gehören jeweils zum aktiven Profil. Das
 Gesamtbackup umfasst dagegen immer alle Profile.
+In den Profileinstellungen kann außerdem die männliche oder weibliche Form für
+Auszeichnungsnamen gewählt werden (zum Beispiel Alpenjäger/Alpenjägerin).
 Beim Upgrade werden vorhandene persönliche Daten automatisch dem Profil
 „Leander“ zugeordnet. Leere Profile können wieder gelöscht werden; Profile mit
 Fotos oder Begegnungen schützt die App vor versehentlichem Löschen.
@@ -116,12 +118,15 @@ werden serverseitig erzeugt, damit auch Rasterseiten mit tausenden Fotos schnell
 bleiben. HEIC/HEIF-Dateien werden als Original aufbewahrt und erhalten zusätzlich
 eine browserfähige JPEG-Anzeigeversion. Alle lesbaren EXIF-Bereiche werden in der
 Datenbank gesichert und sind über den „i“-Schalter der Fotoansicht einsehbar.
+Datum, Uhrzeit, Ort und Notiz von Fotos und Begegnungen lassen sich nachträglich
+bearbeiten.
 
 **Suche** ist umlauttolerant in beide Richtungen: `maus`, `mäuse` und `maeuse`
 finden alle den Mäusebussard, ebenso der wissenschaftliche Name (`Alcedo`).
 
-**Filter** nach Status, Tiergruppe, Region, Lebensraum, Schwierigkeit, Familie
-und Tags – kombinierbar, mit Trefferzahlen. Jede Zahl wird live aus den Daten
+**Filter** nach gesehen/nicht gesehen, Fotostatus, Tiergruppe, Region,
+Lebensraum, Schwierigkeit, Familie und Tags – kombinierbar, mit Trefferzahlen.
+Jede Zahl wird live aus den Daten
 berechnet; nichts ist hart kodiert.
 
 **Auszeichnungen** sind datengetrieben (`backend/app/achievements.py`,
@@ -150,12 +155,13 @@ Mit Docker passiert beides von selbst, aufgeteilt auf die beiden Zeitpunkte, an
 die es jeweils gehört: Der **Download** ist ein Build-Schritt (`fetch` läuft in
 einer eigenen Stage, das Ergebnis landet im Image unter `/images`). Das
 **Verarbeiten** kann es nicht sein, denn es schreibt Urheber und Pfade in die
-Datenbank – die es zur Bauzeit noch nicht gibt. Das erledigt der einmalige
-Dienst `reference-images` beim ersten `up`; er überspringt sich, sobald die
-Platten im Medien-Volume liegen. Neu erzeugen lassen sie sich jederzeit:
+Datenbank – die es zur Bauzeit noch nicht gibt. Das erledigt das Backend beim
+Start selbst; mit `--missing` werden nur noch fehlende Platten ergänzt. Dadurch
+bleiben genau drei laufende Dienste und es gibt keinen absichtlich beendeten
+vierten Container. Neu erzeugen lassen sie sich jederzeit:
 
 ```bash
-docker compose run --rm reference-images python scripts/process_reference_images.py
+docker compose exec backend python scripts/process_reference_images.py
 ```
 
 Der Downloader nimmt das kuratierte Titelbild des Wikipedia-Artikels – das ist
@@ -186,12 +192,14 @@ Bestehende Arten werden am Slug erkannt und aktualisiert. Die Startdaten liegen
 in `backend/app/data/seed_species.json`; erzeugt wird sie aus
 `_build_seed.py` (`python app/data/_build_seed.py`).
 
-Beim Anlegen nur über einen Tiernamen wird ein Wikipedia-Treffer erst dann
+Beim automatischen Anlegen über einen Tiernamen wird ein Wikipedia-Treffer erst dann
 akzeptiert, wenn Artikeltext und Kategorien ihn als Tierartikel bestätigen.
-Begriffsklärungen werden nach dem passenden Tierlink aufgelöst; Taxonomie kommt
-aus der Wikidata-Abstammung. Gespeichert werden nur eine kurze Zusammenfassung
-und ausdrücklich genannte Maße – unbekannte Werte bleiben leer, statt geraten
-zu werden.
+Begriffsklärungen werden nach dem passenden Tierlink aufgelöst. Taxonomie und
+regionale Nachweisdichte werden zusätzlich mit GBIF strukturiert abgeglichen;
+Lebensräume und Tags landen nur im kontrollierten App-Vokabular. Gespeichert
+werden nur eine kurze deutsche Zusammenfassung und ausdrücklich genannte Maße –
+unbekannte Werte bleiben leer, statt geraten zu werden. Alternativ können alle
+Felder manuell gepflegt und ein eigenes Referenzbild hochgeladen werden.
 
 ## Auf 1.000+ Arten ausgelegt
 

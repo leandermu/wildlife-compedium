@@ -30,6 +30,7 @@ def _out(db: Session, profile: Profile) -> ProfileOut:
         id=profile.id,
         name=profile.name,
         avatar=profile.avatar or "🐾",
+        gender=profile.gender or "male",
         is_default=profile.is_default,
         photo_count=photo_count,
         observation_count=observation_count,
@@ -58,7 +59,9 @@ def create_profile(
     ).first()
     if exists:
         raise HTTPException(409, f"Das Profil „{name}“ gibt es bereits")
-    profile = Profile(name=name, avatar="🐾", is_default=False)
+    profile = Profile(
+        name=name, avatar="🐾", gender=payload.gender, is_default=False
+    )
     db.add(profile)
     db.commit()
     db.refresh(profile)
@@ -93,6 +96,9 @@ def update_profile(
         if payload.avatar not in PROFILE_AVATARS:
             raise HTTPException(422, "Dieses Profilbild steht nicht zur Auswahl")
         profile.avatar = payload.avatar
+
+    if payload.gender is not None:
+        profile.gender = payload.gender
 
     db.commit()
     db.refresh(profile)

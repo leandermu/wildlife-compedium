@@ -16,7 +16,9 @@ export function AdminPage() {
   const [form, setForm] = useState({ ...EMPTY });
   const [editing, setEditing] = useState<SpeciesDetail | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
-  const [isImportingWikipedia, setIsImportingWikipedia] = useState(false);
+  const [isSavingSpecies, setIsSavingSpecies] = useState(false);
+  const [createMode, setCreateMode] = useState<"automatic" | "manual">("automatic");
+  const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<SpeciesListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -52,10 +54,23 @@ export function AdminPage() {
     setMessage(null);
     try {
       if (!editing) {
-        setIsImportingWikipedia(true);
-        const imported = await api.createSpeciesFromWikipedia(form.common_name);
+        setIsSavingSpecies(true);
+        let imported: SpeciesDetail;
+        if (createMode === "automatic") {
+          imported = await api.createSpeciesAutomatically(form.common_name);
+        } else {
+          const fd = new FormData();
+          fd.append("data", JSON.stringify({
+            ...form,
+            difficulty: Number(form.difficulty),
+            tags: form.tags,
+          }));
+          if (referenceImage) fd.append("image", referenceImage);
+          imported = await api.createSpeciesManual(fd);
+        }
         setMessage({ kind: "ok", text: `„${imported.common_name}" wurde angelegt.` });
         setForm({ ...EMPTY });
+        setReferenceImage(null);
         refresh();
         return;
       }
@@ -72,7 +87,7 @@ export function AdminPage() {
     } catch (err) {
       setMessage({ kind: "err", text: err instanceof Error ? err.message : "Fehler" });
     } finally {
-      setIsImportingWikipedia(false);
+      setIsSavingSpecies(false);
     }
   };
 
@@ -158,16 +173,29 @@ export function AdminPage() {
         <form onSubmit={submit} className="paper-card space-y-4 rounded-sm p-5">
           {!editing && (
             <>
+              <div className="grid max-w-md grid-cols-2 gap-1 rounded-lg bg-paper-2 p-1">
+                <button type="button" onClick={() => setCreateMode("automatic")}
+                  className={`rounded-md px-3 py-2 text-sm ${createMode === "automatic" ? "bg-paper text-ink shadow-sm" : "text-ink-3"}`}>
+                  Automatisch
+                </button>
+                <button type="button" onClick={() => setCreateMode("manual")}
+                  className={`rounded-md px-3 py-2 text-sm ${createMode === "manual" ? "bg-paper text-ink shadow-sm" : "text-ink-3"}`}>
+                  Manuell erstellen
+                </button>
+              </div>
               <p className="max-w-2xl text-[14px] text-ink-2">
-                Gib nur den Namen ein. Beschreibung, Einordnung und Referenzbild werden aus
-                Wikipedia übernommen; das Bild wird automatisch im Stil des Compediums bearbeitet.
+                {createMode === "automatic"
+                  ? "Gib nur den Namen ein. Taxonomie und Vorkommen werden aus strukturierten Artendaten ergänzt; Kurztext und Bild stammen, wenn verfügbar, aus der deutschsprachigen Wikipedia."
+                  : "Trage die Angaben selbst ein. Ein hochgeladenes Bild wird automatisch als einheitliches Referenz- und Vorschaubild aufbereitet."}
               </p>
-              <Input label="Name des Tiers *" value={form.common_name} required
-                placeholder="z. B. Eisvogel"
-                onChange={(v) => setForm({ ...form, common_name: v })} />
+              {createMode === "automatic" && (
+                <Input label="Name des Tiers *" value={form.common_name} required
+                  placeholder="z. B. Eisvogel"
+                  onChange={(v) => setForm({ ...form, common_name: v })} />
+              )}
             </>
           )}
-          {editing && (
+          {(editing || createMode === "manual") && (
             <>
           <div className="grid gap-4 sm:grid-cols-2">
             <Input label="Deutscher Name *" value={form.common_name} required
@@ -229,6 +257,20 @@ export function AdminPage() {
 
           <Input label="Tags (Komma-getrennt)" value={form.tags.join(", ")}
             onChange={(v) => setForm({ ...form, tags: v.split(",").map((t) => t.trim()).filter(Boolean) })} />
+          {!editing && (
+            <label className="block rounded-sm border border-dashed border-rule-2 bg-paper-2/50 p-4">
+              <span className="label-caps mb-1.5 block">Referenzbild (optional)</span>
+              <input
+                type="file"
+                accept="image/*,.heic,.heif,image/heic,image/heif"
+                onChange={(event) => setReferenceImage(event.target.files?.[0] ?? null)}
+                className="block w-full text-sm text-ink-2 file:mr-3 file:rounded-sm file:border file:border-rule file:bg-paper file:px-3 file:py-2"
+              />
+              <span className="mt-2 block text-xs text-ink-3">
+                {referenceImage ? referenceImage.name : "JPG, PNG, WebP, TIFF oder HEIC/HEIF"}
+              </span>
+            </label>
+          )}
             </>
           )}
 
@@ -240,10 +282,10 @@ export function AdminPage() {
 
           <button
             type="submit"
-            disabled={isImportingWikipedia}
+            disabled={isSavingSpecies}
             className="rounded-sm bg-moss px-6 py-2.5 text-[15px] text-paper hover:bg-moss-2"
           >
-            {isImportingWikipedia ? "Wird angelegt …" : editing ? "Änderungen speichern" : "Anlegen"}
+            {isSavingSpecies ? "Wird gespeichert …" : editing ? "Änderungen speichern" : "Anlegen"}
           </button>
         </form>
       </section>

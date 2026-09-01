@@ -106,6 +106,14 @@ def _ensure_default_profile() -> None:
                 ))
 
 
+def _ensure_linked_encounters() -> None:
+    """Unify photo/observation fields from versions that stored them separately."""
+    from .encounters import reconcile_linked_encounters
+
+    with SessionLocal.begin() as db:
+        reconcile_linked_encounters(db)
+
+
 def init_db() -> None:
     from . import models  # noqa: F401  (register mappers)
 
@@ -114,3 +122,4 @@ def init_db() -> None:
     Base.metadata.create_all(engine)
     _ensure_columns()
     _ensure_default_profile()
+    _ensure_linked_encounters()

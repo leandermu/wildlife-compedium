@@ -45,6 +45,7 @@ export interface SpeciesQueryParams {
   tag?: string[];
   difficulty?: string[];
   status?: string[];
+  seen?: string[];
   sort?: string;
   page?: number;
   page_size?: number;
@@ -64,7 +65,7 @@ export const api = {
   profiles: () => request<Profile[]>("/api/profiles"),
   createProfile: (name: string) =>
     request<Profile>("/api/profiles", json({ name })),
-  updateProfile: (id: number, body: { name?: string; avatar?: string }) =>
+  updateProfile: (id: number, body: { name?: string; avatar?: string; gender?: "male" | "female" }) =>
     request<Profile>(`/api/profiles/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -96,8 +97,10 @@ export const api = {
   speciesDetail: (key: string) => request<SpeciesDetail>(`/api/species/${key}`),
   createSpecies: (body: Record<string, unknown>) =>
     request<SpeciesDetail>("/api/species", json(body)),
-  createSpeciesFromWikipedia: (commonName: string) =>
-    request<SpeciesDetail>("/api/species/from-wikipedia", json({ common_name: commonName })),
+  createSpeciesManual: (form: FormData) =>
+    request<SpeciesDetail>("/api/species/manual", { method: "POST", body: form }),
+  createSpeciesAutomatically: (commonName: string) =>
+    request<SpeciesDetail>("/api/species/automatic", json({ common_name: commonName })),
   updateSpecies: (key: string, body: Record<string, unknown>) =>
     request<SpeciesDetail>(`/api/species/${key}`, {
       method: "PATCH",
@@ -118,6 +121,12 @@ export const api = {
 
   createObservation: (body: Record<string, unknown>) =>
     request<Observation>("/api/observations", json(body)),
+  updateObservation: (id: number, body: Record<string, unknown>) =>
+    request<Observation>(`/api/observations/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
   deleteObservation: (id: number) =>
     request<void>(`/api/observations/${id}`, { method: "DELETE" }),
 

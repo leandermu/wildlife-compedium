@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
-import type { Photo, SpeciesDetail } from "../types";
+import type { Observation, Photo, SpeciesDetail } from "../types";
 import { PlaceholderArt } from "../components/PlaceholderArt";
 import { PhotoUpload } from "../components/PhotoUpload";
 import { DifficultyStars, LockIcon, SectionTitle, Spinner } from "../components/ui";
@@ -29,8 +29,11 @@ export function SpeciesDetailPage() {
   const [lightboxInfo, setLightboxInfo] = useState(false);
   const [justUnlocked, setJustUnlocked] = useState(false);
   const [obsDate, setObsDate] = useState("");
+  const [obsTime, setObsTime] = useState("");
   const [obsPlace, setObsPlace] = useState("");
   const [obsNote, setObsNote] = useState("");
+  const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
+  const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
 
   const load = useCallback(
     (announceUnlock = false) =>
@@ -86,10 +89,12 @@ export function SpeciesDetailPage() {
     await api.createObservation({
       species_id: species.id,
       date: obsDate || null,
+      time: obsTime || null,
       location_name: obsPlace,
       notes: obsNote,
     });
     setObsDate("");
+    setObsTime("");
     setObsPlace("");
     setObsNote("");
     load();
@@ -253,6 +258,9 @@ export function SpeciesDetailPage() {
                             Als bestes wählen
                           </button>
                         )}
+                        <button onClick={() => setEditingPhoto(p)} className="hover:text-ink">
+                          {p.observation_id ? "Foto & Begegnung bearbeiten" : "Foto bearbeiten"}
+                        </button>
                         <button
                           onClick={() => removePhoto(p.id)}
                           className="ml-auto hover:text-rust"
@@ -345,6 +353,7 @@ export function SpeciesDetailPage() {
                     />
                     <p className="text-ink-2">
                       {formatDateLong(o.date) || "ohne Datum"}
+                      {o.time && ` · ${o.time.slice(0, 5)} Uhr`}
                       {o.has_photo && <span className="ml-1.5 text-moss-2">📷</span>}
                     </p>
                     {o.location_name && (
@@ -361,6 +370,13 @@ export function SpeciesDetailPage() {
                       ) : <p className="text-ink-3">{o.location_name}</p>
                     )}
                     {o.notes && <p className="italic text-ink-3">{o.notes}</p>}
+                    <button
+                      type="button"
+                      onClick={() => setEditingObservation(o)}
+                      className="mt-1 text-[11px] text-ink-3 underline decoration-rule-2 underline-offset-2 hover:text-ink"
+                    >
+                      {o.has_photo ? "Foto & Begegnung bearbeiten" : "Begegnung bearbeiten"}
+                    </button>
                   </li>
                 ))}
               </ol>
@@ -368,11 +384,17 @@ export function SpeciesDetailPage() {
 
             <form onSubmit={addObservation} className="space-y-2.5 border-t border-rule pt-4">
               <p className="label-caps">Begegnung ohne Foto notieren</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <input
                   type="date"
                   value={obsDate}
-                  onChange={(e) => setObsDate(e.target.value)}
+                  onInput={(e) => setObsDate(e.currentTarget.value)}
+                  className="rounded-sm border border-rule bg-paper px-2 py-1.5 text-[13px] focus:outline-none"
+                />
+                <input
+                  type="time"
+                  value={obsTime}
+                  onInput={(e) => setObsTime(e.currentTarget.value)}
                   className="rounded-sm border border-rule bg-paper px-2 py-1.5 text-[13px] focus:outline-none"
                 />
                 <input
@@ -444,7 +466,120 @@ export function SpeciesDetailPage() {
           </div>
         </div>
       )}
+
+      {editingPhoto && (
+        <EditEntryDialog
+          title={editingPhoto.observation_id ? "Foto & Begegnung bearbeiten" : "Foto bearbeiten"}
+          date={editingPhoto.date ?? ""}
+          time={editingPhoto.time?.slice(0, 5) ?? ""}
+          location={editingPhoto.location_name}
+          note={editingPhoto.caption}
+          onClose={() => setEditingPhoto(null)}
+          onSave={async (values) => {
+            await api.updatePhoto(editingPhoto.id, {
+              date: values.date || null,
+              time: values.time || null,
+              location_name: values.location,
+              caption: values.note,
+            });
+            setEditingPhoto(null);
+            setLightbox(null);
+            await load();
+          }}
+        />
+      )}
+
+      {editingObservation && (
+        <EditEntryDialog
+          title={editingObservation.has_photo ? "Foto & Begegnung bearbeiten" : "Begegnung bearbeiten"}
+          date={editingObservation.date ?? ""}
+          time={editingObservation.time?.slice(0, 5) ?? ""}
+          location={editingObservation.location_name}
+          note={editingObservation.notes}
+          onClose={() => setEditingObservation(null)}
+          onSave={async (values) => {
+            await api.updateObservation(editingObservation.id, {
+              date: values.date || null,
+              time: values.time || null,
+              location_name: values.location,
+              notes: values.note,
+            });
+            setEditingObservation(null);
+            await load();
+          }}
+        />
+      )}
     </article>
+  );
+}
+
+function EditEntryDialog({
+  title, date, time, location, note, onClose, onSave,
+}: {
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  note: string;
+  onClose: () => void;
+  onSave: (values: { date: string; time: string; location: string; note: string }) => Promise<void>;
+}) {
+  const [values, setValues] = useState({ date, time, location, note });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/55 p-4" role="dialog" aria-modal="true">
+      <form
+        className="w-full max-w-lg space-y-4 rounded-xl border border-rule bg-paper p-5 shadow-2xl"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          setBusy(true);
+          setError("");
+          try {
+            await onSave(values);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Änderung konnte nicht gespeichert werden");
+            setBusy(false);
+          }
+        }}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="font-serif text-xl">{title}</h2>
+          <button type="button" onClick={onClose} className="text-2xl text-ink-3" aria-label="Schließen">×</button>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block text-xs text-ink-3">Datum
+            <input type="date" value={values.date} onInput={(e) => {
+              const value = e.currentTarget.value;
+              setValues((current) => ({ ...current, date: value }));
+            }}
+              className="mt-1 w-full rounded-sm border border-rule bg-paper px-3 py-2 text-sm text-ink" />
+          </label>
+          <label className="block text-xs text-ink-3">Uhrzeit
+            <input type="time" value={values.time} onInput={(e) => {
+              const value = e.currentTarget.value;
+              setValues((current) => ({ ...current, time: value }));
+            }}
+              className="mt-1 w-full rounded-sm border border-rule bg-paper px-3 py-2 text-sm text-ink" />
+          </label>
+        </div>
+        <label className="block text-xs text-ink-3">Ort
+          <input value={values.location} onChange={(e) => setValues((current) => ({ ...current, location: e.target.value }))}
+            className="mt-1 w-full rounded-sm border border-rule bg-paper px-3 py-2 text-sm text-ink" />
+        </label>
+        <label className="block text-xs text-ink-3">Notiz
+          <textarea rows={3} value={values.note} onChange={(e) => setValues((current) => ({ ...current, note: e.target.value }))}
+            className="mt-1 w-full rounded-sm border border-rule bg-paper px-3 py-2 text-sm text-ink" />
+        </label>
+        {error && <p className="text-xs text-rust">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded-sm border border-rule px-4 py-2 text-sm">Abbrechen</button>
+          <button type="submit" disabled={busy} className="rounded-sm bg-moss px-4 py-2 text-sm text-paper disabled:opacity-50">
+            {busy ? "Speichert …" : "Speichern"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 
@@ -506,7 +641,7 @@ function PhotoInfo({ photo }: { photo: Photo }) {
       <h2 className="mt-1 truncate font-serif text-xl">{photo.original_filename || "Foto"}</h2>
 
       <dl className="mt-4 divide-y divide-rule border-y border-rule text-[13px]">
-        {photo.date && <InfoRow label="Aufgenommen" value={formatDateLong(photo.date)} />}
+        {photo.date && <InfoRow label="Aufgenommen" value={`${formatDateLong(photo.date)}${photo.time ? ` · ${photo.time.slice(0, 5)} Uhr` : ""}`} />}
         {photo.location_name && <InfoRow label="Ort" value={photo.location_name} />}
         {photo.caption && <InfoRow label="Notiz" value={photo.caption} />}
         {curated.map(([label, value]) => (

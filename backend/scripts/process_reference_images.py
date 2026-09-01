@@ -113,6 +113,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", default="", help="Kommaliste von Slugs")
     ap.add_argument("--preview", action="store_true", help="Platte zusätzlich nach images/preview/")
+    ap.add_argument("--missing", action="store_true", help="Nur fehlende Platten erzeugen")
     args = ap.parse_args()
     only = {s.strip() for s in args.only.split(",") if s.strip()}
 
@@ -132,9 +133,20 @@ def main() -> int:
                 missing += 1
                 continue
 
+            plate_dest = media / "reference" / f"{slug}.jpg"
+            thumb_dest = media / "reference-thumb" / f"{slug}.jpg"
+            if (
+                args.missing
+                and plate_dest.exists()
+                and thumb_dest.exists()
+                and sp.reference_image == f"reference/{slug}.jpg"
+                and sp.reference_thumb == f"reference-thumb/{slug}.jpg"
+            ):
+                continue
+
             plate = make_plate(source)
-            total_bytes += save_jpeg(plate, media / "reference" / f"{slug}.jpg", PLATE_WIDTH, 82)
-            total_bytes += save_jpeg(plate, media / "reference-thumb" / f"{slug}.jpg", THUMB_WIDTH, 78)
+            total_bytes += save_jpeg(plate, plate_dest, PLATE_WIDTH, 82)
+            total_bytes += save_jpeg(plate, thumb_dest, THUMB_WIDTH, 78)
             if args.preview:
                 save_jpeg(plate, ROOT / "images" / "preview" / f"{slug}.jpg", PLATE_WIDTH, 88)
 

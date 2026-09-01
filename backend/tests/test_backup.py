@@ -1,3 +1,4 @@
+import datetime as dt
 import io
 import json
 import tempfile
@@ -27,7 +28,7 @@ from app.storage import LocalStorage
 class BackupRoundtripTest(unittest.TestCase):
     @staticmethod
     def _collection(db: Session) -> None:
-        profile = Profile(name="Angelika", avatar="🦉", is_default=True)
+        profile = Profile(name="Angelika", avatar="🦉", gender="female", is_default=True)
         species = Species(
             slug="testvogel",
             common_name="Testvogel",
@@ -40,6 +41,8 @@ class BackupRoundtripTest(unittest.TestCase):
             profile_id=profile.id,
             species_id=species.id,
             location_name="Garten",
+            date=dt.date(2026, 9, 1),
+            time=dt.time(7, 45),
         )
         db.add(observation)
         db.flush()
@@ -49,6 +52,8 @@ class BackupRoundtripTest(unittest.TestCase):
             observation_id=observation.id,
             storage_key="photos/test.jpg",
             original_filename="test.jpg",
+            date=dt.date(2026, 9, 1),
+            time=dt.time(7, 45),
         ))
         db.commit()
 
@@ -89,6 +94,9 @@ class BackupRoundtripTest(unittest.TestCase):
             self.assertEqual(photo.observation_id, observation.id)
             self.assertEqual(photo.profile_id, profile.id)
             self.assertEqual(profile.avatar, "🦉")
+            self.assertEqual(profile.gender, "female")
+            self.assertEqual(observation.time, dt.time(7, 45))
+            self.assertEqual(photo.time, dt.time(7, 45))
 
         engine.dispose()
 

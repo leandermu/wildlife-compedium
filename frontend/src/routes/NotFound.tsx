@@ -9,7 +9,7 @@ export function NotFound() {
         Vielleicht wurde sie herausgetrennt – oder es gab sie nie.
       </p>
       <Link to="/" className="link-quiet mt-6 inline-block">
-        Zurück zum Kompendium
+        Zurück zum Compedium
       </Link>
     </div>
   );

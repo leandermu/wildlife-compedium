@@ -1,4 +1,4 @@
-"""Macht aus den Wikipedia-Downloads Referenzplatten im Stil des Kompendiums.
+"""Macht aus den Wikipedia-Downloads Referenzplatten im Stil des Compediums.
 
 Die Platten sind absichtlich entsättigt und leicht ins Papier zurückgenommen:
 Sie zeigen, *was* zu finden ist, sehen aber sichtbar unfertig aus – das eigene

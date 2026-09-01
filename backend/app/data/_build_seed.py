@@ -91,7 +91,7 @@ s("Schwarzmilan", "Milvus migrans", "bird", "Habichtartige", "Greifvögel",
 s("Mäusebussard", "Buteo buteo", "bird", "Habichtartige", "Greifvögel",
   "46–58 cm", ["field", "forest"], BAY, 2,
   "Häufigster Greifvogel Deutschlands. Sitzt im Winter auf Zaunpfählen und "
-  "Feldrainen – ein guter erster Greifvogel fürs Kompendium.",
+  "Feldrainen – ein guter erster Greifvogel fürs Compedium.",
   wingspan="110–130 cm", weight="0,6–1,2 kg", tags=["greifvogel"])
 s("Turmfalke", "Falco tinnunculus", "bird", "Falken", "Greifvögel",
   "32–39 cm", ["field", "city"], BAY, 2,
@@ -277,7 +277,7 @@ s("Singdrossel", "Turdus philomelos", "bird", "Drosseln", "Sperlingsvögel",
 s("Alpendohle", "Pyrrhocorax graculus", "bird", "Rabenvögel", "Sperlingsvögel",
   "36–39 cm", ["alps"], BAY, 2,
   "Gelber Schnabel, rote Beine. Bettelt an jeder Gipfelbrotzeit – die einfachste "
-  "Alpenart des Kompendiums.", wingspan="65–74 cm", weight="200–250 g", tags=["alpen"])
+  "Alpenart des Compediums.", wingspan="65–74 cm", weight="200–250 g", tags=["alpen"])
 s("Alpenschneehuhn", "Lagopus muta", "bird", "Fasanenartige", "Hühnervögel",
   "34–36 cm", ["alps"], BAY, 5,
   "Im Winter reinweiß, im Sommer felsgrau gesprenkelt. Lebt oberhalb der "

@@ -1,5 +1,16 @@
 export type Status = "locked" | "unlocked" | "mastered";
 
+export interface Profile {
+  id: number;
+  name: string;
+  avatar: string;
+  is_default: boolean;
+  photo_count: number;
+  observation_count: number;
+  collected_species: number;
+  created_at: string;
+}
+
 export interface SpeciesListItem {
   id: number;
   slug: string;

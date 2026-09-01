@@ -20,7 +20,7 @@ from .text import normalize
 MASTERED_MIN_PHOTOS = 2
 
 
-def _photo_agg():
+def _photo_agg(profile_id: int):
     return (
         select(
             UserPhoto.species_id.label("sid"),
@@ -28,17 +28,19 @@ def _photo_agg():
             func.max(case((UserPhoto.is_best_photo.is_(True), 1), else_=0)).label("has_best"),
             func.max(UserPhoto.created_at).label("last_photo_at"),
         )
+        .where(UserPhoto.profile_id == profile_id)
         .group_by(UserPhoto.species_id)
         .subquery()
     )
 
 
-def _obs_agg():
+def _obs_agg(profile_id: int):
     return (
         select(
             Observation.species_id.label("sid"),
             func.count(Observation.id).label("obs_count"),
         )
+        .where(Observation.profile_id == profile_id)
         .group_by(Observation.species_id)
         .subquery()
     )
@@ -63,9 +65,10 @@ def derive_status(photo_count: int, has_best: bool) -> str:
 class SpeciesQuery:
     """Builder shared by the list endpoint, the facet counts and the exports."""
 
-    def __init__(self) -> None:
-        self.photos = _photo_agg()
-        self.obs = _obs_agg()
+    def __init__(self, profile_id: int) -> None:
+        self.profile_id = profile_id
+        self.photos = _photo_agg(profile_id)
+        self.obs = _obs_agg(profile_id)
         self.photo_count = func.coalesce(self.photos.c.photo_count, 0)
         self.has_best = func.coalesce(self.photos.c.has_best, 0)
         self.obs_count = func.coalesce(self.obs.c.obs_count, 0)
@@ -142,6 +145,8 @@ class SpeciesQuery:
             return stmt.order_by(Species.difficulty.desc(), Species.common_name.asc())
         if sort == "scientific":
             return stmt.order_by(Species.scientific_name.asc())
+        if sort == "created_desc":
+            return stmt.order_by(Species.created_at.desc(), Species.id.desc())
         if sort == "recent":
             return stmt.order_by(
                 self.photos.c.last_photo_at.desc().nullslast(), Species.common_name.asc()
@@ -156,7 +161,9 @@ class SpeciesQuery:
 
 
 # ---------------------------------------------------------------- photos ----
-def display_photos(db: Session, species_ids: Iterable[int]) -> dict[int, UserPhoto]:
+def display_photos(
+    db: Session, species_ids: Iterable[int], profile_id: int
+) -> dict[int, UserPhoto]:
     """One photo per species for the card: the best photo, else the oldest."""
     ids = list(species_ids)
     if not ids:
@@ -164,7 +171,10 @@ def display_photos(db: Session, species_ids: Iterable[int]) -> dict[int, UserPho
     rows = (
         db.execute(
             select(UserPhoto)
-            .where(UserPhoto.species_id.in_(ids))
+            .where(
+                UserPhoto.species_id.in_(ids),
+                UserPhoto.profile_id == profile_id,
+            )
             .order_by(
                 UserPhoto.species_id,
                 UserPhoto.is_best_photo.desc(),
@@ -186,8 +196,8 @@ def photo_out(photo: UserPhoto) -> dict[str, Any]:
         "id": photo.id,
         "species_id": photo.species_id,
         "observation_id": photo.observation_id,
-        "url": media_url(photo.storage_key),
-        "thumb_url": media_url(photo.thumb_key or photo.storage_key),
+        "url": media_url(photo.display_key or photo.storage_key),
+        "thumb_url": media_url(photo.thumb_key or photo.display_key or photo.storage_key),
         "original_filename": photo.original_filename,
         "date": photo.date,
         "location_name": photo.location_name,
@@ -225,14 +235,18 @@ def to_list_item(
     )
 
 
-def to_detail(sp: Species) -> SpeciesDetail:
+def to_detail(sp: Species, profile_id: int) -> SpeciesDetail:
+    profile_photos = [p for p in sp.photos if p.profile_id == profile_id]
+    profile_observations = [o for o in sp.observations if o.profile_id == profile_id]
     photos = sorted(
-        sp.photos,
+        profile_photos,
         key=lambda p: (not p.is_best_photo, p.date is None, p.date or p.created_at.date()),
     )
-    has_best = any(p.is_best_photo for p in sp.photos)
+    has_best = any(p.is_best_photo for p in profile_photos)
     display = photos[0] if photos else None
-    base = to_list_item(sp, len(sp.photos), len(sp.observations), has_best, display)
+    base = to_list_item(
+        sp, len(profile_photos), len(profile_observations), has_best, display
+    )
     return SpeciesDetail(
         **base.model_dump(),
         order_name=sp.order_name,
@@ -260,7 +274,7 @@ def to_detail(sp: Species) -> SpeciesDetail:
                     "has_photo": o.has_photo,
                     "created_at": o.created_at,
                 }
-                for o in sp.observations
+                for o in profile_observations
             ],
             key=lambda o: (o["date"] is None, o["date"] or o["created_at"].date()),
             reverse=True,

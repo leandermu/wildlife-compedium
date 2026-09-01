@@ -36,7 +36,7 @@ SEED = Path(_data_init).parent / "seed_species.json" if False else (
 )
 
 # Wikimedia verlangt einen aussagekräftigen User-Agent mit Kontaktmöglichkeit.
-UA = "WildlifeCompendium/0.1 (privates Familienprojekt; https://github.com/)"
+UA = "WildlifeCompedium/0.2 (https://github.com/leandermu/wildlife-compedium)"
 THUMB_WIDTH = 1400
 PAUSE = 0.12  # freundlich bleiben
 
@@ -152,7 +152,7 @@ def download(url: str, dest: Path) -> int:
 #
 # Gesucht wird ausschließlich in den Bildern, die im Artikel der Art selbst
 # eingebunden sind – eine Commons-Volltextsuche liefert sonst Eier, Schädel und
-# Präparate, die im Kompendium nichts verloren haben. Zusätzlich filtert eine
+# Präparate, die im Compedium nichts verloren haben. Zusätzlich filtert eine
 # Sperrliste genau solche Motive aus.
 # --------------------------------------------------------------------------
 MIN_WIDTH = 1000

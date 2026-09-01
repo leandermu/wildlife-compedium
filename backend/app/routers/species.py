@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import Species
+from ..profiles import CurrentProfile
 from ..queries import SpeciesQuery, display_photos, to_detail, to_list_item
 from ..schemas import (
     Facets,
@@ -35,6 +36,7 @@ ListFilter = Annotated[list[str] | None, Query()]
 @router.get("", response_model=Page[SpeciesListItem])
 def list_species(
     db: Annotated[Session, Depends(get_db)],
+    profile: CurrentProfile,
     q: str | None = None,
     group: ListFilter = None,
     habitat: ListFilter = None,
@@ -48,7 +50,7 @@ def list_species(
     page: int = Query(1, ge=1),
     page_size: int = Query(60, ge=1, le=500),
 ) -> Page[SpeciesListItem]:
-    sq = SpeciesQuery()
+    sq = SpeciesQuery(profile.id)
     filters = dict(
         q=q, group=group, habitat=habitat, region=region, family=family, tag=tag,
         difficulty=difficulty, status=status, include_inactive=include_inactive,
@@ -67,7 +69,7 @@ def list_species(
     stmt = sq.apply_sort(stmt, sort).offset((page - 1) * page_size).limit(page_size)
     rows = db.execute(stmt).all()
 
-    photos = display_photos(db, [r[0].id for r in rows])
+    photos = display_photos(db, [r[0].id for r in rows], profile.id)
     items = [
         to_list_item(sp, int(pc), int(oc), bool(hb), photos.get(sp.id))
         for sp, pc, hb, oc in rows
@@ -81,6 +83,7 @@ def list_species(
 @router.get("/facets", response_model=Facets)
 def facets(
     db: Annotated[Session, Depends(get_db)],
+    profile: CurrentProfile,
     q: str | None = None,
     group: ListFilter = None,
     habitat: ListFilter = None,
@@ -92,7 +95,7 @@ def facets(
 ) -> Facets:
     """Counts for every filter dimension, each computed *without* the filter it
     describes, so the sidebar never shows a dead end."""
-    sq = SpeciesQuery()
+    sq = SpeciesQuery(profile.id)
     active = dict(q=q, group=group, habitat=habitat, region=region, family=family,
                   tag=tag, difficulty=difficulty, status=status)
 
@@ -172,13 +175,17 @@ def _get_species(db: Session, key: str) -> Species:
 
 
 @router.get("/{key}", response_model=SpeciesDetail)
-def get_species(key: str, db: Annotated[Session, Depends(get_db)]) -> SpeciesDetail:
-    return to_detail(_get_species(db, key))
+def get_species(
+    key: str, db: Annotated[Session, Depends(get_db)], profile: CurrentProfile
+) -> SpeciesDetail:
+    return to_detail(_get_species(db, key), profile.id)
 
 
 @router.post("/from-wikipedia", response_model=SpeciesDetail, status_code=201)
 def create_species_from_wikipedia(
-    payload: WikipediaSpeciesCreate, db: Annotated[Session, Depends(get_db)]
+    payload: WikipediaSpeciesCreate,
+    db: Annotated[Session, Depends(get_db)],
+    profile: CurrentProfile,
 ):
     """Create a complete species record from a name and an article on Wikipedia."""
     try:
@@ -195,11 +202,15 @@ def create_species_from_wikipedia(
     db.add(sp)
     db.commit()
     db.refresh(sp)
-    return to_detail(sp)
+    return to_detail(sp, profile.id)
 
 
 @router.post("", response_model=SpeciesDetail, status_code=201)
-def create_species(payload: SpeciesCreate, db: Annotated[Session, Depends(get_db)]):
+def create_species(
+    payload: SpeciesCreate,
+    db: Annotated[Session, Depends(get_db)],
+    profile: CurrentProfile,
+):
     slug = payload.slug or slugify(payload.common_name)
     if db.execute(select(Species).where(Species.slug == slug)).scalar_one_or_none():
         raise HTTPException(409, f"Slug '{slug}' existiert bereits")
@@ -208,18 +219,23 @@ def create_species(payload: SpeciesCreate, db: Annotated[Session, Depends(get_db
     db.add(sp)
     db.commit()
     db.refresh(sp)
-    return to_detail(sp)
+    return to_detail(sp, profile.id)
 
 
 @router.patch("/{key}", response_model=SpeciesDetail)
-def update_species(key: str, payload: SpeciesUpdate, db: Annotated[Session, Depends(get_db)]):
+def update_species(
+    key: str,
+    payload: SpeciesUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    profile: CurrentProfile,
+):
     sp = _get_species(db, key)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(sp, field, value)
     sp.refresh_derived()
     db.commit()
     db.refresh(sp)
-    return to_detail(sp)
+    return to_detail(sp, profile.id)
 
 
 @router.delete("/{key}", status_code=204)

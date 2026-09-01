@@ -20,10 +20,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from .models import AchievementState, Species, UserPhoto
+from .models import ProfileAchievementState, Species, UserPhoto
 from .queries import SpeciesQuery
 from .vocab import GROUPS
 
@@ -40,7 +40,7 @@ def _tiered(id_, name, desc, icon, category, filt, thresholds):
 
 BUILTIN: list[dict[str, Any]] = [
     _tiered("bird_watcher", "Vogelbeobachterin",
-            "Sammle Vogelarten für dein Kompendium.", "🐦", "Sammlung",
+            "Sammle Vogelarten für dein Compedium.", "🐦", "Sammlung",
             {"group": ["bird"]}, [10, 25, 50, 100, 250]),
     _tiered("mammal_tracker", "Spurenleserin",
             "Säugetiere sind scheu – jedes Foto zählt doppelt.", "🦌", "Sammlung",
@@ -89,7 +89,7 @@ BUILTIN: list[dict[str, Any]] = [
     },
     {
         "id": "photo_volume", "name": "Fleißige Linse",
-        "description": "Gesamtzahl deiner Aufnahmen im Kompendium.",
+        "description": "Gesamtzahl deiner Aufnahmen im Compedium.",
         "icon": "📷", "kind": "achievement", "category": "Sammlung",
         "rule": {"type": "photos", "thresholds": [10, 50, 100, 500, 1000]},
     },
@@ -149,8 +149,8 @@ def load_definitions() -> list[dict[str, Any]]:
 
 
 # ------------------------------------------------------------- evaluation --
-def _collected_count(db: Session, filt: dict[str, Any]) -> int:
-    sq = SpeciesQuery()
+def _collected_count(db: Session, filt: dict[str, Any], profile_id: int) -> int:
+    sq = SpeciesQuery(profile_id)
     stmt = sq.apply_filters(
         sq.base(func.count(func.distinct(Species.id))),
         group=filt.get("group"), habitat=filt.get("habitat"), region=filt.get("region"),
@@ -160,10 +160,18 @@ def _collected_count(db: Session, filt: dict[str, Any]) -> int:
     return int(db.execute(stmt).scalar() or 0)
 
 
-def _species_progress(db: Session, slugs: list[str]) -> tuple[int, list[dict]]:
+def _species_progress(
+    db: Session, slugs: list[str], profile_id: int
+) -> tuple[int, list[dict]]:
     rows = db.execute(
         select(Species.slug, Species.common_name, func.count(UserPhoto.id))
-        .outerjoin(UserPhoto, UserPhoto.species_id == Species.id)
+        .outerjoin(
+            UserPhoto,
+            and_(
+                UserPhoto.species_id == Species.id,
+                UserPhoto.profile_id == profile_id,
+            ),
+        )
         .where(Species.slug.in_(slugs))
         .group_by(Species.id)
     ).all()
@@ -178,21 +186,32 @@ def _species_progress(db: Session, slugs: list[str]) -> tuple[int, list[dict]]:
     return done, detail
 
 
-def _seasonal_progress(db: Session, from_month: int, to_month: int) -> int:
+def _seasonal_progress(
+    db: Session, from_month: int, to_month: int, profile_id: int
+) -> int:
     months = (
         list(range(from_month, to_month + 1))
         if from_month <= to_month
         else list(range(from_month, 13)) + list(range(1, to_month + 1))
     )
     rows = db.execute(
-        select(UserPhoto.species_id, UserPhoto.date).where(UserPhoto.date.is_not(None))
+        select(UserPhoto.species_id, UserPhoto.date).where(
+            UserPhoto.date.is_not(None), UserPhoto.profile_id == profile_id
+        )
     ).all()
     return len({sid for sid, d in rows if d and d.month in months})
 
 
-def evaluate(db: Session) -> list[dict[str, Any]]:
+def evaluate(db: Session, profile_id: int) -> list[dict[str, Any]]:
     definitions = load_definitions()
-    state = {s.achievement_id: s for s in db.execute(select(AchievementState)).scalars()}
+    state = {
+        s.achievement_id: s
+        for s in db.execute(
+            select(ProfileAchievementState).where(
+                ProfileAchievementState.profile_id == profile_id
+            )
+        ).scalars()
+    }
     results: list[dict[str, Any]] = []
     dirty = False
 
@@ -203,25 +222,32 @@ def evaluate(db: Session) -> list[dict[str, Any]]:
         tiers: list[dict] = []
 
         if rtype == "count":
-            progress = _collected_count(db, rule.get("filter", {}))
+            progress = _collected_count(db, rule.get("filter", {}), profile_id)
             thresholds = rule.get("thresholds", [1])
         elif rtype == "species":
-            progress, species_detail = _species_progress(db, rule["slugs"])
+            progress, species_detail = _species_progress(db, rule["slugs"], profile_id)
             thresholds = [len(rule["slugs"])]
         elif rtype == "photos":
-            progress = int(db.execute(select(func.count(UserPhoto.id))).scalar() or 0)
+            progress = int(db.execute(
+                select(func.count(UserPhoto.id)).where(UserPhoto.profile_id == profile_id)
+            ).scalar() or 0)
             thresholds = rule.get("thresholds", [1])
         elif rtype == "locations":
             progress = int(
                 db.execute(
                     select(func.count(func.distinct(func.lower(UserPhoto.location_name))))
-                    .where(UserPhoto.location_name != "")
+                    .where(
+                        UserPhoto.location_name != "",
+                        UserPhoto.profile_id == profile_id,
+                    )
                 ).scalar()
                 or 0
             )
             thresholds = rule.get("thresholds", [1])
         elif rtype == "seasonal":
-            progress = _seasonal_progress(db, rule["from_month"], rule["to_month"])
+            progress = _seasonal_progress(
+                db, rule["from_month"], rule["to_month"], profile_id
+            )
             thresholds = [rule.get("target", 1)]
         else:
             continue
@@ -239,7 +265,11 @@ def evaluate(db: Session) -> list[dict[str, Any]]:
         unlocked_at = st.unlocked_at if st else None
         if unlocked and (st is None or st.tier < current_tier):
             if st is None:
-                st = AchievementState(achievement_id=d["id"], tier=current_tier)
+                st = ProfileAchievementState(
+                    profile_id=profile_id,
+                    achievement_id=d["id"],
+                    tier=current_tier,
+                )
                 db.add(st)
                 unlocked_at = st.unlocked_at = dt.datetime.now(dt.timezone.utc)
             else:
@@ -263,6 +293,6 @@ def evaluate(db: Session) -> list[dict[str, Any]]:
     return results
 
 
-def summary(db: Session) -> tuple[int, int]:
-    items = evaluate(db)
+def summary(db: Session, profile_id: int) -> tuple[int, int]:
+    items = evaluate(db, profile_id)
     return sum(1 for i in items if i["unlocked"]), len(items)

@@ -12,6 +12,27 @@ class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ------------------------------------------------------------------- profiles
+class ProfileCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
+class ProfileUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    avatar: str | None = Field(default=None, min_length=1, max_length=20)
+
+
+class ProfileOut(ORMModel):
+    id: int
+    name: str
+    avatar: str = "🐾"
+    is_default: bool = False
+    photo_count: int = 0
+    observation_count: int = 0
+    collected_species: int = 0
+    created_at: dt.datetime
+
+
 # --------------------------------------------------------------------- photos
 class PhotoBase(BaseModel):
     date: dt.date | None = None

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import type { Achievement } from "../types";
-import { ProgressBar, SectionTitle, Spinner } from "../components/ui";
+import { ProgressBar, Spinner } from "../components/ui";
 import { formatDate } from "../lib/format";
 
 export function AchievementsPage() {
@@ -14,36 +14,24 @@ export function AchievementsPage() {
 
   if (!items) return <Spinner />;
 
-  const achievements = items.filter((i) => i.kind === "achievement");
-  const quests = items.filter((i) => i.kind === "quest");
   const unlocked = items.filter((i) => i.unlocked).length;
 
   return (
-    <div className="animate-fade-up space-y-12">
+    <div className="animate-fade-up">
       <header className="border-b border-rule pb-6 text-center">
         <p className="label-caps">Ehrentafel</p>
-        <h1 className="mt-2 font-serif text-4xl">Auszeichnungen &amp; Quests</h1>
+        <h1 className="mt-2 font-serif text-4xl">Auszeichnungen</h1>
         <p className="mt-2 text-ink-3">
           {unlocked} von {items.length} begonnen oder erreicht
         </p>
       </header>
 
-      <section>
-        <SectionTitle>Auszeichnungen</SectionTitle>
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {achievements.map((a) => (
-            <Card key={a.id} item={a} />
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <SectionTitle>Fotoquests</SectionTitle>
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {quests.map((a) => (
-            <Card key={a.id} item={a} />
-          ))}
-        </div>
+      <section className="mt-8 columns-1 gap-5 sm:columns-2 xl:columns-3">
+        {items.map((a) => (
+          <div key={a.id} className="mb-5 break-inside-avoid">
+            <Card item={a} />
+          </div>
+        ))}
       </section>
     </div>
   );

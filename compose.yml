@@ -19,7 +19,7 @@ services:
 
   backend:
     build: ./backend
-    image: wildlife-compendium-backend:latest
+    image: wildlife-compedium-backend:latest
     depends_on:
       db:
         condition: service_healthy
@@ -50,7 +50,7 @@ services:
   # selbst, sobald die Platten vorhanden sind.
   reference-images:
     build: ./backend
-    image: wildlife-compendium-backend:latest
+    image: wildlife-compedium-backend:latest
     depends_on:
       backend:
         condition: service_healthy
@@ -76,7 +76,7 @@ services:
   # für /api und /media (siehe frontend/Caddyfile).
   frontend:
     build: ./frontend
-    image: wildlife-compendium-frontend:latest
+    image: wildlife-compedium-frontend:latest
     depends_on:
       backend:
         condition: service_healthy

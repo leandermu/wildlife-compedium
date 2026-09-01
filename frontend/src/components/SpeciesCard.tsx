@@ -67,9 +67,6 @@ export function SpeciesCard({ species }: { species: SpeciesListItem }) {
               className="h-full w-full object-cover opacity-[0.62] mix-blend-multiply transition-all duration-500 group-hover:opacity-80 group-hover:scale-[1.02]"
             />
             <span className="pointer-events-none absolute inset-0 bg-paper/25" />
-            <span className="pointer-events-none absolute bottom-1.5 right-2 text-[9px] uppercase tracking-[0.14em] text-ink-3/70">
-              Referenz
-            </span>
           </>
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-paper-2 text-ink-3">

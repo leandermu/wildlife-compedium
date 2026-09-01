@@ -21,7 +21,7 @@ export function Dashboard() {
   if (error) {
     return (
       <div className="paper-card mx-auto max-w-lg rounded-sm p-8 text-center">
-        <h2 className="font-serif text-xl">Keine Verbindung zum Kompendium</h2>
+        <h2 className="font-serif text-xl">Keine Verbindung zum Compedium</h2>
         <p className="mt-2 text-sm text-ink-3">{error}</p>
         <p className="mt-4 text-sm text-ink-3">
           Läuft das Backend? <code className="text-ink-2">uvicorn app.main:app --reload</code>
@@ -29,7 +29,7 @@ export function Dashboard() {
       </div>
     );
   }
-  if (!data) return <Spinner label="Kompendium wird aufgeschlagen …" />;
+  if (!data) return <Spinner label="Compedium wird aufgeschlagen …" />;
 
   const pct = percent(data.collected, data.total_species);
 
@@ -47,7 +47,7 @@ export function Dashboard() {
         <div className="mx-auto mt-8 max-w-2xl">
           <ProgressBar collected={data.collected} total={data.total_species} thick />
           <div className="mt-2 flex justify-between text-[13px] text-ink-3">
-            <span>{pct} % des Kompendiums</span>
+            <span>{pct} % des Compediums</span>
             <span>noch {formatNumber(data.total_species - data.collected)} Arten</span>
           </div>
         </div>

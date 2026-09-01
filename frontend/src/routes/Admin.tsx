@@ -20,15 +20,17 @@ export function AdminPage() {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<SpeciesListItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [importInfo, setImportInfo] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [backupInfo, setBackupInfo] = useState<string | null>(null);
+  const [backupError, setBackupError] = useState(false);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const backupRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api.meta().then(setMeta);
   }, []);
 
   const refresh = () => {
-    api.species({ q: search || undefined, page_size: 24, sort: "name" }).then((r) => {
+    api.species({ q: search || undefined, page_size: 24, sort: "created_desc" }).then((r) => {
       setResults(r.items);
       setTotal(r.total);
     });
@@ -52,7 +54,7 @@ export function AdminPage() {
       if (!editing) {
         setIsImportingWikipedia(true);
         const imported = await api.createSpeciesFromWikipedia(form.common_name);
-        setMessage({ kind: "ok", text: `„${imported.common_name}" wurde mit Wikipedia-Daten angelegt.` });
+        setMessage({ kind: "ok", text: `„${imported.common_name}" wurde angelegt.` });
         setForm({ ...EMPTY });
         refresh();
         return;
@@ -98,19 +100,29 @@ export function AdminPage() {
     refresh();
   };
 
-  const doImport = async (file: File) => {
-    setImportInfo("Import läuft …");
-    try {
-      const r = await api.importFile(file);
-      setImportInfo(
-        `${r.created} neu, ${r.updated} aktualisiert, ${r.skipped} übersprungen` +
-          (r.errors.length ? ` – Fehler: ${r.errors.slice(0, 3).join("; ")}` : ""),
-      );
-      refresh();
-    } catch (err) {
-      setImportInfo(err instanceof Error ? err.message : "Import fehlgeschlagen");
+  const loadBackup = async (file: File) => {
+    if (!confirm(
+      "Backup laden?\n\nDer aktuelle Stand mit allen Arten, Profilen, Einträgen und Fotos wird vollständig durch das Backup ersetzt.",
+    )) {
+      if (backupRef.current) backupRef.current.value = "";
+      return;
     }
-    if (fileRef.current) fileRef.current.value = "";
+    setBackupLoading(true);
+    setBackupError(false);
+    setBackupInfo("Backup wird geprüft und geladen …");
+    try {
+      const result = await api.restoreBackup(file);
+      setBackupInfo(
+        `${result.species} Arten, ${result.profiles} Profile, ${result.observations} Begegnungen und ${result.photos} Fotos geladen. Die Seite wird neu geladen …`,
+      );
+      localStorage.removeItem("wc-profile-id");
+      window.setTimeout(() => window.location.reload(), 1200);
+    } catch (err) {
+      setBackupInfo(err instanceof Error ? err.message : "Backup konnte nicht geladen werden");
+      setBackupError(true);
+      setBackupLoading(false);
+    }
+    if (backupRef.current) backupRef.current.value = "";
   };
 
   return (
@@ -119,57 +131,9 @@ export function AdminPage() {
         <p className="label-caps">Datenpflege</p>
         <h1 className="mt-2 font-serif text-4xl">Verwaltung</h1>
         <p className="mt-2 text-ink-3">
-          Arten anlegen, bearbeiten, importieren und die gesamte Sammlung exportieren.
+          Arten anlegen und den gemeinsamen Artenkatalog pflegen.
         </p>
       </header>
-
-      {/* Export */}
-      <section>
-        <SectionTitle>Sichern &amp; Exportieren</SectionTitle>
-        <p className="mb-4 max-w-2xl text-[14px] text-ink-2">
-          Die Sammlung soll niemals von dieser App abhängen. Alle Daten lassen sich
-          jederzeit vollständig herausziehen.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          {[
-            ["ZIP mit allen Fotos", api.exportUrl("zip"), "Vollständige Sicherung"],
-            ["Arten als JSON", api.exportUrl("json"), "Komplette Datenbank"],
-            ["Arten als CSV", api.exportUrl("csv", "?what=species"), "Für Tabellen"],
-            ["Fotos als CSV", api.exportUrl("csv", "?what=photos"), "Fotoliste"],
-            ["Begegnungen als CSV", api.exportUrl("csv", "?what=observations"), "Beobachtungen"],
-          ].map(([label, href, hint]) => (
-            <a
-              key={label}
-              href={href}
-              className="rounded-sm border border-rule bg-paper px-4 py-2.5 transition-colors hover:border-rule-2 hover:bg-paper-2"
-            >
-              <span className="block text-[14px] text-ink">{label}</span>
-              <span className="block text-[12px] text-ink-3">{hint}</span>
-            </a>
-          ))}
-        </div>
-      </section>
-
-      {/* Import */}
-      <section>
-        <SectionTitle>Arten importieren</SectionTitle>
-        <div className="paper-card rounded-sm p-5">
-          <p className="mb-3 text-[14px] text-ink-2">
-            CSV oder JSON mit den Spalten <code>common_name</code>, <code>scientific_name</code>,{" "}
-            <code>group</code>, <code>family</code>, <code>habitats</code>,{" "}
-            <code>regions</code>, <code>difficulty</code> … Mehrfachwerte per Komma.
-            Bestehende Arten werden anhand des Namens aktualisiert.
-          </p>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".csv,.json,text/csv,application/json"
-            onChange={(e) => e.target.files?.[0] && doImport(e.target.files[0])}
-            className="block w-full text-[14px] file:mr-3 file:rounded-sm file:border file:border-rule-2 file:bg-paper-2 file:px-4 file:py-2 file:text-ink-2 hover:file:bg-paper-3"
-          />
-          {importInfo && <p className="mt-3 text-[13px] text-moss-2">{importInfo}</p>}
-        </div>
-      </section>
 
       {/* Formular */}
       <section>
@@ -196,7 +160,7 @@ export function AdminPage() {
             <>
               <p className="max-w-2xl text-[14px] text-ink-2">
                 Gib nur den Namen ein. Beschreibung, Einordnung und Referenzbild werden aus
-                Wikipedia übernommen; das Bild wird automatisch im Stil des Kompendiums bearbeitet.
+                Wikipedia übernommen; das Bild wird automatisch im Stil des Compediums bearbeitet.
               </p>
               <Input label="Name des Tiers *" value={form.common_name} required
                 placeholder="z. B. Eisvogel"
@@ -279,14 +243,14 @@ export function AdminPage() {
             disabled={isImportingWikipedia}
             className="rounded-sm bg-moss px-6 py-2.5 text-[15px] text-paper hover:bg-moss-2"
           >
-            {isImportingWikipedia ? "Wikipedia wird abgefragt …" : editing ? "Änderungen speichern" : "Von Wikipedia anlegen"}
+            {isImportingWikipedia ? "Wird angelegt …" : editing ? "Änderungen speichern" : "Anlegen"}
           </button>
         </form>
       </section>
 
       {/* Liste */}
       <section>
-        <SectionTitle right={<span className="text-[13px] text-ink-3">{formatNumber(total)} Arten insgesamt</span>}>
+        <SectionTitle right={<span className="text-[13px] text-ink-3">{formatNumber(total)} Arten · neueste zuerst</span>}>
           Arten bearbeiten
         </SectionTitle>
         <input
@@ -329,6 +293,48 @@ export function AdminPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      {/* Backup */}
+      <section className="border-t border-rule pt-10">
+        <SectionTitle>Backup</SectionTitle>
+        <div className="paper-card grid gap-5 rounded-sm p-5 md:grid-cols-2">
+          <div>
+            <h3 className="font-serif text-xl text-ink">Backup speichern</h3>
+            <p className="mt-1.5 text-[14px] leading-6 text-ink-2">
+              Sichert den kompletten Stand: alle Profile, Arten, Begegnungen, Fotos,
+              Vorschaubilder und Auszeichnungen.
+            </p>
+            <a
+              href={api.backupUrl()}
+              className="mt-4 inline-flex rounded-sm bg-moss px-5 py-2.5 text-[14px] text-paper transition hover:bg-moss-2"
+            >
+              Backup speichern
+            </a>
+          </div>
+
+          <div className="border-t border-rule pt-5 md:border-l md:border-t-0 md:pl-5 md:pt-0">
+            <h3 className="font-serif text-xl text-ink">Backup laden</h3>
+            <p className="mt-1.5 text-[14px] leading-6 text-ink-2">
+              Stellt einen zuvor gesicherten Gesamtstand wieder her und ersetzt den
+              derzeitigen Inhalt vollständig.
+            </p>
+            <input
+              ref={backupRef}
+              type="file"
+              accept=".wcbackup,.zip,application/zip"
+              disabled={backupLoading}
+              onChange={(event) => event.target.files?.[0] && loadBackup(event.target.files[0])}
+              className="mt-4 block w-full text-[14px] text-ink-2 file:mr-3 file:rounded-sm file:border file:border-rule-2 file:bg-paper-2 file:px-4 file:py-2 file:text-ink-2 hover:file:bg-paper-3 disabled:opacity-50"
+            />
+          </div>
+
+          {backupInfo && (
+            <p className={`md:col-span-2 text-[13px] ${backupError ? "text-rust" : backupLoading ? "text-ochre" : "text-moss-2"}`}>
+              {backupInfo}
+            </p>
+          )}
         </div>
       </section>
     </div>

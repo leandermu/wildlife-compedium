@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
-import type { SpeciesDetail } from "../types";
+import type { Photo, SpeciesDetail } from "../types";
 import { PlaceholderArt } from "../components/PlaceholderArt";
 import { PhotoUpload } from "../components/PhotoUpload";
 import { DifficultyStars, LockIcon, SectionTitle, Spinner } from "../components/ui";
@@ -25,7 +25,8 @@ export function SpeciesDetailPage() {
   const { slug = "" } = useParams();
   const [species, setSpecies] = useState<SpeciesDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<Photo | null>(null);
+  const [lightboxInfo, setLightboxInfo] = useState(false);
   const [justUnlocked, setJustUnlocked] = useState(false);
   const [obsDate, setObsDate] = useState("");
   const [obsPlace, setObsPlace] = useState("");
@@ -65,6 +66,11 @@ export function SpeciesDetailPage() {
 
   const unlocked = species.status !== "locked";
   const hero = species.photos.find((p) => p.is_best_photo) ?? species.photos[0];
+
+  const openPhoto = (photo: Photo) => {
+    setLightboxInfo(false);
+    setLightbox(photo);
+  };
 
   const setBest = async (id: number) => {
     await api.updatePhoto(id, { is_best_photo: true });
@@ -123,7 +129,7 @@ export function SpeciesDetailPage() {
             <div className="aspect-[4/3] bg-paper-2">
               {unlocked && hero?.url ? (
                 <button
-                  onClick={() => setLightbox(hero.url)}
+                  onClick={() => openPhoto(hero)}
                   className="h-full w-full cursor-zoom-in"
                   aria-label="Foto vergrößern"
                 >
@@ -220,7 +226,7 @@ export function SpeciesDetailPage() {
                     }`}
                   >
                     <button
-                      onClick={() => setLightbox(p.url)}
+                      onClick={() => openPhoto(p)}
                       className="block aspect-square w-full cursor-zoom-in bg-paper-2"
                     >
                       {p.thumb_url && (
@@ -395,25 +401,155 @@ export function SpeciesDetailPage() {
 
       {lightbox && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/85 p-2 sm:p-6"
           onClick={() => setLightbox(null)}
           role="dialog"
           aria-modal="true"
+          aria-label={`Foto von ${species.common_name}`}
         >
-          <img
-            src={lightbox}
-            alt={species.common_name}
-            className="max-h-full max-w-full rounded-sm object-contain shadow-2xl"
-          />
-          <button
-            className="absolute right-6 top-6 text-3xl text-paper/80 hover:text-paper"
-            aria-label="Schließen"
+          <div
+            className="relative flex max-h-[calc(100vh-1rem)] max-w-[min(96rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-lg bg-ink shadow-2xl sm:max-h-[calc(100vh-3rem)] lg:flex-row"
+            onClick={(event) => event.stopPropagation()}
           >
-            ×
-          </button>
+            <div className="relative flex min-h-0 flex-1 items-center justify-center bg-black/25">
+              {lightbox.url && (
+                <img
+                  src={lightbox.url}
+                  alt={lightbox.caption || species.common_name}
+                  className="max-h-[70vh] max-w-full object-contain lg:max-h-[calc(100vh-3rem)]"
+                />
+              )}
+              <div className="absolute right-3 top-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLightboxInfo((visible) => !visible)}
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border text-lg font-serif italic backdrop-blur transition ${lightboxInfo ? "border-paper bg-paper text-ink" : "border-paper/40 bg-ink/55 text-paper hover:bg-ink/75"}`}
+                  aria-label={lightboxInfo ? "Bildinformationen ausblenden" : "Bildinformationen anzeigen"}
+                  aria-pressed={lightboxInfo}
+                  title="Bildinformationen"
+                >
+                  i
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLightbox(null)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-paper/40 bg-ink/55 text-2xl text-paper backdrop-blur transition hover:bg-ink/75"
+                  aria-label="Schließen"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            {lightboxInfo && <PhotoInfo photo={lightbox} />}
+          </div>
         </div>
       )}
     </article>
+  );
+}
+
+const META_LABELS: Record<string, string> = {
+  camera_make: "Hersteller",
+  camera_model: "Kamera",
+  lens_make: "Objektivhersteller",
+  lens_model: "Objektiv",
+  focal_length: "Brennweite",
+  aperture: "Blende",
+  shutter: "Belichtungszeit",
+  iso: "ISO",
+  software: "Software",
+  artist: "Fotograf/in",
+  copyright: "Copyright",
+  file_format: "Dateiformat",
+  color_mode: "Farbmodus",
+  width: "Breite",
+  height: "Höhe",
+};
+
+function metadataValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) return value.map(metadataValue).join(", ");
+  if (typeof value === "object" && "encoding" in value) return "Binärdaten gespeichert";
+  return JSON.stringify(value);
+}
+
+function flattenMetadata(value: unknown, prefix = ""): Array<[string, string]> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  return Object.entries(value as Record<string, unknown>).flatMap(([key, item]) => {
+    const label = prefix ? `${prefix} · ${key}` : key;
+    if (item && typeof item === "object" && !Array.isArray(item) && !("encoding" in item)) {
+      return flattenMetadata(item, label);
+    }
+    return [[label, metadataValue(item)] as [string, string]];
+  });
+}
+
+function PhotoInfo({ photo }: { photo: Photo }) {
+  const metadata = photo.photo_metadata ?? {};
+  const curated = Object.entries(META_LABELS)
+    .map(([key, label]) => [label, metadataValue(metadata[key])] as const)
+    .filter(([, value]) => value);
+  const exifRows = [
+    ...flattenMetadata(metadata.exif, "EXIF"),
+    ...flattenMetadata(metadata.exif_ifds, "EXIF"),
+  ];
+  const latitude = Number(metadata.latitude);
+  const longitude = Number(metadata.longitude);
+  const hasGps = Number.isFinite(latitude) && Number.isFinite(longitude);
+
+  return (
+    <aside className="max-h-[45vh] w-full shrink-0 overflow-y-auto bg-paper p-5 text-ink lg:max-h-[calc(100vh-3rem)] lg:w-96">
+      <p className="label-caps">Bildinformationen</p>
+      <h2 className="mt-1 truncate font-serif text-xl">{photo.original_filename || "Foto"}</h2>
+
+      <dl className="mt-4 divide-y divide-rule border-y border-rule text-[13px]">
+        {photo.date && <InfoRow label="Aufgenommen" value={formatDateLong(photo.date)} />}
+        {photo.location_name && <InfoRow label="Ort" value={photo.location_name} />}
+        {photo.caption && <InfoRow label="Notiz" value={photo.caption} />}
+        {curated.map(([label, value]) => (
+          <InfoRow key={label} label={label} value={value} />
+        ))}
+      </dl>
+
+      {hasGps && (
+        <a
+          href={`https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 inline-flex text-[13px] text-moss-2 underline decoration-rule-2 underline-offset-2"
+        >
+          Aufnahmeort in Google Maps öffnen ↗
+        </a>
+      )}
+
+      {exifRows.length > 0 && (
+        <details className="mt-5 border-t border-rule pt-4">
+          <summary className="cursor-pointer text-[13px] font-medium text-ink-2">
+            Alle EXIF-Daten ({exifRows.length})
+          </summary>
+          <dl className="mt-3 space-y-2 text-[11px]">
+            {exifRows.map(([label, value], index) => (
+              <div key={`${label}-${index}`} className="border-b border-rule/70 pb-2">
+                <dt className="break-words text-ink-3">{label}</dt>
+                <dd className="mt-0.5 break-words text-ink-2">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      )}
+    </aside>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid grid-cols-[7rem_1fr] gap-3 py-2">
+      <dt className="text-ink-3">{label}</dt>
+      <dd className="break-words text-ink-2">{value}</dd>
+    </div>
   );
 }
 

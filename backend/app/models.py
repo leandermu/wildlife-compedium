@@ -58,6 +58,18 @@ class SpeciesStatus(str, enum.Enum):
     mastered = "mastered"
 
 
+class Profile(Base):
+    """A local collection owner. Profiles deliberately have no credentials."""
+
+    __tablename__ = "profiles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    avatar: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_utcnow)
+
+
 class Species(Base):
     __tablename__ = "species"
 
@@ -139,6 +151,9 @@ class Observation(Base):
     __tablename__ = "observations"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    profile_id: Mapped[int | None] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     species_id: Mapped[int] = mapped_column(
         ForeignKey("species.id", ondelete="CASCADE"), index=True
     )
@@ -166,6 +181,9 @@ class UserPhoto(Base):
     __tablename__ = "user_photos"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    profile_id: Mapped[int | None] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     species_id: Mapped[int] = mapped_column(
         ForeignKey("species.id", ondelete="CASCADE"), index=True
     )
@@ -174,6 +192,7 @@ class UserPhoto(Base):
     )
 
     storage_key: Mapped[str] = mapped_column(String(500))
+    display_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     thumb_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     original_filename: Mapped[str] = mapped_column(String(300), default="")
 
@@ -198,6 +217,23 @@ class AchievementState(Base):
     __table_args__ = (UniqueConstraint("achievement_id", name="uq_achievement_id"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    achievement_id: Mapped[str] = mapped_column(String(120), index=True)
+    tier: Mapped[int] = mapped_column(Integer, default=0)
+    unlocked_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class ProfileAchievementState(Base):
+    """Achievement progress per profile; the old table stays readable for upgrades."""
+
+    __tablename__ = "profile_achievement_state"
+    __table_args__ = (
+        UniqueConstraint("profile_id", "achievement_id", name="uq_profile_achievement_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profile_id: Mapped[int] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
     achievement_id: Mapped[str] = mapped_column(String(120), index=True)
     tier: Mapped[int] = mapped_column(Integer, default=0)
     unlocked_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_utcnow)

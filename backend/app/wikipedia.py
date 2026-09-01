@@ -13,6 +13,7 @@ import re
 import time
 import urllib.parse
 import urllib.request
+from functools import lru_cache
 from urllib.error import HTTPError
 from dataclasses import dataclass
 
@@ -20,7 +21,7 @@ from PIL import Image, ImageEnhance, ImageOps
 
 from .storage import get_storage
 
-USER_AGENT = "WildlifeCompendium/0.1 (private wildlife collection)"
+USER_AGENT = "WildlifeCompedium/0.2 (https://github.com/leandermu/wildlife-compedium)"
 THUMB_WIDTH = 1400
 ASPECT = 4 / 3
 INK = (36, 42, 33)
@@ -61,11 +62,12 @@ def _api(host: str, params: dict) -> dict:
     raise RuntimeError("Wikipedia-Abfrage fehlgeschlagen")
 
 
+@lru_cache(maxsize=256)
 def _first_page(host: str, title: str) -> tuple[dict, str] | None:
     data = _api(host, {
         "action": "query", "titles": title, "redirects": "1",
-        "prop": "extracts|pageimages|pageprops|categories|links", "exintro": "1", "explaintext": "1",
-        "pithumbsize": THUMB_WIDTH, "cllimit": "max", "pllimit": "max", "plnamespace": 0,
+        "prop": "extracts|pageimages|pageprops|categories", "exintro": "1", "explaintext": "1",
+        "pithumbsize": THUMB_WIDTH, "cllimit": "max",
     })
     for page_id, page in data.get("query", {}).get("pages", {}).items():
         if page_id != "-1":
@@ -73,22 +75,66 @@ def _first_page(host: str, title: str) -> tuple[dict, str] | None:
     return None
 
 
+@lru_cache(maxsize=128)
+def _article_links(host: str, title: str) -> list[str]:
+    data = _api(host, {
+        "action": "query", "titles": title, "redirects": "1",
+        "prop": "links", "pllimit": 100, "plnamespace": 0,
+    })
+    return [
+        link.get("title", "")
+        for page in data.get("query", {}).get("pages", {}).values()
+        for link in page.get("links", [])
+    ]
+
+
 def _find_page(name: str) -> tuple[dict, str, str]:
+    """Find a zoological article, never merely the first similarly named hit."""
     for host in ("de.wikipedia.org", "en.wikipedia.org"):
-        hit = _first_page(host, name)
-        if hit:
-            page, title = hit
+        exact = _first_page(host, name)
+        if exact:
+            page, title = exact
+            if _is_animal_article(page):
+                return page, title, host
             resolved = _resolve_disambiguation(host, page, title, name)
-            return resolved[0], resolved[1], host
-        search = _api(host, {
-            "action": "query", "list": "search", "srsearch": name,
-            "srnamespace": 0, "srlimit": 1,
-        }).get("query", {}).get("search", [])
-        if search and (hit := _first_page(host, search[0]["title"])):
-            page, title = hit
-            resolved = _resolve_disambiguation(host, page, title, name)
-            return resolved[0], resolved[1], host
-    raise LookupError("Zu diesem Namen wurde kein Wikipedia-Artikel gefunden.")
+            if resolved != exact and _is_animal_article(resolved[0]):
+                return resolved[0], resolved[1], host
+
+        for query in (f'intitle:"{name}"', f'"{name}" Tier'):
+            search = _api(host, {
+                "action": "query", "list": "search", "srsearch": query,
+                "srnamespace": 0, "srlimit": 10,
+            }).get("query", {}).get("search", [])
+            candidate_titles = sorted(
+                {row["title"] for row in search}, key=_animal_title_priority
+            )
+            for candidate in candidate_titles:
+                hit = _first_page(host, candidate)
+                if not hit:
+                    continue
+                page, title = hit
+                if _is_animal_article(page):
+                    return page, title, host
+                resolved = _resolve_disambiguation(host, page, title, name)
+                if resolved != (page, title) and _is_animal_article(resolved[0]):
+                    return resolved[0], resolved[1], host
+    raise LookupError(
+        "Es wurde kein eindeutig passender Tierartikel gefunden. "
+        "Bitte den genaueren Artnamen eingeben."
+    )
+
+
+_ANIMAL_TITLE_MARKERS = (
+    "(art)", "(species)", "(tier)", "(animal)", "(vogel)", "(bird)",
+    "(schmetterling)", "(butterfly)", "(säugetier)", "(mammal)", "(fisch)",
+    "(fish)", "(insekt)", "(insect)", "(amphibie)", "(amphibian)",
+    "(reptil)", "(reptile)",
+)
+
+
+def _animal_title_priority(title: str) -> tuple[bool, int]:
+    folded = title.casefold()
+    return not any(marker in folded for marker in _ANIMAL_TITLE_MARKERS), len(title)
 
 
 def _resolve_disambiguation(host: str, page: dict, title: str, requested_name: str) -> tuple[dict, str]:
@@ -96,18 +142,44 @@ def _resolve_disambiguation(host: str, page: dict, title: str, requested_name: s
     categories = " ".join(c.get("title", "").lower() for c in page.get("categories", []))
     if "begriffsklärung" not in categories and "disambiguation" not in categories:
         return page, title
-    links = [link.get("title", "") for link in page.get("links", [])]
+    links = _article_links(host, title)
     name = requested_name.casefold()
     candidates = sorted(
-        (link for link in links if link.casefold().startswith(name)),
-        key=lambda link: ("(art)" not in link.casefold() and "(species)" not in link.casefold(), len(link)),
+        (link for link in links if name in link.casefold()),
+        key=lambda link: (
+            _animal_title_priority(link)[0],
+            not link.casefold().startswith((name, f"haus{name}")),
+            len(link),
+        ),
     )
     # A name-specific species link is unambiguous here.  Do not walk every
     # link on the page: that creates needless API traffic and rate limiting.
-    if candidates:
-        if hit := _first_page(host, candidates[0]):
+    for candidate in candidates[:8]:
+        if (hit := _first_page(host, candidate)) and _is_animal_article(hit[0]):
             return hit
     return page, title
+
+
+def _is_animal_article(page: dict) -> bool:
+    """Validate cheaply from article metadata before doing the detailed lineage lookup."""
+    categories = " ".join(c.get("title", "") for c in page.get("categories", [])).casefold()
+    if any(term in categories for term in ("begriffsklärung", "disambiguation")):
+        return False
+    lead = (page.get("extract") or "")[:1200].casefold()
+    evidence = f"{categories} {lead}"
+    animal_markers = (
+        "tierart", "säugetier", "saeugetier", "vogel", "fischart", "reptil",
+        "amphib", "insekt", "käfer", "kaefer", "libelle", "schmetterling",
+        "falter", "weichtier", "spinnentier", "krebstier", "haustier",
+        "wildtier", "zoolog",
+    )
+    non_animal_markers = (
+        "film", "fernsehserie", "musikalbum", "ortsteil", "familienname",
+        "bauwerk", "unternehmen", "software", "fahrzeug",
+    )
+    return any(marker in evidence for marker in animal_markers) and not any(
+        marker in evidence for marker in non_animal_markers
+    )
 
 
 _COLLAGE_MARKERS = ("collage", "montage", "mosaic", "gallery", "multiple")
@@ -147,15 +219,20 @@ def _strip(value: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html.unescape(value or ""))).strip()
 
 
-def _wikidata_taxonomy(entity_id: str | None) -> tuple[str, str, str, str]:
-    """Return scientific name and taxonomic classification."""
-    if not entity_id:
-        return "", "other", "", ""
+@lru_cache(maxsize=256)
+def _wikidata_entity(entity_id: str) -> dict:
     data = _api("www.wikidata.org", {
         "action": "wbgetentities", "ids": entity_id, "props": "claims|labels",
         "languages": "de|en",
     })
-    entity = data.get("entities", {}).get(entity_id, {})
+    return data.get("entities", {}).get(entity_id, {})
+
+
+def _wikidata_taxonomy(entity_id: str | None) -> tuple[str, str, str, str]:
+    """Return scientific name and taxonomic classification."""
+    if not entity_id:
+        return "", "other", "", ""
+    entity = _wikidata_entity(entity_id)
     claims = entity.get("claims", {})
 
     def claim_value(prop: str) -> str | None:
@@ -169,30 +246,26 @@ def _wikidata_taxonomy(entity_id: str | None) -> tuple[str, str, str, str]:
 
     scientific = claim_value("P225") or ""
 
-    family_id, order_id = claim_value("P171"), None
     seen: set[str] = set()
     group, family, order_name = "other", "", ""
     group_ids = {
-        "Q5113": "bird", "Q7377": "mammal", "Q7432": "insect",
-        "Q25344": "butterfly", "Q10811": "reptile", "Q10876": "amphibian", "Q152": "fish",
+        "Q5113": "bird", "Q7377": "mammal", "Q1390": "insect",
+        "Q28319": "butterfly", "Q10811": "reptile", "Q10876": "amphibian",
+        "Q152": "fish",
     }
-    current = family_id
+    current = entity_id
     # The parent-taxon chain supplies order/family/class without relying on a
     # brittle Wikipedia infobox parser.
-    for _ in range(6):
+    for _ in range(14):
         if not current or current in seen:
             break
         seen.add(current)
         try:
-            node_data = _api("www.wikidata.org", {
-                "action": "wbgetentities", "ids": current, "props": "claims|labels",
-                "languages": "de|en",
-            })
+            node = _wikidata_entity(current)
         except Exception:
             # Wikidata can throttle a long lineage lookup.  Keep the article
             # import usable with the details obtained up to this point.
             break
-        node = node_data.get("entities", {}).get(current, {})
         label = (node.get("labels", {}).get("de") or node.get("labels", {}).get("en") or {}).get("value", "")
         rank = ""
         try:
@@ -204,7 +277,12 @@ def _wikidata_taxonomy(entity_id: str | None) -> tuple[str, str, str, str]:
         elif rank == "Q36602" and not order_name:  # order
             order_name = label
         if current in group_ids:
-            group = group_ids[current]
+            candidate_group = group_ids[current]
+            # Lepidoptera is more specific than the later Insecta ancestor.
+            if group == "other" or candidate_group == "butterfly":
+                group = candidate_group
+        if group != "other" and family and order_name:
+            break
         try:
             parent = node["claims"]["P171"][0]["mainsnak"]["datavalue"]["value"]
             current = parent.get("id") if isinstance(parent, dict) else parent
@@ -217,12 +295,12 @@ def _article_text(host: str, title: str) -> str:
     """Read the article body only for facts; the stored description stays concise."""
     data = _api(host, {
         "action": "query", "titles": title, "redirects": "1", "prop": "extracts",
-        "explaintext": "1", "exchars": 12000,
+        "explaintext": "1",
     })
     return next(iter(data.get("query", {}).get("pages", {}).values()), {}).get("extract", "")
 
 
-_UNIT = r"(?:Millimeter|Zentimeter|Meter|Gramm|Kilogramm|mm|cm|kg|g|m)"
+_UNIT = r"(?:Millimetern?|Zentimetern?|Metern?|Gramm|Kilogramm|mm|cm|kg|g|m)"
 _MEASUREMENT = rf"\d+(?:[,.]\d+)?(?:\s*(?:–|-|bis)\s*\d+(?:[,.]\d+)?)?\s*{_UNIT}"
 
 
@@ -230,24 +308,56 @@ def _fact(text: str, labels: str) -> str:
     # Restrict the search to a short window after the matching label. This
     # avoids accidentally picking up values from a cited comparison species.
     match = re.search(
-        rf"(?:{labels})(?:\s+(?:von|zwischen|bis|zu|etwa|ca\.?|rund|beträgt|liegt|bei|und))*\s*"
+        rf"(?:{labels})[^.\n:;]{{0,90}}?"
         rf"({_MEASUREMENT})",
         text[:6000], re.IGNORECASE,
     )
     if not match:
         return ""
     value = re.sub(r"\s+", " ", match.group(1)).strip()
-    return (value.replace("Zentimeter", "cm").replace("Millimeter", "mm")
-            .replace("Kilogramm", "kg").replace("Gramm", "g").replace("Meter", "m"))
+    for pattern, unit in (
+        (r"\bZentimetern?\b", "cm"), (r"\bMillimetern?\b", "mm"),
+        (r"\bKilogramm\b", "kg"), (r"\bGramm\b", "g"),
+        (r"\bMetern?\b", "m"),
+    ):
+        value = re.sub(pattern, unit, value, flags=re.IGNORECASE)
+    return value
 
 
 def _facts_from_article(text: str) -> tuple[str, str, str]:
     """Extract only explicitly stated species facts; unknown is safer than guessed."""
+    size = _fact(
+        text,
+        r"Kopf[- ]?Rumpf[- ]?Länge|Kopfrumpflänge|Körperlänge|Gesamtlänge|Körpergröße",
+    ) or _fact(text, r"Schulterhöhe|Widerristhöhe|Stockmaß")
     return (
-        _fact(text, r"(?:Körper)?länge|Körpergröße"),
+        size,
         _fact(text, r"Flügelspannweite|Spannweite"),
         _fact(text, r"Körpergewicht|Gewicht|wiegt"),
     )
+
+
+def _short_description(text: str, common_name: str, max_chars: int = 360) -> str:
+    """Turn the lead into a compact one- or two-sentence field-guide summary."""
+    clean = re.sub(r"\[[^\]]{1,20}\]", "", _strip(text))
+    clean = re.sub(r"\s*\([^)]*(?:Aussprache|Hörbeispiel|anhören)[^)]*\)", "", clean)
+    sentences = re.split(r"(?<=[.!?])\s+(?=[A-ZÄÖÜ])", clean)
+    picked: list[str] = []
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        candidate = " ".join(picked + [sentence])
+        if len(candidate) > max_chars:
+            break
+        picked.append(sentence)
+        if len(picked) == 2 or len(candidate) >= 180:
+            break
+    summary = " ".join(picked)
+    if summary:
+        return summary
+    fallback = clean[:max_chars].rsplit(" ", 1)[0].rstrip(" ,;:")
+    return f"{fallback}…" if fallback else f"Kurzbeschreibung zu {common_name}."
 
 
 def _difficulty_from_article(text: str) -> tuple[int, str]:
@@ -306,10 +416,17 @@ def _image_metadata(filename: str) -> tuple[str, str]:
 
 def _group_from_categories(page: dict) -> str:
     """Useful fallback while Wikidata is temporarily throttling."""
-    text = " ".join(category.get("title", "") for category in page.get("categories", [])).lower()
+    text = (
+        " ".join(category.get("title", "") for category in page.get("categories", []))
+        + " " + (page.get("extract") or "")[:1600]
+    ).casefold()
     for needles, group in (
         (("vogel", "alken", "eulen", "enten", "falken"), "bird"),
-        (("säugetier", "saeugetier", "wal", "nager", "katzen"), "mammal"),
+        ((
+            "säugetier", "saeugetier", "pferd", "hundeart", "hundefamilie",
+            "katzen", "wal", "nager", "huftier", "raubtier", "primat",
+            "fledermaus", "hirsch", "bären",
+        ), "mammal"),
         (("schmetterling", "falter"), "butterfly"),
         (("insekten", "käfer", "kaefer", "libelle", "biene"), "insect"),
         (("amphib", "lurch"), "amphibian"),
@@ -367,7 +484,8 @@ def import_from_wikipedia(name: str) -> WikipediaSpecies:
             credit, source = "Wikimedia Commons", ""
     article_url = f"https://{host}/wiki/{urllib.parse.quote(title.replace(' ', '_'))}"
     return WikipediaSpecies(
-        common_name=common_name, scientific_name=scientific, description=(page.get("extract") or "").strip(),
+        common_name=common_name, scientific_name=scientific,
+        description=_short_description(page.get("extract") or article_text, common_name),
         group=group, family=family, order_name=order_name, size=size, wingspan=wingspan,
         weight=weight, difficulty=difficulty, rarity=rarity, reference_image=image_key,
         reference_thumb=thumb_key, reference_credit=credit, reference_source=source or article_url,

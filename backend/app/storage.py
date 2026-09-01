@@ -15,7 +15,7 @@ from typing import BinaryIO
 
 from .config import settings
 
-ALLOWED_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".tif", ".tiff", ".heic"}
+ALLOWED_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".tif", ".tiff", ".heic", ".heif"}
 
 
 class Storage(ABC):

@@ -1,0 +1,135 @@
+import io
+import json
+import tempfile
+import unittest
+import zipfile
+from pathlib import Path
+from unittest.mock import patch
+
+from sqlalchemy import create_engine, func, select
+from sqlalchemy.orm import Session
+from starlette.datastructures import UploadFile
+
+from app.db import Base
+from app.models import Observation, Profile, Species, UserPhoto
+from app.routers.backup import (
+    _load_manifest,
+    _manifest,
+    _replace_database,
+    load_backup,
+    save_backup,
+    _stage_media,
+    _validate_relations,
+)
+from app.storage import LocalStorage
+
+
+class BackupRoundtripTest(unittest.TestCase):
+    @staticmethod
+    def _collection(db: Session) -> None:
+        profile = Profile(name="Angelika", avatar="🦉", is_default=True)
+        species = Species(
+            slug="testvogel",
+            common_name="Testvogel",
+            scientific_name="Avis testis",
+            group="bird",
+        )
+        db.add_all([profile, species])
+        db.flush()
+        observation = Observation(
+            profile_id=profile.id,
+            species_id=species.id,
+            location_name="Garten",
+        )
+        db.add(observation)
+        db.flush()
+        db.add(UserPhoto(
+            profile_id=profile.id,
+            species_id=species.id,
+            observation_id=observation.id,
+            storage_key="photos/test.jpg",
+            original_filename="test.jpg",
+        ))
+        db.commit()
+
+    def test_complete_roundtrip_keeps_relations_and_media(self) -> None:
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(engine)
+
+        with Session(engine) as db:
+            self._collection(db)
+            data = _manifest(db)
+
+        archive_bytes = io.BytesIO()
+        with zipfile.ZipFile(archive_bytes, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("backup.json", json.dumps(data, ensure_ascii=False))
+            archive.writestr("media/photos/test.jpg", b"photo-data")
+        archive_bytes.seek(0)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with zipfile.ZipFile(archive_bytes) as archive:
+                restored = _load_manifest(archive)
+                names = {item.filename for item in archive.infolist() if not item.is_dir()}
+                _validate_relations(restored, names)
+                stage = _stage_media(archive, Path(temp_dir))
+            self.assertEqual((stage / "photos/test.jpg").read_bytes(), b"photo-data")
+
+        with Session(engine) as db:
+            db.add(Species(slug="spaeter", common_name="Später", group="other"))
+            db.commit()
+            _replace_database(db, restored)
+
+        with Session(engine) as db:
+            self.assertEqual(db.scalar(select(func.count(Profile.id))), 1)
+            self.assertEqual(db.scalar(select(func.count(Species.id))), 1)
+            photo = db.scalar(select(UserPhoto))
+            observation = db.scalar(select(Observation))
+            profile = db.scalar(select(Profile))
+            self.assertIsNotNone(photo)
+            self.assertEqual(photo.observation_id, observation.id)
+            self.assertEqual(photo.profile_id, profile.id)
+            self.assertEqual(profile.avatar, "🦉")
+
+        engine.dispose()
+
+    def test_save_and_load_endpoints_replace_database_and_media_together(self) -> None:
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(engine)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            media_root = Path(temp_dir) / "media"
+            media_file = media_root / "photos/test.jpg"
+            media_file.parent.mkdir(parents=True)
+            media_file.write_bytes(b"original-photo")
+            storage = LocalStorage(media_root, "/media")
+
+            with patch("app.routers.backup.get_storage", return_value=storage):
+                with Session(engine) as db:
+                    self._collection(db)
+                    response = save_backup(db)
+                    archive_path = Path(response.path)
+                    archive_bytes = archive_path.read_bytes()
+                    archive_path.unlink()
+
+                media_file.write_bytes(b"changed-photo")
+                (media_root / "extra.txt").write_text("remove me", encoding="utf-8")
+                with Session(engine) as db:
+                    db.add(Species(slug="spaeter", common_name="Später", group="other"))
+                    db.commit()
+                    result = load_backup(
+                        UploadFile(io.BytesIO(archive_bytes), filename="backup.wcbackup"),
+                        db,
+                    )
+
+            self.assertEqual(result["species"], 1)
+            self.assertEqual(media_file.read_bytes(), b"original-photo")
+            self.assertFalse((media_root / "extra.txt").exists())
+            with Session(engine) as db:
+                self.assertEqual(db.scalar(select(func.count(Species.id))), 1)
+                self.assertEqual(db.scalar(select(func.count(UserPhoto.id))), 1)
+
+        engine.dispose()
+
+
+if __name__ == "__main__":
+    unittest.main()

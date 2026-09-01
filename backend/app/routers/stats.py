@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from .. import achievements as ach
 from ..db import get_db
 from ..models import Observation, Species, UserPhoto
+from ..profiles import CurrentProfile
 from ..queries import MASTERED_MIN_PHOTOS, SpeciesQuery, display_photos
 from ..schemas import ChallengeHint, DashboardOut, ProgressBucket, RecentUnlock
 from ..storage import media_url
@@ -22,9 +23,9 @@ def meta() -> dict:
     return meta_payload()
 
 
-def _bucket_counts(db: Session) -> list[tuple]:
+def _bucket_counts(db: Session, profile_id: int) -> list[tuple]:
     """species rows with their photo count — one query, used for every bucket."""
-    sq = SpeciesQuery()
+    sq = SpeciesQuery(profile_id)
     stmt = sq.apply_filters(
         sq.base(Species.group, Species.regions, Species.difficulty, sq.photo_count, sq.has_best)
     )
@@ -32,8 +33,10 @@ def _bucket_counts(db: Session) -> list[tuple]:
 
 
 @router.get("/dashboard", response_model=DashboardOut)
-def dashboard(db: Annotated[Session, Depends(get_db)]) -> DashboardOut:
-    rows = _bucket_counts(db)
+def dashboard(
+    db: Annotated[Session, Depends(get_db)], profile: CurrentProfile
+) -> DashboardOut:
+    rows = _bucket_counts(db, profile.id)
 
     total = len(rows)
     collected = sum(1 for r in rows if r[3] > 0)
@@ -71,6 +74,7 @@ def dashboard(db: Annotated[Session, Depends(get_db)]) -> DashboardOut:
     # last unlocked species, newest first
     recent_rows = db.execute(
         select(UserPhoto.species_id, func.max(UserPhoto.created_at).label("last"))
+        .where(UserPhoto.profile_id == profile.id)
         .group_by(UserPhoto.species_id)
         .order_by(func.max(UserPhoto.created_at).desc())
         .limit(8)
@@ -81,7 +85,7 @@ def dashboard(db: Annotated[Session, Depends(get_db)]) -> DashboardOut:
         species = {
             s.id: s for s in db.execute(select(Species).where(Species.id.in_(ids))).scalars()
         }
-        photos = display_photos(db, ids)
+        photos = display_photos(db, ids, profile.id)
         for sid, _last in recent_rows:
             sp = species.get(sid)
             if not sp:
@@ -98,7 +102,7 @@ def dashboard(db: Annotated[Session, Depends(get_db)]) -> DashboardOut:
 
     # "Nächste Herausforderungen": families/habitats where she is closest to done
     challenges: list[ChallengeHint] = []
-    sq = SpeciesQuery()
+    sq = SpeciesQuery(profile.id)
     fam_stmt = sq.apply_filters(
         sq.base(
             Species.family,
@@ -120,14 +124,18 @@ def dashboard(db: Annotated[Session, Depends(get_db)]) -> DashboardOut:
     challenges.sort(key=lambda c: c.remaining)
     challenges = challenges[:6]
 
-    unlocked_ach, total_ach = ach.summary(db)
+    unlocked_ach, total_ach = ach.summary(db, profile.id)
 
     return DashboardOut(
         total_species=total,
         collected=collected,
         mastered=mastered,
-        photo_count=int(db.execute(select(func.count(UserPhoto.id))).scalar() or 0),
-        observation_count=int(db.execute(select(func.count(Observation.id))).scalar() or 0),
+        photo_count=int(db.execute(
+            select(func.count(UserPhoto.id)).where(UserPhoto.profile_id == profile.id)
+        ).scalar() or 0),
+        observation_count=int(db.execute(
+            select(func.count(Observation.id)).where(Observation.profile_id == profile.id)
+        ).scalar() or 0),
         by_group=group_buckets,
         by_region=region_buckets,
         by_difficulty=difficulty_buckets,

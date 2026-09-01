@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .config import settings
-from .routers import achievements, export, observations, photos, species, stats
+from .routers import achievements, backup, export, observations, photos, profiles, species, stats
 from .seed import ensure_seeded
 
 
@@ -16,8 +16,8 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="Wildlife Compendium API",
-    description="Persönliches Tierfoto-Kompendium",
+    title="Wildlife Compedium API",
+    description="Persönliches Tierfoto-Compedium",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -31,10 +31,12 @@ app.add_middleware(
 )
 
 app.include_router(stats.router)
+app.include_router(profiles.router)
 app.include_router(species.router)
 app.include_router(observations.router)
 app.include_router(photos.router)
 app.include_router(achievements.router)
+app.include_router(backup.router)
 app.include_router(export.router)
 
 

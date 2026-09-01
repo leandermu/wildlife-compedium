@@ -1,6 +1,6 @@
 import type {
   Achievement, Dashboard, Facets, Meta, Observation, Page, Photo,
-  SpeciesDetail, SpeciesListItem,
+  Profile, SpeciesDetail, SpeciesListItem,
 } from "./types";
 
 const BASE = import.meta.env.VITE_API_BASE ?? "";
@@ -12,7 +12,10 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, init);
+  const headers = new Headers(init?.headers);
+  const profileId = localStorage.getItem("wc-profile-id");
+  if (profileId) headers.set("X-Profile-ID", profileId);
+  const res = await fetch(`${BASE}${path}`, { ...init, headers });
   if (!res.ok) {
     let detail = res.statusText;
     try {
@@ -58,6 +61,31 @@ export function toSearchParams(params: SpeciesQueryParams): URLSearchParams {
 }
 
 export const api = {
+  profiles: () => request<Profile[]>("/api/profiles"),
+  createProfile: (name: string) =>
+    request<Profile>("/api/profiles", json({ name })),
+  updateProfile: (id: number, body: { name?: string; avatar?: string }) =>
+    request<Profile>(`/api/profiles/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  deleteProfile: (id: number) =>
+    request<void>(`/api/profiles/${id}`, { method: "DELETE" }),
+
+  backupUrl: () => `${BASE}/api/backup/save`,
+  restoreBackup: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return request<{
+      message: string;
+      profiles: number;
+      species: number;
+      observations: number;
+      photos: number;
+    }>("/api/backup/load", { method: "POST", body: fd });
+  },
+
   meta: () => request<Meta>("/api/meta"),
   dashboard: () => request<Dashboard>("/api/dashboard"),
 
@@ -78,15 +106,6 @@ export const api = {
     }),
   deleteSpecies: (key: string) =>
     request<void>(`/api/species/${key}`, { method: "DELETE" }),
-  importFile: (file: File, updateExisting = true) => {
-    const fd = new FormData();
-    fd.append("file", file);
-    return request<{ created: number; updated: number; skipped: number; errors: string[] }>(
-      `/api/species/import/file?update_existing=${updateExisting}`,
-      { method: "POST", body: fd },
-    );
-  },
-
   uploadPhoto: (fd: FormData) =>
     request<Photo>("/api/photos", { method: "POST", body: fd }),
   updatePhoto: (id: number, body: Record<string, unknown>) =>
@@ -104,6 +123,4 @@ export const api = {
 
   achievements: () => request<Achievement[]>("/api/achievements"),
 
-  exportUrl: (what: "json" | "csv" | "zip", params = "") =>
-    `${BASE}/api/export/${what}${params}`,
 };

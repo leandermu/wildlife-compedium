@@ -1,6 +1,6 @@
-# Wildlife Compendium
+# Wildlife Compedium
 
-Ein persönliches Tierfoto-Kompendium – inspiriert vom Tier-Kompendium aus Red Dead
+Ein persönliches Tierfoto-Compedium – inspiriert vom Tier-Kompendium aus Red Dead
 Redemption 2. Jede Tierart ist eine Sammelkarte mit Steckbrief und Referenzskizze.
 **Erst das eigene Foto schaltet eine Art frei.**
 
@@ -57,16 +57,47 @@ docker compose build --build-arg REFERENCE_IMAGES=0
 
 Zwei Volumes: `wildlife-db` für die Datenbank, `wildlife-media` für die Fotos.
 Ein Rebuild lässt beide unangetastet, `docker compose down -v` löscht sie – und
-damit die Sammlung. Ein Backup der Datenbank geht so:
+damit die Sammlung. Ein vollständiges, wieder einspielbares Backup gibt es in
+der App ganz unten unter **Verwaltung → Backup**. Es enthält die Datenbank aller
+Profile und den vollständigen Medienbestand.
 
-```bash
-docker compose exec db pg_dump -U wildlife wildlife > backup.sql
-```
+Wichtig: Arten, die in der laufenden App über **Verwaltung** angelegt werden,
+liegen in dieser Datenbank und werden nicht automatisch ins Git-Repository
+geschrieben. Ein Update derselben Docker-Installation behält sie über das
+Volume. Eine frische Installation auf einem anderen Server kennt dagegen nur
+die Arten aus `seed_species.json`. Für den Umzug der kompletten Sammlung muss
+das in der App gespeicherte Gesamtbackup geladen werden.
 
 Das Passwort ist per `POSTGRES_PASSWORD` überschreibbar (Standard `wildlife`);
 der Datenbank-Port wird nicht nach außen veröffentlicht.
 
+### Docker-Installation aktualisieren
+
+Im bereits geklonten Projektordner auf dem Server:
+
+```bash
+git pull --ff-only
+docker compose up -d --build --remove-orphans
+docker compose ps
+```
+
+`git pull` holt den neuen Code; `docker compose up` baut nur die nötigen Images
+neu und ersetzt die Anwendungscontainer. Die Volumes `wildlife-db` und
+`wildlife-media` bleiben bestehen. Vor einem größeren Update empfiehlt sich
+trotzdem **Verwaltung → Backup speichern**. Niemals `docker compose down -v`
+für ein normales Update verwenden.
+
 ## Was drin ist
+
+**Profile.** Mehrere Familienmitglieder führen ihren eigenen Sammelstand in
+derselben Installation. Profile sind bewusst nicht passwortgeschützt und lassen
+sich oben in der Navigation direkt anlegen und wechseln. Artenkatalog und
+Referenzbilder sind gemeinsam; Fotos, Begegnungen, Freischaltungen,
+Auszeichnungen und Statistiken gehören jeweils zum aktiven Profil. Das
+Gesamtbackup umfasst dagegen immer alle Profile.
+Beim Upgrade werden vorhandene persönliche Daten automatisch dem Profil
+„Leander“ zugeordnet. Leere Profile können wieder gelöscht werden; Profile mit
+Fotos oder Begegnungen schützt die App vor versehentlichem Löschen.
 
 **Sammeln.** 152 echte Arten mit Schwerpunkt Bayern/Deutschland plus eine
 „Welt & Expedition"-Kategorie. Drei Zustände pro Art:
@@ -82,7 +113,9 @@ der Datenbank-Port wird nicht nach außen veröffentlicht.
 EXIF-Daten aus (Kamera, Objektiv, ISO, Blende) und legt automatisch eine
 Begegnung an; ein fehlendes Datum wird aus den EXIF-Daten übernommen. Thumbnails
 werden serverseitig erzeugt, damit auch Rasterseiten mit tausenden Fotos schnell
-bleiben.
+bleiben. HEIC/HEIF-Dateien werden als Original aufbewahrt und erhalten zusätzlich
+eine browserfähige JPEG-Anzeigeversion. Alle lesbaren EXIF-Bereiche werden in der
+Datenbank gesichert und sind über den „i“-Schalter der Fotoansicht einsehbar.
 
 **Suche** ist umlauttolerant in beide Richtungen: `maus`, `mäuse` und `maeuse`
 finden alle den Mäusebussard, ebenso der wissenschaftliche Name (`Alcedo`).
@@ -91,12 +124,13 @@ finden alle den Mäusebussard, ebenso der wissenschaftliche Name (`Alcedo`).
 und Tags – kombinierbar, mit Trefferzahlen. Jede Zahl wird live aus den Daten
 berechnet; nichts ist hart kodiert.
 
-**Auszeichnungen & Quests** sind datengetrieben (`backend/app/achievements.py`,
+**Auszeichnungen** sind datengetrieben (`backend/app/achievements.py`,
 erweiterbar über `backend/app/data/achievements.json`). Regeltypen: `count`,
 `species`, `photos`, `locations`, `seasonal`.
 
-**Export.** JSON, CSV und ein vollständiges ZIP mit allen Originalfotos, nach
-Art sortiert – die Sammlung hängt nie an dieser App.
+**Backup.** Ein einziges Gesamtbackup sichert und lädt alle Profile, Arten,
+Begegnungen, Fotos, Vorschaubilder, Referenzbilder und Auszeichnungsstände. Das
+Backup lässt sich über die Verwaltungsseite wieder einspielen.
 
 ## Referenzbilder
 
@@ -135,7 +169,7 @@ unter CC BY-SA – **die Namensnennung darf nicht entfernt werden.**
 
 ## Daten erweitern
 
-Über **Verwaltung** im Browser (Formular oder CSV/JSON-Upload) oder direkt:
+Über **Verwaltung** im Browser oder direkt per API:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/species/import/file -F "file=@arten.csv"
@@ -151,6 +185,13 @@ Bienenfresser;Merops apiaster;bird;Bienenfresser;27-29 cm;"field,heath";"bavaria
 Bestehende Arten werden am Slug erkannt und aktualisiert. Die Startdaten liegen
 in `backend/app/data/seed_species.json`; erzeugt wird sie aus
 `_build_seed.py` (`python app/data/_build_seed.py`).
+
+Beim Anlegen nur über einen Tiernamen wird ein Wikipedia-Treffer erst dann
+akzeptiert, wenn Artikeltext und Kategorien ihn als Tierartikel bestätigen.
+Begriffsklärungen werden nach dem passenden Tierlink aufgelöst; Taxonomie kommt
+aus der Wikidata-Abstammung. Gespeichert werden nur eine kurze Zusammenfassung
+und ausdrücklich genannte Maße – unbekannte Werte bleiben leer, statt geraten
+zu werden.
 
 ## Auf 1.000+ Arten ausgelegt
 
@@ -177,8 +218,9 @@ in `backend/app/data/seed_species.json`; erzeugt wird sie aus
 | `WC_CORS_ORIGINS` | `http://localhost:5173,…` |
 
 Die Fotos liegen unter `backend/data/media/` und werden nirgendwohin
-hochgeladen. Für ein Backup genügt der ZIP-Export oder ein Kopieren von
-`backend/data/`.
+hochgeladen. Das Gesamtbackup unter **Verwaltung** sichert Datenbank und Medien
+gemeinsam und funktioniert sowohl mit der lokalen SQLite- als auch mit der
+Docker-/PostgreSQL-Installation.
 
 ## Noch nicht gebaut (Phase 3)
 

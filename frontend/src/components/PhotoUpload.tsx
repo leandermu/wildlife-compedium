@@ -25,14 +25,16 @@ export function PhotoUpload({
   const pick = (f: File | null) => {
     setError(null);
     if (!f) return;
-    if (!f.type.startsWith("image/")) {
+    const suffix = f.name.toLowerCase().split(".").pop();
+    const isHeif = suffix === "heic" || suffix === "heif";
+    if (!f.type.startsWith("image/") && !isHeif) {
       setError("Bitte eine Bilddatei auswählen.");
       return;
     }
     setFile(f);
     setPreview((old) => {
       if (old) URL.revokeObjectURL(old);
-      return URL.createObjectURL(f);
+      return isHeif ? null : URL.createObjectURL(f);
     });
   };
 
@@ -83,13 +85,20 @@ export function PhotoUpload({
           dragging ? "border-moss bg-paper-2" : "border-rule-2 hover:bg-paper-2/60"
         }`}
       >
-        {preview ? (
+        {file ? (
           <div className="space-y-3">
-            <img
-              src={preview}
-              alt="Vorschau"
-              className="mx-auto max-h-56 rounded-sm object-contain shadow-[var(--shadow-card)]"
-            />
+            {preview ? (
+              <img
+                src={preview}
+                alt="Vorschau"
+                className="mx-auto max-h-56 rounded-sm object-contain shadow-[var(--shadow-card)]"
+              />
+            ) : (
+              <div className="mx-auto flex h-28 w-28 flex-col items-center justify-center rounded-sm border border-rule bg-paper-2 text-ink-3">
+                <span className="font-serif text-xl text-ink-2">HEIC</span>
+                <span className="mt-1 text-[11px]">Vorschau nach Upload</span>
+              </div>
+            )}
             <p className="text-[13px] text-ink-3">
               {file?.name} · andere Datei wählen?
             </p>
@@ -105,7 +114,7 @@ export function PhotoUpload({
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif,image/heic,image/heif"
           className="hidden"
           onChange={(e) => pick(e.target.files?.[0] ?? null)}
         />
@@ -178,7 +187,8 @@ export function PhotoUpload({
             : "Foto hinzufügen"}
       </button>
       <p className="text-center text-[12px] text-ink-3">
-        Leeres Datum und leerer Ort werden aus den EXIF-Daten des Fotos übernommen.
+        JPG, PNG, WebP, TIFF und HEIC/HEIF. Datum, GPS und weitere EXIF-Daten
+        werden automatisch übernommen und am Foto angezeigt.
       </p>
     </form>
   );

@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import Observation, Species, UserPhoto
+from ..profiles import CurrentProfile
 from ..queries import derive_status
 from ..storage import get_storage
 from ..text import slugify
@@ -63,10 +64,18 @@ def _observation_dict(o: Observation) -> dict:
     }
 
 
-def _all(db: Session):
+def _all(db: Session, profile_id: int):
     species = list(db.execute(select(Species).order_by(Species.id)).scalars())
-    observations = list(db.execute(select(Observation).order_by(Observation.id)).scalars())
-    photos = list(db.execute(select(UserPhoto).order_by(UserPhoto.id)).scalars())
+    observations = list(db.execute(
+        select(Observation)
+        .where(Observation.profile_id == profile_id)
+        .order_by(Observation.id)
+    ).scalars())
+    photos = list(db.execute(
+        select(UserPhoto)
+        .where(UserPhoto.profile_id == profile_id)
+        .order_by(UserPhoto.id)
+    ).scalars())
     return species, observations, photos
 
 
@@ -75,11 +84,14 @@ def _stamp() -> str:
 
 
 @router.get("/json")
-def export_json(db: Annotated[Session, Depends(get_db)]) -> Response:
-    species, observations, photos = _all(db)
+def export_json(
+    db: Annotated[Session, Depends(get_db)], profile: CurrentProfile
+) -> Response:
+    species, observations, photos = _all(db, profile.id)
     payload = {
         "exported_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "version": 1,
+        "profile": {"id": profile.id, "name": profile.name},
         "species": [_species_dict(s) | {"id": s.id} for s in species],
         "observations": [_observation_dict(o) for o in observations],
         "photos": [_photo_dict(p) for p in photos],
@@ -88,7 +100,7 @@ def export_json(db: Annotated[Session, Depends(get_db)]) -> Response:
     return Response(
         body,
         media_type="application/json",
-        headers={"Content-Disposition": f'attachment; filename="kompendium-{_stamp()}.json"'},
+        headers={"Content-Disposition": f'attachment; filename="compedium-{_stamp()}.json"'},
     )
 
 
@@ -122,8 +134,12 @@ def _species_csv(species: list[Species], photos: list[UserPhoto]) -> str:
 
 
 @router.get("/csv")
-def export_csv(db: Annotated[Session, Depends(get_db)], what: str = "species") -> Response:
-    species, observations, photos = _all(db)
+def export_csv(
+    db: Annotated[Session, Depends(get_db)],
+    profile: CurrentProfile,
+    what: str = "species",
+) -> Response:
+    species, observations, photos = _all(db, profile.id)
     if what == "observations":
         cols = ["id", "species_id", "date", "location_name", "latitude", "longitude",
                 "notes", "has_photo"]
@@ -153,9 +169,13 @@ def export_csv(db: Annotated[Session, Depends(get_db)], what: str = "species") -
 
 
 @router.get("/zip")
-def export_zip(db: Annotated[Session, Depends(get_db)], include_photos: bool = True):
+def export_zip(
+    db: Annotated[Session, Depends(get_db)],
+    profile: CurrentProfile,
+    include_photos: bool = True,
+):
     """Full backup: data files plus the original photo files, foldered by species."""
-    species, observations, photos = _all(db)
+    species, observations, photos = _all(db, profile.id)
     by_id = {s.id: s for s in species}
     storage = get_storage()
 
@@ -178,7 +198,7 @@ def export_zip(db: Annotated[Session, Depends(get_db)], include_photos: bool = T
                 name = f"photos/{slugify(sp.common_name)}/{p.date or 'ohne-datum'}-{p.id}{suffix}"
                 zf.write(path, name)
         zf.writestr("README.txt",
-                    "Wildlife Compendium – Export\n"
+                    f"Wildlife Compedium – Export für {profile.name}\n"
                     f"Erstellt am {dt.datetime.now().strftime('%d.%m.%Y %H:%M')}\n\n"
                     "species.json / observations.json / photos.json enthalten alle Daten.\n"
                     "Der Ordner photos/ enthält die Originaldateien, nach Art sortiert.\n")
@@ -186,5 +206,5 @@ def export_zip(db: Annotated[Session, Depends(get_db)], include_photos: bool = T
     return StreamingResponse(
         buf,
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="kompendium-{_stamp()}.zip"'},
+        headers={"Content-Disposition": f'attachment; filename="compedium-{_stamp()}.zip"'},
     )

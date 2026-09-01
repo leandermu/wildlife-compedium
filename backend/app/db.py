@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 
-from sqlalchemy import create_engine, event, inspect, text
+from sqlalchemy import create_engine, event, inspect, select, text, update
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from .config import settings
@@ -61,6 +61,51 @@ def _ensure_columns() -> None:
                 )
 
 
+def _ensure_default_profile() -> None:
+    """Create the first profile and attach data made before profiles existed."""
+    from .models import (
+        AchievementState,
+        Observation,
+        Profile,
+        ProfileAchievementState,
+        UserPhoto,
+    )
+
+    with SessionLocal.begin() as db:
+        profile = db.execute(
+            select(Profile).order_by(Profile.is_default.desc(), Profile.id)
+        ).scalars().first()
+        if profile is None:
+            profile = Profile(name="Leander", is_default=True)
+            db.add(profile)
+            db.flush()
+        elif not profile.is_default:
+            profile.is_default = True
+        db.execute(
+            update(Observation)
+            .where(Observation.profile_id.is_(None))
+            .values(profile_id=profile.id)
+        )
+        db.execute(
+            update(UserPhoto)
+            .where(UserPhoto.profile_id.is_(None))
+            .values(profile_id=profile.id)
+        )
+        migrated_ids = set(db.execute(
+            select(ProfileAchievementState.achievement_id).where(
+                ProfileAchievementState.profile_id == profile.id
+            )
+        ).scalars())
+        for old_state in db.execute(select(AchievementState)).scalars():
+            if old_state.achievement_id not in migrated_ids:
+                db.add(ProfileAchievementState(
+                    profile_id=profile.id,
+                    achievement_id=old_state.achievement_id,
+                    tier=old_state.tier,
+                    unlocked_at=old_state.unlocked_at,
+                ))
+
+
 def init_db() -> None:
     from . import models  # noqa: F401  (register mappers)
 
@@ -68,3 +113,4 @@ def init_db() -> None:
         p.parent.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(engine)
     _ensure_columns()
+    _ensure_default_profile()

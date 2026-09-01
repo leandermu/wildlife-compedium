@@ -58,6 +58,16 @@ def _parse_time(value: str | None) -> dt.time | None:
         return None
 
 
+def _metadata_time(metadata: dict) -> dt.time | None:
+    for metadata_key in ("taken_at", "taken_at_digitized", "taken_at_file"):
+        raw_taken_at = str(metadata.get(metadata_key) or "")
+        if " " in raw_taken_at:
+            parsed = _parse_time(raw_taken_at.split(" ", 1)[1])
+            if parsed:
+                return parsed
+    return None
+
+
 def _gps_coordinate(value, reference) -> float | None:
     """Convert EXIF degrees/minutes/seconds plus N/S/E/W into decimal GPS."""
     try:
@@ -182,21 +192,39 @@ def ensure_browser_derivatives() -> int:
     repaired = 0
     with SessionLocal.begin() as db:
         for photo in db.execute(select(UserPhoto).order_by(UserPhoto.id)).scalars():
-            suffix = Path(photo.storage_key).suffix.lower()
+            source = storage.path(photo.storage_key)
+            recovered_original = False
+            if source is None and photo.thumb_key:
+                # A former upload bug replaced storage_key with an EXIF field
+                # name. The thumbnail keeps the original UUID, so the existing
+                # file can be found without asking the user to upload it again.
+                stem = Path(photo.thumb_key).stem
+                photo_root = storage.root / "photos"
+                candidates = [
+                    candidate
+                    for candidate in photo_root.rglob(f"{stem}.*")
+                    if candidate.is_file() and candidate.suffix.lower() in ALLOWED_SUFFIXES
+                ] if photo_root.exists() else []
+                if len(candidates) == 1:
+                    source = candidates[0]
+                    photo.storage_key = source.relative_to(storage.root).as_posix()
+                    recovered_original = True
+            if source is None:
+                continue
+
+            suffix = source.suffix.lower()
             needs_display = suffix in _BROWSER_UNSUPPORTED_SUFFIXES and (
                 not photo.display_key or storage.path(photo.display_key) is None
             )
             needs_thumb = not photo.thumb_key or storage.path(photo.thumb_key) is None
             if not needs_display and not needs_thumb:
-                continue
-            source = storage.path(photo.storage_key)
-            if source is None:
+                repaired += int(recovered_original)
                 continue
             try:
                 _, _, thumb, _, _, display = _extract(
                     source.read_bytes(), create_display_copy=needs_display
                 )
-                changed = False
+                changed = recovered_original
                 if needs_display and display:
                     photo.display_key = storage.save(
                         f"display/{photo.profile_id}/repaired",
@@ -263,7 +291,7 @@ async def upload_photo(
         raise HTTPException(415, "Die Bilddatei konnte nicht browserfähig aufbereitet werden")
     meta["encounter_type"] = encounter_type
     storage = get_storage()
-    key = storage.save(
+    storage_key = storage.save(
         f"photos/{profile.id}/{sp.slug}", file.filename or "foto.jpg", io.BytesIO(data)
     )
     display_key = None
@@ -274,17 +302,11 @@ async def upload_photo(
         )
     thumb_key = None
     if thumb and isinstance(storage, LocalStorage):
-        stem = key.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+        stem = storage_key.rsplit("/", 1)[-1].rsplit(".", 1)[0]
         thumb_key = storage.save_bytes(f"thumbs/{profile.id}/{sp.slug}/{stem}.jpg", thumb)
 
     explicit_date = _parse_date(date)
-    exif_time = None
-    for key in ("taken_at", "taken_at_digitized", "taken_at_file"):
-        raw_taken_at = str(meta.get(key) or "")
-        if " " in raw_taken_at:
-            exif_time = _parse_time(raw_taken_at.split(" ", 1)[1])
-            if exif_time:
-                break
+    exif_time = _metadata_time(meta)
     explicit_time = _parse_time(time)
     photo_date = explicit_date or (observation.date if observation else None) or exif_date
     photo_time = explicit_time or (observation.time if observation else None) or exif_time
@@ -313,7 +335,7 @@ async def upload_photo(
         profile_id=profile.id,
         species_id=sp.id,
         observation_id=observation_id,
-        storage_key=key,
+        storage_key=storage_key,
         display_key=display_key,
         thumb_key=thumb_key,
         original_filename=file.filename or "",

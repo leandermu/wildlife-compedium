@@ -1,12 +1,21 @@
+import asyncio
 import datetime as dt
 import io
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 from PIL import Image
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session, sessionmaker
+from starlette.datastructures import UploadFile
 
-from app.models import Species, UserPhoto
+from app.db import Base
+from app.models import Profile, Species, UserPhoto
 from app.queries import photo_out, to_list_item
-from app.routers.photos import _extract
+from app.routers.photos import _extract, ensure_browser_derivatives, upload_photo
+from app.storage import LocalStorage
 
 
 class PhotoMetadataTest(unittest.TestCase):
@@ -61,6 +70,78 @@ class PhotoMetadataTest(unittest.TestCase):
         self.assertEqual(photo_out(photo)["url"], "/media/display/browser.jpg")
         card = to_list_item(species, 1, 1, photo)
         self.assertEqual(card.best_photo_url, "/media/display/browser.jpg")
+
+    def test_exif_field_name_never_replaces_storage_key_on_upload(self) -> None:
+        image = Image.new("RGB", (64, 48), "blue")
+        exif = Image.Exif()
+        exif[306] = "2026:09:01 13:14:15"
+        source = io.BytesIO()
+        image.save(source, format="JPEG", exif=exif)
+
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(engine)
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir, Session(engine) as db:
+                profile = Profile(name="Leander", is_default=True)
+                species = Species(
+                    slug="testtier", common_name="Testtier", group="mammal"
+                )
+                db.add_all([profile, species])
+                db.commit()
+                storage = LocalStorage(Path(temp_dir), "/media")
+                upload = UploadFile(io.BytesIO(source.getvalue()), filename="foto.jpg")
+
+                with patch("app.routers.photos.get_storage", return_value=storage):
+                    asyncio.run(upload_photo(db, profile, species.id, upload))
+
+                saved = db.scalar(select(UserPhoto))
+                self.assertIsNotNone(saved)
+                self.assertTrue(saved.storage_key.startswith("photos/"))
+                self.assertIsNotNone(storage.path(saved.storage_key))
+                self.assertNotIn(saved.storage_key, {"taken_at", "taken_at_file"})
+                self.assertEqual(saved.time, dt.time(13, 14, 15))
+        finally:
+            engine.dispose()
+
+    def test_startup_repair_recovers_corrupted_original_key_from_thumbnail(self) -> None:
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(engine)
+        sessions = sessionmaker(bind=engine, expire_on_commit=False)
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                storage = LocalStorage(Path(temp_dir), "/media")
+                stem = "6cf790b3b1ca4bbca114472f45f3e67c"
+                original_key = f"photos/1/testtier/{stem}.jpg"
+                thumb_key = f"thumbs/1/testtier/{stem}.jpg"
+                storage.save_bytes(original_key, b"original")
+                storage.save_bytes(thumb_key, b"thumbnail")
+                with sessions() as db:
+                    profile = Profile(id=1, name="Leander", is_default=True)
+                    species = Species(
+                        id=1, slug="testtier", common_name="Testtier", group="mammal"
+                    )
+                    db.add_all([profile, species])
+                    db.flush()
+                    db.add(UserPhoto(
+                        profile_id=profile.id,
+                        species_id=species.id,
+                        storage_key="taken_at_file",
+                        thumb_key=thumb_key,
+                        original_filename="foto.jpg",
+                    ))
+                    db.commit()
+
+                with (
+                    patch("app.routers.photos.get_storage", return_value=storage),
+                    patch("app.db.SessionLocal", sessions),
+                ):
+                    self.assertEqual(ensure_browser_derivatives(), 1)
+
+                with sessions() as db:
+                    repaired = db.scalar(select(UserPhoto))
+                    self.assertEqual(repaired.storage_key, original_key)
+        finally:
+            engine.dispose()
 
 
 if __name__ == "__main__":

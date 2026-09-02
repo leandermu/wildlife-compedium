@@ -20,6 +20,7 @@ def _out(o: Observation) -> ObservationOut:
         id=o.id, species_id=o.species_id, date=o.date, time=o.time,
         location_name=o.location_name,
         latitude=o.latitude, longitude=o.longitude, notes=o.notes,
+        encounter_type=o.encounter_type or "wild",
         has_photo=o.has_photo, created_at=o.created_at,
     )
 

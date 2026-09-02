@@ -21,10 +21,13 @@ def _out(db: Session, profile: Profile) -> ProfileOut:
     observation_count = int(db.execute(
         select(func.count(Observation.id)).where(Observation.profile_id == profile.id)
     ).scalar() or 0)
-    collected_species = int(db.execute(
-        select(func.count(func.distinct(UserPhoto.species_id))).where(
-            UserPhoto.profile_id == profile.id
+    progress_filters = [UserPhoto.profile_id == profile.id]
+    if profile.exclude_captive_from_progress:
+        progress_filters.append(
+            func.coalesce(UserPhoto.encounter_type, "wild") == "wild"
         )
+    collected_species = int(db.execute(
+        select(func.count(func.distinct(UserPhoto.species_id))).where(*progress_filters)
     ).scalar() or 0)
     return ProfileOut(
         id=profile.id,
@@ -32,6 +35,7 @@ def _out(db: Session, profile: Profile) -> ProfileOut:
         avatar=profile.avatar or "🐾",
         gender=profile.gender or "male",
         is_default=profile.is_default,
+        exclude_captive_from_progress=bool(profile.exclude_captive_from_progress),
         photo_count=photo_count,
         observation_count=observation_count,
         collected_species=collected_species,
@@ -99,6 +103,9 @@ def update_profile(
 
     if payload.gender is not None:
         profile.gender = payload.gender
+
+    if payload.exclude_captive_from_progress is not None:
+        profile.exclude_captive_from_progress = payload.exclude_captive_from_progress
 
     db.commit()
     db.refresh(profile)

@@ -6,6 +6,7 @@ export interface Profile {
   avatar: string;
   gender: "male" | "female";
   is_default: boolean;
+  exclude_captive_from_progress: boolean;
   photo_count: number;
   observation_count: number;
   collected_species: number;
@@ -18,10 +19,12 @@ export interface SpeciesListItem {
   common_name: string;
   scientific_name: string;
   group: string;
+  class_name: string;
   family: string;
   difficulty: number;
   regions: string[];
   habitats: string[];
+  activity: "diurnal" | "nocturnal";
   size: string;
   reference_image_url: string | null;
   reference_thumb_url: string | null;
@@ -32,6 +35,8 @@ export interface SpeciesListItem {
   best_photo_thumb_url: string | null;
   display_photo_date: string | null;
   display_photo_location: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface Photo {
@@ -45,6 +50,7 @@ export interface Photo {
   time: string | null;
   location_name: string;
   caption: string;
+  encounter_type: "wild" | "captive";
   is_best_photo: boolean;
   photo_metadata: Record<string, unknown>;
   created_at: string;
@@ -59,6 +65,7 @@ export interface Observation {
   latitude: number | null;
   longitude: number | null;
   notes: string;
+  encounter_type: "wild" | "captive";
   has_photo: boolean;
   created_at: string;
 }
@@ -96,12 +103,16 @@ export interface FacetValue {
 
 export interface Facets {
   groups: FacetValue[];
+  classes: FacetValue[];
+  orders: FacetValue[];
   habitats: FacetValue[];
   regions: FacetValue[];
   families: FacetValue[];
   difficulties: FacetValue[];
   statuses: FacetValue[];
   seen: FacetValue[];
+  encounters: FacetValue[];
+  activities: FacetValue[];
   tags: FacetValue[];
 }
 
@@ -110,6 +121,17 @@ export interface ProgressBucket {
   label: string;
   collected: number;
   total: number;
+}
+
+export interface Activity {
+  kind: "photographed" | "seen" | "added";
+  profile_id: number;
+  profile_name: string;
+  profile_avatar: string;
+  species_id: number;
+  species_slug: string;
+  species_name: string;
+  occurred_at: string;
 }
 
 export interface Dashboard {
@@ -130,16 +152,7 @@ export interface Dashboard {
     date: string | null;
     location_name: string;
   }[];
-  activity: {
-    kind: "photographed" | "seen" | "added";
-    profile_id: number;
-    profile_name: string;
-    profile_avatar: string;
-    species_id: number;
-    species_slug: string;
-    species_name: string;
-    occurred_at: string;
-  }[];
+  activity: Activity[];
   challenges: { label: string; remaining: number; filter: Record<string, string> }[];
   achievements_unlocked: number;
   achievements_total: number;
@@ -172,6 +185,8 @@ export interface Meta {
   groups: MetaEntry[];
   habitats: MetaEntry[];
   regions: MetaEntry[];
+  activities: MetaEntry[];
+  tags: MetaEntry[];
   difficulties: MetaEntry[];
   statuses: MetaEntry[];
 }

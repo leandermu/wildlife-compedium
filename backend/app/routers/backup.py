@@ -15,7 +15,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import Date, DateTime, Time, delete, inspect as sa_inspect, text
+from sqlalchemy import Date, DateTime, Time, delete, inspect as sa_inspect, text, update
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 
@@ -178,6 +178,22 @@ def _load_manifest(archive: zipfile.ZipFile) -> dict[str, Any]:
 
 def _validate_relations(data: dict[str, Any], archive_names: set[str]) -> None:
     try:
+        for row in data["profiles"]:
+            row.setdefault("exclude_captive_from_progress", False)
+        photo_encounters: dict[int, str] = {}
+        for row in data["photos"]:
+            if "encounter_type" not in row:
+                metadata = row.get("photo_metadata") or {}
+                value = metadata.get("encounter_type", "wild")
+                row["encounter_type"] = value if value in {"wild", "captive"} else "wild"
+            if row.get("observation_id") is not None:
+                photo_encounters[int(row["observation_id"])] = row["encounter_type"]
+        for row in data["observations"]:
+            row.setdefault(
+                "encounter_type",
+                photo_encounters.get(int(row["id"]), "wild"),
+            )
+
         profile_ids = {int(row["id"]) for row in data["profiles"]}
         species_ids = {int(row["id"]) for row in data["species"]}
         observation_ids = {int(row["id"]) for row in data["observations"]}
@@ -278,6 +294,19 @@ def _replace_database(db: Session, data: dict[str, Any]) -> None:
     for key, model in BACKUP_TABLES:
         db.add_all(_decode_row(model, row) for row in data[key])
         db.flush()
+    original_updates: dict[int, dt.datetime] = {}
+    for species in db.query(Species).all():
+        previous_update = species.updated_at
+        species.refresh_derived()
+        if db.is_modified(species, include_collections=False):
+            original_updates[species.id] = previous_update
+    db.flush()
+    for species_id, updated_at in original_updates.items():
+        db.execute(
+            update(Species)
+            .where(Species.id == species_id)
+            .values(updated_at=updated_at)
+        )
     reconcile_linked_encounters(db)
     _reset_postgres_sequences(db)
     db.commit()

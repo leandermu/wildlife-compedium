@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import datetime as dt
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import Text, case, func, select
 from sqlalchemy.orm import Session
 
@@ -11,7 +12,14 @@ from ..db import get_db
 from ..models import Observation, Profile, Species, UserPhoto
 from ..profiles import CurrentProfile
 from ..queries import SpeciesQuery, display_photos
-from ..schemas import ActivityOut, ChallengeHint, DashboardOut, ProgressBucket, RecentUnlock
+from ..schemas import (
+    ActivityOut,
+    ChallengeHint,
+    DashboardOut,
+    Page,
+    ProgressBucket,
+    RecentUnlock,
+)
 from ..storage import media_url
 from ..vocab import DIFFICULTIES, GROUPS, REGIONS, meta_payload
 
@@ -23,16 +31,18 @@ def meta() -> dict:
     return meta_payload()
 
 
-def _bucket_counts(db: Session, profile_id: int) -> list[tuple]:
+def _bucket_counts(
+    db: Session, profile_id: int, exclude_captive: bool = False
+) -> list[tuple]:
     """species rows with their photo count — one query, used for every bucket."""
-    sq = SpeciesQuery(profile_id)
+    sq = SpeciesQuery(profile_id, exclude_captive)
     stmt = sq.apply_filters(
         sq.base(Species.group, Species.regions, Species.difficulty, sq.photo_count)
     )
     return db.execute(stmt).all()
 
 
-def _recent_activity(db: Session, limit: int = 18) -> list[ActivityOut]:
+def _activity_entries(db: Session) -> list[ActivityOut]:
     """Build a cross-profile feed from the canonical collection records."""
     profiles = {
         profile.id: profile
@@ -44,6 +54,11 @@ def _recent_activity(db: Session, limit: int = 18) -> list[ActivityOut]:
         profile = profiles.get(profile_id)
         if profile is None:
             return
+        # SQLite returns DateTime values without their timezone even though all
+        # model defaults are UTC. Mark them explicitly so browsers do not read
+        # a fresh entry as local time and shift it by the UTC offset.
+        if occurred_at.tzinfo is None:
+            occurred_at = occurred_at.replace(tzinfo=dt.timezone.utc)
         entries.append(ActivityOut(
             kind=kind,
             profile_id=profile.id,
@@ -59,7 +74,6 @@ def _recent_activity(db: Session, limit: int = 18) -> list[ActivityOut]:
         select(UserPhoto, Species)
         .join(Species, Species.id == UserPhoto.species_id)
         .order_by(UserPhoto.created_at.desc(), UserPhoto.id.desc())
-        .limit(limit)
     ).all()
     for photo, species in photos:
         add("photographed", photo.profile_id, species, photo.created_at)
@@ -69,7 +83,6 @@ def _recent_activity(db: Session, limit: int = 18) -> list[ActivityOut]:
         .join(Species, Species.id == Observation.species_id)
         .where(~Observation.photos.any())
         .order_by(Observation.created_at.desc(), Observation.id.desc())
-        .limit(limit)
     ).all()
     for observation, species in observations:
         add("seen", observation.profile_id, species, observation.created_at)
@@ -78,7 +91,6 @@ def _recent_activity(db: Session, limit: int = 18) -> list[ActivityOut]:
         select(Species)
         .where(Species.created_by_profile_id.is_not(None))
         .order_by(Species.created_at.desc(), Species.id.desc())
-        .limit(limit)
     ).scalars()
     for species in additions:
         add("added", species.created_by_profile_id, species, species.created_at)
@@ -87,14 +99,45 @@ def _recent_activity(db: Session, limit: int = 18) -> list[ActivityOut]:
         entries,
         key=lambda entry: (entry.occurred_at, entry.species_id),
         reverse=True,
-    )[:limit]
+    )
+
+
+def _recent_activity(db: Session, limit: int = 10) -> list[ActivityOut]:
+    return _activity_entries(db)[:limit]
+
+
+@router.get("/activity", response_model=Page[ActivityOut])
+def activity(
+    db: Annotated[Session, Depends(get_db)],
+    _profile: CurrentProfile,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+) -> Page[ActivityOut]:
+    entries = _activity_entries(db)
+    total = len(entries)
+    start = (page - 1) * page_size
+    return Page(
+        items=entries[start:start + page_size],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=max(1, -(-total // page_size)),
+    )
 
 
 @router.get("/dashboard", response_model=DashboardOut)
 def dashboard(
     db: Annotated[Session, Depends(get_db)], profile: CurrentProfile
 ) -> DashboardOut:
-    rows = _bucket_counts(db, profile.id)
+    exclude_captive = bool(profile.exclude_captive_from_progress)
+    rows = _bucket_counts(db, profile.id, exclude_captive)
+    photo_filters = [UserPhoto.profile_id == profile.id]
+    observation_filters = [Observation.profile_id == profile.id]
+    if exclude_captive:
+        photo_filters.append(func.coalesce(UserPhoto.encounter_type, "wild") == "wild")
+        observation_filters.append(
+            func.coalesce(Observation.encounter_type, "wild") == "wild"
+        )
 
     total = len(rows)
     collected = sum(1 for r in rows if r[3] > 0)
@@ -130,7 +173,7 @@ def dashboard(
     # last unlocked species, newest first
     recent_rows = db.execute(
         select(UserPhoto.species_id, func.max(UserPhoto.created_at).label("last"))
-        .where(UserPhoto.profile_id == profile.id)
+        .where(*photo_filters)
         .group_by(UserPhoto.species_id)
         .order_by(func.max(UserPhoto.created_at).desc())
         .limit(8)
@@ -141,7 +184,7 @@ def dashboard(
         species = {
             s.id: s for s in db.execute(select(Species).where(Species.id.in_(ids))).scalars()
         }
-        photos = display_photos(db, ids, profile.id)
+        photos = display_photos(db, ids, profile.id, exclude_captive)
         for sid, _last in recent_rows:
             sp = species.get(sid)
             if not sp:
@@ -158,7 +201,7 @@ def dashboard(
 
     # "Nächste Herausforderungen": families/habitats where she is closest to done
     challenges: list[ChallengeHint] = []
-    sq = SpeciesQuery(profile.id)
+    sq = SpeciesQuery(profile.id, exclude_captive)
     fam_stmt = sq.apply_filters(
         sq.base(
             Species.family,
@@ -186,10 +229,10 @@ def dashboard(
         total_species=total,
         collected=collected,
         photo_count=int(db.execute(
-            select(func.count(UserPhoto.id)).where(UserPhoto.profile_id == profile.id)
+            select(func.count(UserPhoto.id)).where(*photo_filters)
         ).scalar() or 0),
         observation_count=int(db.execute(
-            select(func.count(Observation.id)).where(Observation.profile_id == profile.id)
+            select(func.count(Observation.id)).where(*observation_filters)
         ).scalar() or 0),
         by_group=group_buckets,
         by_region=region_buckets,

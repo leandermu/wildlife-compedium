@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.achievements import evaluate
 from app.db import Base
-from app.models import Observation, Profile, Species
+from app.models import Observation, Profile, Species, UserPhoto
 from app.queries import SpeciesQuery, derive_status
 from app.routers.species import facets as species_facets
 from app.vocab import STATUSES
@@ -73,6 +73,107 @@ class ProfileAndFilterTest(unittest.TestCase):
         self.assertEqual(derive_status(1), "unlocked")
         self.assertEqual(derive_status(12), "unlocked")
         self.assertEqual(set(STATUSES), {"locked", "unlocked"})
+
+    def test_legacy_tags_are_moved_into_structured_species_fields(self) -> None:
+        species = Species(
+            slug="adler",
+            common_name="Adler",
+            scientific_name="Aquila test",
+            group="bird",
+            order_name="Greifvögel",
+            habitats=["night"],
+            regions=["europe"],
+            tags=["greifvogel", "afrika", "alpen", "zugvogel", "nacht"],
+        )
+
+        species.refresh_derived()
+
+        self.assertEqual(species.class_name, "Aves")
+        self.assertEqual(species.activity, "nocturnal")
+        self.assertIn("africa", species.regions)
+        self.assertIn("alps", species.habitats)
+        self.assertNotIn("night", species.habitats)
+        self.assertEqual(species.tags, ["zugvogel"])
+
+        with Session(self.engine) as db:
+            db.add(species)
+            db.commit()
+            query = SpeciesQuery(0)
+            result = db.execute(
+                query.apply_filters(
+                    query.base(Species),
+                    class_name=["Aves"],
+                    order=["Greifvögel"],
+                    activity=["nocturnal"],
+                )
+            ).scalars().all()
+            self.assertEqual([item.slug for item in result], ["adler"])
+
+    def test_captive_entries_can_be_excluded_and_filtered_per_profile(self) -> None:
+        with Session(self.engine) as db:
+            profile = Profile(
+                name="Leander",
+                gender="male",
+                exclude_captive_from_progress=True,
+            )
+            captive_species = Species(
+                slug="zootier", common_name="Zootier", group="mammal"
+            )
+            wild_species = Species(
+                slug="wildtier", common_name="Wildtier", group="mammal"
+            )
+            db.add_all([profile, captive_species, wild_species])
+            db.flush()
+            captive_observation = Observation(
+                profile_id=profile.id,
+                species_id=captive_species.id,
+                encounter_type="captive",
+            )
+            wild_observation = Observation(
+                profile_id=profile.id,
+                species_id=wild_species.id,
+                encounter_type="wild",
+            )
+            db.add_all([captive_observation, wild_observation])
+            db.flush()
+            db.add_all([
+                UserPhoto(
+                    profile_id=profile.id,
+                    species_id=captive_species.id,
+                    observation_id=captive_observation.id,
+                    storage_key="captive.jpg",
+                    encounter_type="captive",
+                ),
+                UserPhoto(
+                    profile_id=profile.id,
+                    species_id=wild_species.id,
+                    observation_id=wild_observation.id,
+                    storage_key="wild.jpg",
+                    encounter_type="wild",
+                ),
+            ])
+            db.commit()
+
+            query = SpeciesQuery(profile.id, exclude_captive=True)
+            unlocked = db.execute(
+                query.apply_filters(query.base(Species), status=["unlocked"])
+            ).scalars().all()
+            self.assertEqual([item.slug for item in unlocked], ["wildtier"])
+
+            captive = db.execute(
+                query.apply_filters(
+                    query.base(Species), encounter=["captive"]
+                )
+            ).scalars().all()
+            self.assertEqual([item.slug for item in captive], ["zootier"])
+
+            achievements = {item["id"]: item for item in evaluate(db, profile.id)}
+            self.assertEqual(achievements["photo_volume"]["progress"], 1)
+
+            profile.exclude_captive_from_progress = False
+            db.commit()
+            achievements = {item["id"]: item for item in evaluate(db, profile.id)}
+            self.assertEqual(achievements["photo_volume"]["progress"], 2)
 
 
 if __name__ == "__main__":

@@ -196,7 +196,9 @@ export function PhotoUpload({
       >
         {busy
           ? "Wird hochgeladen …"
-          : species.status === "locked"
+          : encounterType === "captive"
+            ? "Gefangenschaftsbegegnung speichern"
+            : species.status === "locked"
             ? "Art freischalten"
             : "Foto hinzufügen"}
       </button>

@@ -67,6 +67,9 @@ class Profile(Base):
     name: Mapped[str] = mapped_column(String(80), unique=True, index=True)
     avatar: Mapped[str | None] = mapped_column(String(20), nullable=True)
     gender: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    exclude_captive_from_progress: Mapped[bool | None] = mapped_column(
+        Boolean, default=False, nullable=True
+    )
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_utcnow)
 
@@ -81,8 +84,12 @@ class Species(Base):
     scientific_name: Mapped[str] = mapped_column(String(160), default="", index=True)
 
     group: Mapped[str] = mapped_column(String(32), index=True)
+    class_name: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     family: Mapped[str] = mapped_column(String(120), default="", index=True)
     order_name: Mapped[str] = mapped_column(String(120), default="")
+    activity: Mapped[str | None] = mapped_column(
+        String(16), default="diurnal", nullable=True, index=True
+    )
 
     description: Mapped[str] = mapped_column(Text, default="")
     size: Mapped[str] = mapped_column(String(80), default="")
@@ -131,11 +138,25 @@ class Species(Base):
     )
 
     def refresh_derived(self) -> None:
+        from .vocab import normalize_species_metadata
+
+        normalized = normalize_species_metadata(
+            group=self.group,
+            class_name=self.class_name,
+            order_name=self.order_name,
+            habitats=self.habitats,
+            regions=self.regions,
+            tags=self.tags,
+            activity=self.activity,
+        )
+        for key, value in normalized.items():
+            setattr(self, key, value)
         if not self.slug:
             self.slug = slugify(self.common_name)
         parts = [
             self.common_name,
             self.scientific_name,
+            self.class_name or "",
             self.family,
             self.order_name,
             self.group,
@@ -169,6 +190,9 @@ class Observation(Base):
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     notes: Mapped[str] = mapped_column(Text, default="")
+    encounter_type: Mapped[str | None] = mapped_column(
+        String(12), default="wild", nullable=True, index=True
+    )
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_utcnow)
 
     species: Mapped[Species] = relationship(back_populates="observations")
@@ -207,6 +231,9 @@ class UserPhoto(Base):
     time: Mapped[dt.time | None] = mapped_column(Time, nullable=True)
     location_name: Mapped[str] = mapped_column(String(200), default="")
     caption: Mapped[str] = mapped_column(Text, default="")
+    encounter_type: Mapped[str | None] = mapped_column(
+        String(12), default="wild", nullable=True, index=True
+    )
     is_best_photo: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     # camera, lens, iso, aperture, shutter, focal_length, width, height ...

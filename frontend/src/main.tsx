@@ -8,6 +8,7 @@ import { SpeciesList } from "./routes/SpeciesList";
 import { SpeciesDetailPage } from "./routes/SpeciesDetail";
 import { AchievementsPage } from "./routes/Achievements";
 import { AdminPage } from "./routes/Admin";
+import { ActivityPage } from "./routes/Activity";
 import { NotFound } from "./routes/NotFound";
 
 const router = createBrowserRouter([
@@ -19,6 +20,7 @@ const router = createBrowserRouter([
       { path: "arten", element: <SpeciesList /> },
       { path: "arten/:slug", element: <SpeciesDetailPage /> },
       { path: "auszeichnungen", element: <AchievementsPage /> },
+      { path: "aktivitaeten", element: <ActivityPage /> },
       { path: "verwaltung", element: <AdminPage /> },
       { path: "*", element: <NotFound /> },
     ],

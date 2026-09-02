@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import Species
+from ..models import Observation, Species, UserPhoto
 from ..profiles import CurrentProfile
 from ..queries import SpeciesQuery, display_photos, to_detail, to_list_item
 from ..schemas import (
@@ -26,7 +26,16 @@ from ..schemas import (
 )
 from ..text import slugify
 from ..storage import ALLOWED_SUFFIXES, get_storage
-from ..vocab import DIFFICULTIES, GROUPS, HABITATS, REGIONS, STATUSES
+from ..vocab import (
+    ACTIVITIES,
+    CLASS_LABELS,
+    DIFFICULTIES,
+    GROUPS,
+    HABITATS,
+    REGIONS,
+    STATUSES,
+    TAGS,
+)
 from ..wikipedia import import_species_automatically, make_reference_plate
 
 router = APIRouter(prefix="/api/species", tags=["species"])
@@ -40,6 +49,8 @@ def list_species(
     profile: CurrentProfile,
     q: str | None = None,
     group: ListFilter = None,
+    class_name: ListFilter = None,
+    order: ListFilter = None,
     habitat: ListFilter = None,
     region: ListFilter = None,
     family: ListFilter = None,
@@ -47,15 +58,19 @@ def list_species(
     difficulty: Annotated[list[int] | None, Query()] = None,
     status: ListFilter = None,
     seen: ListFilter = None,
+    encounter: ListFilter = None,
+    activity: ListFilter = None,
     sort: str = "default",
     include_inactive: bool = False,
     page: int = Query(1, ge=1),
     page_size: int = Query(60, ge=1, le=500),
 ) -> Page[SpeciesListItem]:
-    sq = SpeciesQuery(profile.id)
+    sq = SpeciesQuery(profile.id, bool(profile.exclude_captive_from_progress))
     filters = dict(
-        q=q, group=group, habitat=habitat, region=region, family=family, tag=tag,
-        difficulty=difficulty, status=status, seen=seen,
+        q=q, group=group, class_name=class_name, order=order,
+        habitat=habitat, region=region, family=family, tag=tag,
+        difficulty=difficulty, status=status, seen=seen, encounter=encounter,
+        activity=activity,
         include_inactive=include_inactive,
     )
 
@@ -67,15 +82,18 @@ def list_species(
     )
 
     stmt = sq.apply_filters(
-        sq.base(Species, sq.photo_count, sq.obs_count), **filters
+        sq.base(
+            Species, sq.photo_count, sq.obs_count,
+            sq.raw_photo_count, sq.raw_obs_count,
+        ), **filters
     )
     stmt = sq.apply_sort(stmt, sort).offset((page - 1) * page_size).limit(page_size)
     rows = db.execute(stmt).all()
 
     photos = display_photos(db, [r[0].id for r in rows], profile.id)
     items = [
-        to_list_item(sp, int(pc), int(oc), photos.get(sp.id))
-        for sp, pc, oc in rows
+        to_list_item(sp, int(pc), int(oc), photos.get(sp.id), int(raw_pc), int(raw_oc))
+        for sp, pc, oc, raw_pc, raw_oc in rows
     ]
     return Page[SpeciesListItem](
         items=items, total=total, page=page, page_size=page_size,
@@ -89,6 +107,8 @@ def facets(
     profile: CurrentProfile,
     q: str | None = None,
     group: ListFilter = None,
+    class_name: ListFilter = None,
+    order: ListFilter = None,
     habitat: ListFilter = None,
     region: ListFilter = None,
     family: ListFilter = None,
@@ -96,19 +116,24 @@ def facets(
     difficulty: Annotated[list[int] | None, Query()] = None,
     status: ListFilter = None,
     seen: ListFilter = None,
+    encounter: ListFilter = None,
+    activity: ListFilter = None,
 ) -> Facets:
     """Counts for every filter dimension, each computed *without* the filter it
     describes, so the sidebar never shows a dead end."""
-    sq = SpeciesQuery(profile.id)
-    active = dict(q=q, group=group, habitat=habitat, region=region, family=family,
-                  tag=tag, difficulty=difficulty, status=status, seen=seen)
+    sq = SpeciesQuery(profile.id, bool(profile.exclude_captive_from_progress))
+    active = dict(q=q, group=group, class_name=class_name, order=order,
+                  habitat=habitat, region=region, family=family,
+                  tag=tag, difficulty=difficulty, status=status, seen=seen,
+                  encounter=encounter, activity=activity)
 
     def rows_for(exclude: str):
         f = {k: (None if k == exclude else v) for k, v in active.items()}
         stmt = sq.apply_filters(
             sq.base(Species.id, Species.group, Species.family, Species.difficulty,
                     Species.habitats, Species.regions, Species.tags, sq.photo_count,
-                    sq.obs_count),
+                    sq.obs_count, Species.class_name, Species.order_name,
+                    Species.activity),
             **f,
         )
         return db.execute(stmt).all()
@@ -158,13 +183,36 @@ def facets(
         has_encounter = int(row[7]) > 0 or int(row[8]) > 0
         seen_counts["seen" if has_encounter else "unseen"] += 1
 
+    encounter_rows = rows_for("encounter")
+    available_ids = {int(row[0]) for row in encounter_rows}
+    encounter_species = {"wild": set(), "captive": set()}
+    for model in (UserPhoto, Observation):
+        for sid, value in db.execute(
+            select(model.species_id, func.coalesce(model.encounter_type, "wild"))
+            .where(model.profile_id == profile.id)
+            .distinct()
+        ):
+            if value in encounter_species:
+                encounter_species[value].add(int(sid))
+
     return Facets(
         groups=scalar_facet("group", 1, GROUPS),
+        classes=scalar_facet(
+            "class_name", 9,
+            {key: {"label": label} for key, label in CLASS_LABELS.items()},
+        ),
+        orders=sorted(
+            (
+                facet for facet in scalar_facet("order", 10, {})
+                if facet.value.strip()
+            ),
+            key=lambda facet: facet.label,
+        ),
         families=sorted(scalar_facet("family", 2, {}), key=lambda f: -f.count),
         difficulties=scalar_facet("difficulty", 3, {str(k): v for k, v in DIFFICULTIES.items()}),
         habitats=list_facet("habitat", 4, HABITATS),
         regions=list_facet("region", 5, REGIONS),
-        tags=sorted(list_facet("tag", 6, {}), key=lambda f: -f.count)[:40],
+        tags=sorted(list_facet("tag", 6, TAGS), key=lambda f: -f.count)[:40],
         statuses=[
             FacetValue(value=k, label=STATUSES[k]["label"], count=v, collected=v)
             for k, v in status_counts.items()
@@ -178,6 +226,16 @@ def facets(
             )
             for key, count in seen_counts.items()
         ],
+        encounters=[
+            FacetValue(
+                value=key,
+                label="Freie Wildbahn" if key == "wild" else "Gefangenschaft",
+                count=len(ids & available_ids),
+                collected=len(ids & available_ids),
+            )
+            for key, ids in encounter_species.items()
+        ],
+        activities=scalar_facet("activity", 11, ACTIVITIES),
     )
 
 
@@ -195,7 +253,10 @@ def _get_species(db: Session, key: str) -> Species:
 def get_species(
     key: str, db: Annotated[Session, Depends(get_db)], profile: CurrentProfile
 ) -> SpeciesDetail:
-    return to_detail(_get_species(db, key), profile.id)
+    return to_detail(
+        _get_species(db, key), profile.id,
+        bool(profile.exclude_captive_from_progress),
+    )
 
 
 @router.post("/automatic", response_model=SpeciesDetail, status_code=201)
@@ -227,7 +288,7 @@ def create_species_automatically(
     db.add(sp)
     db.commit()
     db.refresh(sp)
-    return to_detail(sp, profile.id)
+    return to_detail(sp, profile.id, bool(profile.exclude_captive_from_progress))
 
 
 @router.post("", response_model=SpeciesDetail, status_code=201)
@@ -248,7 +309,7 @@ def create_species(
     db.add(sp)
     db.commit()
     db.refresh(sp)
-    return to_detail(sp, profile.id)
+    return to_detail(sp, profile.id, bool(profile.exclude_captive_from_progress))
 
 
 @router.post("/manual", response_model=SpeciesDetail, status_code=201)
@@ -302,7 +363,7 @@ async def create_species_manual(
     db.add(sp)
     db.commit()
     db.refresh(sp)
-    return to_detail(sp, profile.id)
+    return to_detail(sp, profile.id, bool(profile.exclude_captive_from_progress))
 
 
 @router.patch("/{key}", response_model=SpeciesDetail)
@@ -318,7 +379,7 @@ def update_species(
     sp.refresh_derived()
     db.commit()
     db.refresh(sp)
-    return to_detail(sp, profile.id)
+    return to_detail(sp, profile.id, bool(profile.exclude_captive_from_progress))
 
 
 @router.delete("/{key}", status_code=204)

@@ -325,6 +325,7 @@ async def upload_photo(
             location_name=location_name,
             latitude=latitude, longitude=longitude,
             notes=caption,
+            encounter_type=encounter_type,
         )
         db.add(obs)
         db.flush()
@@ -343,6 +344,7 @@ async def upload_photo(
         time=photo_time,
         location_name=location_name,
         caption=caption,
+        encounter_type=encounter_type,
         photo_metadata=meta,
     )
     # first photo of a species is automatically the best one
@@ -407,6 +409,11 @@ def update_photo(
         photo.is_best_photo = True
     for field, value in data.items():
         setattr(photo, field, value)
+    if "encounter_type" in data:
+        photo.photo_metadata = {
+            **(photo.photo_metadata or {}),
+            "encounter_type": photo.encounter_type or "wild",
+        }
     sync_observation_from_photo(photo)
     db.commit()
     db.refresh(photo)

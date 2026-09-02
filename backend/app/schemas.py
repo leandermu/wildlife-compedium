@@ -22,6 +22,7 @@ class ProfileUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=80)
     avatar: str | None = Field(default=None, min_length=1, max_length=20)
     gender: str | None = Field(default=None, pattern="^(male|female)$")
+    exclude_captive_from_progress: bool | None = None
 
 
 class ProfileOut(ORMModel):
@@ -30,6 +31,7 @@ class ProfileOut(ORMModel):
     avatar: str = "🐾"
     gender: str = "male"
     is_default: bool = False
+    exclude_captive_from_progress: bool = False
     photo_count: int = 0
     observation_count: int = 0
     collected_species: int = 0
@@ -54,6 +56,7 @@ class PhotoUpdate(BaseModel):
     observation_id: int | None = None
     is_best_photo: bool | None = None
     photo_metadata: dict[str, Any] | None = None
+    encounter_type: str | None = Field(default=None, pattern="^(wild|captive)$")
 
 
 class PhotoOut(ORMModel):
@@ -67,6 +70,7 @@ class PhotoOut(ORMModel):
     time: dt.time | None = None
     location_name: str = ""
     caption: str = ""
+    encounter_type: str = "wild"
     is_best_photo: bool = False
     photo_metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: dt.datetime
@@ -80,6 +84,7 @@ class ObservationBase(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     notes: str = ""
+    encounter_type: str = Field(default="wild", pattern="^(wild|captive)$")
 
 
 class ObservationCreate(ObservationBase):
@@ -93,6 +98,7 @@ class ObservationUpdate(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     notes: str | None = None
+    encounter_type: str | None = Field(default=None, pattern="^(wild|captive)$")
 
 
 class ObservationOut(ORMModel):
@@ -104,6 +110,7 @@ class ObservationOut(ORMModel):
     latitude: float | None = None
     longitude: float | None = None
     notes: str = ""
+    encounter_type: str = "wild"
     has_photo: bool = False
     created_at: dt.datetime
 
@@ -113,8 +120,10 @@ class SpeciesBase(BaseModel):
     common_name: str
     scientific_name: str = ""
     group: str = "other"
+    class_name: str = ""
     family: str = ""
     order_name: str = ""
+    activity: str = Field(default="diurnal", pattern="^(diurnal|nocturnal)$")
     description: str = ""
     size: str = ""
     wingspan: str = ""
@@ -145,8 +154,10 @@ class SpeciesUpdate(BaseModel):
     common_name: str | None = None
     scientific_name: str | None = None
     group: str | None = None
+    class_name: str | None = None
     family: str | None = None
     order_name: str | None = None
+    activity: str | None = Field(default=None, pattern="^(diurnal|nocturnal)$")
     description: str | None = None
     size: str | None = None
     wingspan: str | None = None
@@ -173,10 +184,12 @@ class SpeciesListItem(ORMModel):
     common_name: str
     scientific_name: str
     group: str
+    class_name: str = ""
     family: str
     difficulty: int
     regions: list[str] = Field(default_factory=list)
     habitats: list[str] = Field(default_factory=list)
+    activity: str = "diurnal"
     size: str = ""
     reference_image_url: str | None = None
     reference_thumb_url: str | None = None
@@ -187,6 +200,8 @@ class SpeciesListItem(ORMModel):
     best_photo_thumb_url: str | None = None
     display_photo_date: dt.date | None = None
     display_photo_location: str = ""
+    created_at: dt.datetime | None = None
+    updated_at: dt.datetime | None = None
 
 
 class SpeciesDetail(SpeciesListItem):
@@ -223,12 +238,16 @@ class FacetValue(BaseModel):
 
 class Facets(BaseModel):
     groups: list[FacetValue]
+    classes: list[FacetValue]
+    orders: list[FacetValue]
     habitats: list[FacetValue]
     regions: list[FacetValue]
     families: list[FacetValue]
     difficulties: list[FacetValue]
     statuses: list[FacetValue]
     seen: list[FacetValue]
+    encounters: list[FacetValue]
+    activities: list[FacetValue]
     tags: list[FacetValue]
 
 

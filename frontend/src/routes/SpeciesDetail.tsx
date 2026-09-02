@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { api } from "../api";
 import type { Observation, Photo, SpeciesDetail } from "../types";
 import { PlaceholderArt } from "../components/PlaceholderArt";
@@ -14,15 +14,28 @@ const GROUP_LABEL: Record<string, string> = {
 const HABITAT_LABEL: Record<string, string> = {
   garden: "Garten", city: "Stadt", park: "Park", forest: "Wald", field: "Feld & Wiese",
   water: "Gewässer", moor: "Moor", heath: "Heide & Trockenrasen", alps: "Berge & Alpen",
-  coast: "Küste", night: "Nacht", savanna: "Savanne", rainforest: "Regenwald",
+  coast: "Küste", savanna: "Savanne", rainforest: "Regenwald",
   ocean: "Offenes Meer",
 };
 const REGION_LABEL: Record<string, string> = {
   bavaria: "Bayern", germany: "Deutschland", europe: "Europa", world: "Welt & Expedition",
+  africa: "Afrika", asia: "Asien", north_america: "Nordamerika",
+  south_america: "Südamerika", oceania: "Australien & Ozeanien",
+  antarctica: "Antarktis", arctic: "Arktis",
+};
+const TAG_LABEL: Record<string, string> = {
+  zugvogel: "Zugvogel", standvogel: "Standvogel", wanderfalter: "Wanderfalter",
+  wiesenbrueter: "Wiesenbrüter", stadtvogel: "Stadtvogel", bestaeuber: "Bestäuber",
+  farbenpracht: "Farbenprächtig", waermeliebend: "Wärmeliebend", futterhaus: "Am Futterhaus",
+  schwarm: "Schwarmtier", brunft: "Brunft", neozoon: "Neozoon", geschuetzt: "Geschützt",
+  giftig: "Giftig", haeufig: "Häufig", vorsicht: "Besonders vorsichtig",
+  fruehling: "Im Frühling", winter: "Im Winter", regen: "Bei Regen aktiv",
+  legende: "Legendäre Sichtung",
 };
 
 export function SpeciesDetailPage() {
   const { slug = "" } = useParams();
+  const location = useLocation();
   const [species, setSpecies] = useState<SpeciesDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<Photo | null>(null);
@@ -32,6 +45,7 @@ export function SpeciesDetailPage() {
   const [obsTime, setObsTime] = useState("");
   const [obsPlace, setObsPlace] = useState("");
   const [obsNote, setObsNote] = useState("");
+  const [obsEncounterType, setObsEncounterType] = useState<"wild" | "captive">("wild");
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
   const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
 
@@ -69,6 +83,8 @@ export function SpeciesDetailPage() {
 
   const unlocked = species.status !== "locked";
   const hero = species.photos.find((p) => p.is_best_photo) ?? species.photos[0];
+  const speciesSearch = (location.state as { speciesSearch?: string } | null)?.speciesSearch ?? "";
+  const overviewUrl = speciesSearch ? `/arten?${speciesSearch}` : "/arten";
 
   const openPhoto = (photo: Photo) => {
     setLightboxInfo(false);
@@ -92,24 +108,34 @@ export function SpeciesDetailPage() {
       time: obsTime || null,
       location_name: obsPlace,
       notes: obsNote,
+      encounter_type: obsEncounterType,
     });
     setObsDate("");
     setObsTime("");
     setObsPlace("");
     setObsNote("");
+    setObsEncounterType("wild");
     load();
   };
 
   return (
     <article className="animate-fade-up">
-      <Link to="/arten" className="label-caps no-print mb-6 inline-block hover:text-ink-2">
-        ← Zurück zur Übersicht
-      </Link>
+      <div className="no-print mb-6 flex items-center justify-between gap-4">
+        <Link to={overviewUrl} className="label-caps hover:text-ink-2">
+          ← Zurück zur Übersicht
+        </Link>
+        <Link
+          to={`/verwaltung?edit=${encodeURIComponent(species.slug)}`}
+          className="rounded-sm border border-rule-2 bg-paper px-3 py-1.5 text-[13px] text-ink-2 transition hover:bg-paper-2"
+        >
+          Art bearbeiten
+        </Link>
+      </div>
 
       {/* Kopf */}
       <header className="border-b border-rule pb-8 text-center">
         <p className="label-caps">
-          {GROUP_LABEL[species.group] ?? species.group}
+          {species.class_name || GROUP_LABEL[species.group] || species.group}
           {species.order_name && ` · ${species.order_name}`}
           {species.family && ` · ${species.family}`}
         </p>
@@ -132,7 +158,7 @@ export function SpeciesDetailPage() {
         <div>
           <figure className="relative overflow-hidden rounded-sm border border-rule-2 bg-paper shadow-[var(--shadow-card)]">
             <div className="aspect-[4/3] bg-paper-2">
-              {unlocked && hero?.url ? (
+              {hero?.url ? (
                 <button
                   onClick={() => openPhoto(hero)}
                   className="h-full w-full cursor-zoom-in"
@@ -177,7 +203,20 @@ export function SpeciesDetailPage() {
                     ✓ Freigeschaltet
                   </span>
                   <span className="text-[13px] text-ink-3">
-                    {hero?.location_name && `📍 ${hero.location_name}`}
+                    {hero?.location_name && (
+                      <>
+                        📍{" "}
+                        <a
+                          href={photoMapUrl(hero)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline decoration-rule-2 underline-offset-2 hover:text-moss-2"
+                          title="In Google Maps öffnen"
+                        >
+                          {hero.location_name} ↗
+                        </a>
+                      </>
+                    )}
                     {hero?.date && ` · 📅 ${formatDate(hero.date)}`}
                   </span>
                 </>
@@ -251,7 +290,17 @@ export function SpeciesDetailPage() {
                     </button>
                     <figcaption className="space-y-1 px-3 py-2 text-[12px] text-ink-3">
                       <p className="text-ink-2">{formatDate(p.date) || "ohne Datum"}</p>
-                      {p.location_name && <p className="truncate">{p.location_name}</p>}
+                      {p.location_name && (
+                        <a
+                          href={photoMapUrl(p)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block truncate underline decoration-rule-2 underline-offset-2 hover:text-moss-2"
+                          title="In Google Maps öffnen"
+                        >
+                          {p.location_name} ↗
+                        </a>
+                      )}
                       {p.caption && <p className="truncate italic">{p.caption}</p>}
                       <div className="no-print flex items-center gap-3 pt-1">
                         {p.is_best_photo ? (
@@ -265,7 +314,7 @@ export function SpeciesDetailPage() {
                           </button>
                         )}
                         <button onClick={() => setEditingPhoto(p)} className="hover:text-ink">
-                          {p.observation_id ? "Foto & Begegnung bearbeiten" : "Foto bearbeiten"}
+                          Bearbeiten
                         </button>
                         <button
                           onClick={() => removePhoto(p.id)}
@@ -290,9 +339,11 @@ export function SpeciesDetailPage() {
               </p>
             )}
             <dl className="divide-y divide-rule border-y border-rule">
-              <Row label="Wissenschaftlich" value={<em>{species.scientific_name}</em>} />
-              <Row label="Familie" value={species.family} />
+              <Row label="Art (wissenschaftlich)" value={<em>{species.scientific_name}</em>} />
+              <Row label="Klasse" value={species.class_name} />
               <Row label="Ordnung" value={species.order_name} />
+              <Row label="Familie" value={species.family} />
+              <Row label="Aktivität" value={species.activity === "nocturnal" ? "Nachtaktiv" : "Tagaktiv"} />
               <Row label="Größe" value={species.size} />
               <Row label="Spannweite" value={species.wingspan} />
               <Row label="Gewicht" value={species.weight} />
@@ -320,7 +371,7 @@ export function SpeciesDetailPage() {
                     to={`/arten?tag=${encodeURIComponent(t)}`}
                     className="rounded-full border border-rule bg-paper-2/60 px-3 py-1 text-[12px] text-ink-3 hover:border-rule-2 hover:text-ink-2"
                   >
-                    #{t}
+                    {TAG_LABEL[t] ?? t}
                   </Link>
                 ))}
               </div>
@@ -334,7 +385,9 @@ export function SpeciesDetailPage() {
             <h2 className="mb-4 font-serif text-xl">📷 Eigenes Foto</h2>
             {!unlocked && (
               <p className="mb-4 rounded-sm bg-paper-2 px-3 py-2 text-[13px] text-ink-3">
-                Diese Art ist noch nicht freigeschaltet. Dein erstes Foto schaltet sie frei.
+                {species.photo_count > 0
+                  ? "Diese Art ist nur in Gefangenschaft dokumentiert und zählt aktuell nicht zum Compedium-Fortschritt."
+                  : "Diese Art ist noch nicht freigeschaltet. Dein erstes Wildbahn-Foto schaltet sie frei."}
               </p>
             )}
             <PhotoUpload species={species} onDone={() => load(true)} />
@@ -357,11 +410,19 @@ export function SpeciesDetailPage() {
                         o.has_photo ? "bg-moss" : "bg-rule-2"
                       }`}
                     />
-                    <p className="text-ink-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingObservation(o)}
+                      className="text-left text-ink-2 underline decoration-rule-2 underline-offset-4 hover:text-ink"
+                      title="Begegnung bearbeiten"
+                    >
                       {formatDateLong(o.date) || "ohne Datum"}
                       {o.time && ` · ${o.time.slice(0, 5)} Uhr`}
                       {o.has_photo && <span className="ml-1.5 text-moss-2">📷</span>}
-                    </p>
+                      {o.encounter_type === "captive" && (
+                        <span className="ml-1.5 text-ochre">Gefangenschaft</span>
+                      )}
+                    </button>
                     {o.location_name && (
                       o.latitude !== null && o.longitude !== null ? (
                         <a
@@ -376,13 +437,6 @@ export function SpeciesDetailPage() {
                       ) : <p className="text-ink-3">{o.location_name}</p>
                     )}
                     {o.notes && <p className="italic text-ink-3">{o.notes}</p>}
-                    <button
-                      type="button"
-                      onClick={() => setEditingObservation(o)}
-                      className="mt-1 text-[11px] text-ink-3 underline decoration-rule-2 underline-offset-2 hover:text-ink"
-                    >
-                      {o.has_photo ? "Foto & Begegnung bearbeiten" : "Begegnung bearbeiten"}
-                    </button>
                   </li>
                 ))}
               </ol>
@@ -416,6 +470,16 @@ export function SpeciesDetailPage() {
                 placeholder="Notiz"
                 className="w-full rounded-sm border border-rule bg-paper px-2 py-1.5 text-[13px] focus:outline-none"
               />
+              <div className="flex flex-wrap gap-4 text-[13px] text-ink-2">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input type="radio" name="observation-encounter-type" checked={obsEncounterType === "wild"} onChange={() => setObsEncounterType("wild")} />
+                  Freie Wildbahn
+                </label>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input type="radio" name="observation-encounter-type" checked={obsEncounterType === "captive"} onChange={() => setObsEncounterType("captive")} />
+                  Gefangenschaft
+                </label>
+              </div>
               <button
                 type="submit"
                 className="w-full rounded-sm border border-rule-2 bg-paper-2 px-3 py-1.5 text-[13px] text-ink-2 hover:bg-paper-3"
@@ -475,11 +539,12 @@ export function SpeciesDetailPage() {
 
       {editingPhoto && (
         <EditEntryDialog
-          title={editingPhoto.observation_id ? "Foto & Begegnung bearbeiten" : "Foto bearbeiten"}
+          title="Foto bearbeiten"
           date={editingPhoto.date ?? ""}
           time={editingPhoto.time?.slice(0, 5) ?? ""}
           location={editingPhoto.location_name}
           note={editingPhoto.caption}
+          encounterType={editingPhoto.encounter_type}
           onClose={() => setEditingPhoto(null)}
           onSave={async (values) => {
             await api.updatePhoto(editingPhoto.id, {
@@ -487,6 +552,7 @@ export function SpeciesDetailPage() {
               time: values.time || null,
               location_name: values.location,
               caption: values.note,
+              encounter_type: values.encounterType,
             });
             setEditingPhoto(null);
             setLightbox(null);
@@ -497,18 +563,25 @@ export function SpeciesDetailPage() {
 
       {editingObservation && (
         <EditEntryDialog
-          title={editingObservation.has_photo ? "Foto & Begegnung bearbeiten" : "Begegnung bearbeiten"}
+          title="Begegnung bearbeiten"
           date={editingObservation.date ?? ""}
           time={editingObservation.time?.slice(0, 5) ?? ""}
           location={editingObservation.location_name}
           note={editingObservation.notes}
+          encounterType={editingObservation.encounter_type}
           onClose={() => setEditingObservation(null)}
+          onDelete={!editingObservation.has_photo ? async () => {
+            await api.deleteObservation(editingObservation.id);
+            setEditingObservation(null);
+            await load();
+          } : undefined}
           onSave={async (values) => {
             await api.updateObservation(editingObservation.id, {
               date: values.date || null,
               time: values.time || null,
               location_name: values.location,
               notes: values.note,
+              encounter_type: values.encounterType,
             });
             setEditingObservation(null);
             await load();
@@ -520,17 +593,19 @@ export function SpeciesDetailPage() {
 }
 
 function EditEntryDialog({
-  title, date, time, location, note, onClose, onSave,
+  title, date, time, location, note, encounterType, onClose, onSave, onDelete,
 }: {
   title: string;
   date: string;
   time: string;
   location: string;
   note: string;
+  encounterType: "wild" | "captive";
   onClose: () => void;
-  onSave: (values: { date: string; time: string; location: string; note: string }) => Promise<void>;
+  onSave: (values: { date: string; time: string; location: string; note: string; encounterType: "wild" | "captive" }) => Promise<void>;
+  onDelete?: () => Promise<void>;
 }) {
-  const [values, setValues] = useState({ date, time, location, note });
+  const [values, setValues] = useState({ date, time, location, note, encounterType });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return (
@@ -577,12 +652,47 @@ function EditEntryDialog({
           <textarea rows={3} value={values.note} onChange={(e) => setValues((current) => ({ ...current, note: e.target.value }))}
             className="mt-1 w-full rounded-sm border border-rule bg-paper px-3 py-2 text-sm text-ink" />
         </label>
+        <fieldset>
+          <legend className="mb-1 text-xs text-ink-3">Beobachtungsart</legend>
+          <div className="flex gap-4 text-sm text-ink-2">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input type="radio" name="edit-encounter-type" checked={values.encounterType === "wild"} onChange={() => setValues((current) => ({ ...current, encounterType: "wild" }))} />
+              Freie Wildbahn
+            </label>
+            <label className="flex cursor-pointer items-center gap-2">
+              <input type="radio" name="edit-encounter-type" checked={values.encounterType === "captive"} onChange={() => setValues((current) => ({ ...current, encounterType: "captive" }))} />
+              Gefangenschaft
+            </label>
+          </div>
+        </fieldset>
         {error && <p className="text-xs text-rust">{error}</p>}
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-sm border border-rule px-4 py-2 text-sm">Abbrechen</button>
-          <button type="submit" disabled={busy} className="rounded-sm bg-moss px-4 py-2 text-sm text-paper disabled:opacity-50">
-            {busy ? "Speichert …" : "Speichern"}
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {onDelete ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                if (!confirm("Diese Begegnung wirklich löschen?")) return;
+                setBusy(true);
+                setError("");
+                try {
+                  await onDelete();
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Begegnung konnte nicht gelöscht werden");
+                  setBusy(false);
+                }
+              }}
+              className="rounded-sm border border-rust/40 px-4 py-2 text-sm text-rust hover:bg-rust/5 disabled:opacity-50"
+            >
+              Begegnung löschen
+            </button>
+          ) : <span />}
+          <div className="flex gap-2">
+            <button type="button" onClick={onClose} disabled={busy} className="rounded-sm border border-rule px-4 py-2 text-sm disabled:opacity-50">Abbrechen</button>
+            <button type="submit" disabled={busy} className="rounded-sm bg-moss px-4 py-2 text-sm text-paper disabled:opacity-50">
+              {busy ? "Speichert …" : "Speichern"}
+            </button>
+          </div>
         </div>
       </form>
     </div>
@@ -617,6 +727,15 @@ function metadataValue(value: unknown): string {
   return JSON.stringify(value);
 }
 
+function photoMapUrl(photo: Photo): string {
+  const latitude = Number(photo.photo_metadata?.latitude);
+  const longitude = Number(photo.photo_metadata?.longitude);
+  const query = Number.isFinite(latitude) && Number.isFinite(longitude)
+    ? `${latitude},${longitude}`
+    : photo.location_name;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
 function flattenMetadata(value: unknown, prefix = ""): Array<[string, string]> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
   return Object.entries(value as Record<string, unknown>).flatMap(([key, item]) => {
@@ -640,6 +759,7 @@ function PhotoInfo({ photo }: { photo: Photo }) {
   const latitude = Number(metadata.latitude);
   const longitude = Number(metadata.longitude);
   const hasGps = Number.isFinite(latitude) && Number.isFinite(longitude);
+  const hasMapLocation = hasGps || Boolean(photo.location_name.trim());
 
   return (
     <aside className="max-h-[45vh] w-full shrink-0 overflow-y-auto bg-paper p-5 text-ink lg:max-h-[calc(100vh-3rem)] lg:w-96">
@@ -647,6 +767,7 @@ function PhotoInfo({ photo }: { photo: Photo }) {
       <h2 className="mt-1 truncate font-serif text-xl">{photo.original_filename || "Foto"}</h2>
 
       <dl className="mt-4 divide-y divide-rule border-y border-rule text-[13px]">
+        <InfoRow label="Beobachtungsart" value={photo.encounter_type === "captive" ? "Gefangenschaft" : "Freie Wildbahn"} />
         {photo.date && <InfoRow label="Aufgenommen" value={`${formatDateLong(photo.date)}${photo.time ? ` · ${photo.time.slice(0, 5)} Uhr` : ""}`} />}
         {photo.location_name && <InfoRow label="Ort" value={photo.location_name} />}
         {photo.caption && <InfoRow label="Notiz" value={photo.caption} />}
@@ -655,9 +776,9 @@ function PhotoInfo({ photo }: { photo: Photo }) {
         ))}
       </dl>
 
-      {hasGps && (
+      {hasMapLocation && (
         <a
-          href={`https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`}
+          href={photoMapUrl(photo)}
           target="_blank"
           rel="noreferrer"
           className="mt-4 inline-flex text-[13px] text-moss-2 underline decoration-rule-2 underline-offset-2"

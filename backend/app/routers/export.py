@@ -24,7 +24,7 @@ from ..text import slugify
 router = APIRouter(prefix="/api/export", tags=["export"])
 
 SPECIES_COLUMNS = [
-    "slug", "common_name", "scientific_name", "group", "family", "order_name",
+    "slug", "common_name", "scientific_name", "group", "class_name", "family", "order_name", "activity",
     "description", "size", "wingspan", "weight", "habitats", "regions", "countries",
     "tags", "difficulty", "rarity", "reference_image", "distribution_map", "active",
 ]
@@ -34,7 +34,8 @@ def _species_dict(sp: Species) -> dict:
     return {
         "slug": sp.slug, "common_name": sp.common_name,
         "scientific_name": sp.scientific_name, "group": sp.group, "family": sp.family,
-        "order_name": sp.order_name, "description": sp.description, "size": sp.size,
+        "class_name": sp.class_name, "order_name": sp.order_name,
+        "activity": sp.activity or "diurnal", "description": sp.description, "size": sp.size,
         "wingspan": sp.wingspan, "weight": sp.weight, "habitats": sp.habitats or [],
         "regions": sp.regions or [], "countries": sp.countries or [], "tags": sp.tags or [],
         "difficulty": sp.difficulty, "rarity": sp.rarity,
@@ -49,6 +50,7 @@ def _photo_dict(p: UserPhoto) -> dict:
         "file": p.storage_key, "original_filename": p.original_filename,
         "date": p.date.isoformat() if p.date else None, "location_name": p.location_name,
         "caption": p.caption, "is_best_photo": p.is_best_photo,
+        "encounter_type": p.encounter_type or "wild",
         "metadata": p.photo_metadata or {},
         "created_at": p.created_at.isoformat(),
     }
@@ -60,6 +62,7 @@ def _observation_dict(o: Observation) -> dict:
         "date": o.date.isoformat() if o.date else None,
         "location_name": o.location_name, "latitude": o.latitude,
         "longitude": o.longitude, "notes": o.notes, "has_photo": o.has_photo,
+        "encounter_type": o.encounter_type or "wild",
         "created_at": o.created_at.isoformat(),
     }
 
@@ -91,7 +94,13 @@ def export_json(
     payload = {
         "exported_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "version": 1,
-        "profile": {"id": profile.id, "name": profile.name},
+        "profile": {
+            "id": profile.id,
+            "name": profile.name,
+            "exclude_captive_from_progress": bool(
+                profile.exclude_captive_from_progress
+            ),
+        },
         "species": [_species_dict(s) | {"id": s.id} for s in species],
         "observations": [_observation_dict(o) for o in observations],
         "photos": [_photo_dict(p) for p in photos],
@@ -139,7 +148,7 @@ def export_csv(
     species, observations, photos = _all(db, profile.id)
     if what == "observations":
         cols = ["id", "species_id", "date", "location_name", "latitude", "longitude",
-                "notes", "has_photo"]
+                "notes", "encounter_type", "has_photo"]
         by_id = {s.id: s for s in species}
         rows = [
             _observation_dict(o) | {"species_slug": by_id[o.species_id].slug}
@@ -149,7 +158,7 @@ def export_csv(
         body = _csv(rows, cols)
     elif what == "photos":
         cols = ["id", "species_id", "species_slug", "observation_id", "file", "date",
-                "location_name", "caption", "is_best_photo"]
+                "location_name", "caption", "encounter_type", "is_best_photo"]
         by_id = {s.id: s for s in species}
         rows = [
             _photo_dict(p) | {"species_slug": by_id[p.species_id].slug}

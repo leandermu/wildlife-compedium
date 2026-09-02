@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import type { Meta, SpeciesDetail, SpeciesListItem } from "../types";
 import { SectionTitle } from "../components/ui";
-import { formatNumber } from "../lib/format";
+import { formatNumber, formatRelativeTime } from "../lib/format";
 
 const EMPTY = {
-  common_name: "", scientific_name: "", group: "bird", family: "", order_name: "",
+  common_name: "", scientific_name: "", group: "other", class_name: "Aves",
+  family: "", order_name: "", activity: "diurnal" as "diurnal" | "nocturnal",
   description: "", size: "", wingspan: "", weight: "", difficulty: 1,
   habitats: [] as string[], regions: [] as string[], tags: [] as string[],
 };
@@ -15,6 +16,7 @@ const parseTags = (value: string) =>
   value.split(",").map((tag) => tag.trim()).filter(Boolean);
 
 export function AdminPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [meta, setMeta] = useState<Meta | null>(null);
   const [form, setForm] = useState({ ...EMPTY });
   const [tagInput, setTagInput] = useState("");
@@ -36,7 +38,7 @@ export function AdminPage() {
   }, []);
 
   const refresh = () => {
-    api.species({ q: search || undefined, page_size: 24, sort: "created_desc" }).then((r) => {
+    api.species({ q: search || undefined, page_size: 24, sort: "updated_desc" }).then((r) => {
       setResults(r.items);
       setTotal(r.total);
     });
@@ -47,7 +49,7 @@ export function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
-  const toggleList = (key: "habitats" | "regions", value: string) =>
+  const toggleList = (key: "habitats" | "regions" | "tags", value: string) =>
     setForm((f) => ({
       ...f,
       [key]: f[key].includes(value) ? f[key].filter((v) => v !== value) : [...f[key], value],
@@ -67,7 +69,7 @@ export function AdminPage() {
           fd.append("data", JSON.stringify({
             ...form,
             difficulty: Number(form.difficulty),
-            tags: parseTags(tagInput),
+            tags: [...new Set([...form.tags, ...parseTags(tagInput)])],
           }));
           if (referenceImage) fd.append("image", referenceImage);
           imported = await api.createSpeciesManual(fd);
@@ -82,13 +84,14 @@ export function AdminPage() {
       const payload = {
         ...form,
         difficulty: Number(form.difficulty),
-        tags: parseTags(tagInput),
+        tags: [...new Set([...form.tags, ...parseTags(tagInput)])],
       };
       await api.updateSpecies(editing.slug, payload);
       setMessage({ kind: "ok", text: `„${form.common_name}" aktualisiert.` });
       setForm({ ...EMPTY });
       setTagInput("");
       setEditing(null);
+      setSearchParams({});
       refresh();
     } catch (err) {
       setMessage({ kind: "err", text: err instanceof Error ? err.message : "Fehler" });
@@ -102,13 +105,25 @@ export function AdminPage() {
     setEditing(s);
     setForm({
       common_name: s.common_name, scientific_name: s.scientific_name, group: s.group,
-      family: s.family, order_name: s.order_name, description: s.description,
+      class_name: s.class_name, family: s.family, order_name: s.order_name,
+      activity: s.activity, description: s.description,
       size: s.size, wingspan: s.wingspan, weight: s.weight, difficulty: s.difficulty,
-      habitats: s.habitats, regions: s.regions, tags: s.tags,
+      habitats: s.habitats, regions: s.regions,
+      tags: s.tags.filter((tag) => meta?.tags.some((option) => option.value === tag)),
     });
-    setTagInput(s.tags.join(", "));
+    setTagInput(
+      s.tags.filter((tag) => !meta?.tags.some((option) => option.value === tag)).join(", "),
+    );
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  const requestedEdit = searchParams.get("edit");
+  useEffect(() => {
+    if (!meta || !requestedEdit || editing?.slug === requestedEdit) return;
+    void edit(requestedEdit);
+    // The edit function intentionally reads the loaded vocabulary once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta, requestedEdit, editing?.slug]);
 
   const remove = async (s: SpeciesListItem) => {
     if (
@@ -165,6 +180,7 @@ export function AdminPage() {
               <button
                 onClick={() => {
                   setEditing(null);
+                  setSearchParams({});
                   setForm({ ...EMPTY });
                   setTagInput("");
                 }}
@@ -206,26 +222,16 @@ export function AdminPage() {
           {(editing || createMode === "manual") && (
             <>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input label="Deutscher Name *" value={form.common_name} required
+            <Input label="Art (deutscher Name) *" value={form.common_name} required
               onChange={(v) => setForm({ ...form, common_name: v })} />
-            <Input label="Wissenschaftlicher Name" value={form.scientific_name}
+            <Input label="Art (wissenschaftlicher Name)" value={form.scientific_name}
               onChange={(v) => setForm({ ...form, scientific_name: v })} />
-            <label className="block">
-              <span className="label-caps mb-1.5 block">Tiergruppe</span>
-              <select
-                value={form.group}
-                onChange={(e) => setForm({ ...form, group: e.target.value })}
-                className="w-full rounded-sm border border-rule bg-paper px-3 py-2 text-[14px] focus:outline-none"
-              >
-                {meta?.groups.map((g) => (
-                  <option key={g.value} value={g.value}>{g.label}</option>
-                ))}
-              </select>
-            </label>
-            <Input label="Familie" value={form.family}
-              onChange={(v) => setForm({ ...form, family: v })} />
+            <Input label="Klasse" value={form.class_name} placeholder="z. B. Aves"
+              onChange={(v) => setForm({ ...form, class_name: v })} />
             <Input label="Ordnung" value={form.order_name}
               onChange={(v) => setForm({ ...form, order_name: v })} />
+            <Input label="Familie" value={form.family}
+              onChange={(v) => setForm({ ...form, family: v })} />
             <label className="block">
               <span className="label-caps mb-1.5 block">Schwierigkeit</span>
               <select
@@ -260,10 +266,20 @@ export function AdminPage() {
 
           <Chips label="Lebensraum" options={meta?.habitats ?? []} selected={form.habitats}
             onToggle={(v) => toggleList("habitats", v)} />
-          <Chips label="Region" options={meta?.regions ?? []} selected={form.regions}
+          <Chips label="Region / Kontinent" options={meta?.regions ?? []} selected={form.regions}
             onToggle={(v) => toggleList("regions", v)} />
 
-          <Input label="Tags (Komma-getrennt)" value={tagInput}
+          <Chips
+            label="Aktivität"
+            options={meta?.activities ?? []}
+            selected={[form.activity]}
+            onToggle={(value) => setForm({ ...form, activity: value as "diurnal" | "nocturnal" })}
+          />
+
+          <Chips label="Merkmale" options={meta?.tags ?? []} selected={form.tags}
+            onToggle={(v) => toggleList("tags", v)} />
+
+          <Input label="Weitere Merkmale (Komma-getrennt)" value={tagInput}
             onChange={setTagInput} />
           {!editing && (
             <label className="block rounded-sm border border-dashed border-rule-2 bg-paper-2/50 p-4">
@@ -300,7 +316,7 @@ export function AdminPage() {
 
       {/* Liste */}
       <section>
-        <SectionTitle right={<span className="text-[13px] text-ink-3">{formatNumber(total)} Arten · neueste zuerst</span>}>
+        <SectionTitle right={<span className="text-[13px] text-ink-3">{formatNumber(total)} Arten · letzte Änderung zuerst</span>}>
           Arten bearbeiten
         </SectionTitle>
         <input
@@ -313,7 +329,7 @@ export function AdminPage() {
           <table className="w-full min-w-[640px] border-collapse text-[14px]">
             <thead>
               <tr className="border-b border-rule-2 text-left">
-                {["Art", "Gruppe", "Familie", "Schwierigkeit", "Fotos", ""].map((h) => (
+                {["Art", "Klasse", "Familie", "Letzte Änderung", "Fotos", ""].map((h) => (
                   <th key={h} className="label-caps py-2 pr-4 font-semibold">{h}</th>
                 ))}
               </tr>
@@ -327,12 +343,14 @@ export function AdminPage() {
                     </Link>
                     <span className="ml-2 font-serif italic text-ink-3">{s.scientific_name}</span>
                   </td>
-                  <td className="py-2 pr-4 text-ink-2">{s.group}</td>
+                  <td className="py-2 pr-4 text-ink-2">{s.class_name}</td>
                   <td className="py-2 pr-4 text-ink-2">{s.family}</td>
-                  <td className="py-2 pr-4 text-ochre">{"★".repeat(s.difficulty)}</td>
+                  <td className="py-2 pr-4 text-ink-3">
+                    {s.updated_at ? formatRelativeTime(s.updated_at) : "–"}
+                  </td>
                   <td className="py-2 pr-4 text-ink-2">{s.photo_count}</td>
                   <td className="py-2 text-right whitespace-nowrap">
-                    <button onClick={() => edit(s.slug)} className="text-ink-3 hover:text-ink">
+                    <button onClick={() => setSearchParams({ edit: s.slug })} className="text-ink-3 hover:text-ink">
                       Bearbeiten
                     </button>
                     <button onClick={() => remove(s)} className="ml-4 text-ink-3 hover:text-rust">

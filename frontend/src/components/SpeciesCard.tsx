@@ -9,13 +9,20 @@ const GROUP_LABEL: Record<string, string> = {
   amphibian: "Amphibie", reptile: "Reptil", fish: "Fisch", other: "Sonstiges",
 };
 
-export function SpeciesCard({ species }: { species: SpeciesListItem }) {
+export function SpeciesCard({
+  species,
+  listSearch = "",
+}: {
+  species: SpeciesListItem;
+  listSearch?: string;
+}) {
   const unlocked = species.status !== "locked";
   const photo = species.best_photo_thumb_url ?? species.best_photo_url;
 
   return (
     <Link
       to={`/arten/${species.slug}`}
+      state={{ speciesSearch: listSearch }}
       className={`group relative flex flex-col overflow-hidden rounded-sm border transition-all duration-300 ${
         unlocked
           ? "border-rule-2 bg-paper shadow-[var(--shadow-card)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]"
@@ -38,7 +45,7 @@ export function SpeciesCard({ species }: { species: SpeciesListItem }) {
 
       {/* Bildfeld */}
       <div className="relative mx-4 mt-3 aspect-[4/3] overflow-hidden rounded-sm bg-paper-2">
-        {unlocked && photo ? (
+        {photo ? (
           <img
             src={photo}
             alt={`Eigenes Foto: ${species.common_name}`}
@@ -73,7 +80,7 @@ export function SpeciesCard({ species }: { species: SpeciesListItem }) {
             />
           </div>
         )}
-        {unlocked && (
+        {photo && (
           <span className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-ink/10" />
         )}
       </div>
@@ -87,7 +94,7 @@ export function SpeciesCard({ species }: { species: SpeciesListItem }) {
 
         <div className="my-2.5 h-px bg-rule/70" />
 
-        {unlocked ? (
+        {photo ? (
           <div className="space-y-1 text-[13px] text-ink-2">
             <p className="flex items-center gap-1.5">
               <span aria-hidden>📅</span>
@@ -114,6 +121,10 @@ export function SpeciesCard({ species }: { species: SpeciesListItem }) {
           {unlocked ? (
             <span className="label-caps text-moss-2">
               ✓ Freigeschaltet
+            </span>
+          ) : photo ? (
+            <span className="label-caps text-ochre">
+              Gefangenschaft · nicht gewertet
             </span>
           ) : (
             <span className="label-caps inline-flex items-center gap-1.5">

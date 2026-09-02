@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Sequence
 
-from sqlalchemy import Select, Text, and_, case, func, or_, select
+from sqlalchemy import Select, Text, and_, case, exists, func, or_, select
 from sqlalchemy.orm import Session
 
 from .models import Observation, Species, UserPhoto
@@ -18,26 +18,32 @@ from .storage import media_url
 from .text import normalize
 from .vocab import GROUPS
 
-def _photo_agg(profile_id: int):
+def _photo_agg(profile_id: int, wild_only: bool = False):
+    filters = [UserPhoto.profile_id == profile_id]
+    if wild_only:
+        filters.append(func.coalesce(UserPhoto.encounter_type, "wild") == "wild")
     return (
         select(
             UserPhoto.species_id.label("sid"),
             func.count(UserPhoto.id).label("photo_count"),
             func.max(UserPhoto.created_at).label("last_photo_at"),
         )
-        .where(UserPhoto.profile_id == profile_id)
+        .where(*filters)
         .group_by(UserPhoto.species_id)
         .subquery()
     )
 
 
-def _obs_agg(profile_id: int):
+def _obs_agg(profile_id: int, wild_only: bool = False):
+    filters = [Observation.profile_id == profile_id]
+    if wild_only:
+        filters.append(func.coalesce(Observation.encounter_type, "wild") == "wild")
     return (
         select(
             Observation.species_id.label("sid"),
             func.count(Observation.id).label("obs_count"),
         )
-        .where(Observation.profile_id == profile_id)
+        .where(*filters)
         .group_by(Observation.species_id)
         .subquery()
     )
@@ -57,19 +63,29 @@ def derive_status(photo_count: int) -> str:
 class SpeciesQuery:
     """Builder shared by the list endpoint, the facet counts and the exports."""
 
-    def __init__(self, profile_id: int) -> None:
+    def __init__(self, profile_id: int, exclude_captive: bool = False) -> None:
         self.profile_id = profile_id
-        self.photos = _photo_agg(profile_id)
-        self.obs = _obs_agg(profile_id)
+        self.exclude_captive = exclude_captive
+        self.photos = _photo_agg(profile_id, exclude_captive)
+        self.obs = _obs_agg(profile_id, exclude_captive)
+        self.raw_photos = _photo_agg(profile_id) if exclude_captive else self.photos
+        self.raw_obs = _obs_agg(profile_id) if exclude_captive else self.obs
         self.photo_count = func.coalesce(self.photos.c.photo_count, 0)
         self.obs_count = func.coalesce(self.obs.c.obs_count, 0)
+        self.raw_photo_count = func.coalesce(self.raw_photos.c.photo_count, 0)
+        self.raw_obs_count = func.coalesce(self.raw_obs.c.obs_count, 0)
         self.status = status_expr(self.photo_count)
 
     def base(self, *cols) -> Select:
         stmt = select(*cols) if cols else select(Species)
-        return stmt.outerjoin(self.photos, self.photos.c.sid == Species.id).outerjoin(
+        stmt = stmt.outerjoin(self.photos, self.photos.c.sid == Species.id).outerjoin(
             self.obs, self.obs.c.sid == Species.id
         )
+        if self.exclude_captive:
+            stmt = stmt.outerjoin(
+                self.raw_photos, self.raw_photos.c.sid == Species.id
+            ).outerjoin(self.raw_obs, self.raw_obs.c.sid == Species.id)
+        return stmt
 
     # ------------------------------------------------------------- filters --
     def apply_filters(
@@ -78,6 +94,8 @@ class SpeciesQuery:
         *,
         q: str | None = None,
         group: Sequence[str] | None = None,
+        class_name: Sequence[str] | None = None,
+        order: Sequence[str] | None = None,
         habitat: Sequence[str] | None = None,
         region: Sequence[str] | None = None,
         family: Sequence[str] | None = None,
@@ -85,6 +103,8 @@ class SpeciesQuery:
         difficulty: Sequence[int] | None = None,
         status: Sequence[str] | None = None,
         seen: Sequence[str] | None = None,
+        encounter: Sequence[str] | None = None,
+        activity: Sequence[str] | None = None,
         include_inactive: bool = False,
     ) -> Select:
         if not include_inactive:
@@ -94,6 +114,12 @@ class SpeciesQuery:
                 stmt = stmt.where(Species.search_text.like(f"%{token}%"))
         if group:
             stmt = stmt.where(Species.group.in_(list(group)))
+        if class_name:
+            stmt = stmt.where(Species.class_name.in_(list(class_name)))
+        if order:
+            stmt = stmt.where(Species.order_name.in_(list(order)))
+        if activity:
+            stmt = stmt.where(Species.activity.in_(list(activity)))
         if family:
             stmt = stmt.where(Species.family.in_(list(family)))
         if difficulty:
@@ -127,6 +153,27 @@ class SpeciesQuery:
                 stmt = stmt.where(has_encounter)
             elif wanted_seen == {"unseen"}:
                 stmt = stmt.where(and_(self.photo_count == 0, self.obs_count == 0))
+        if encounter:
+            wanted_encounters = {v for v in encounter if v in {"wild", "captive"}}
+            encounter_conditions = []
+            for value in wanted_encounters:
+                photo_exists = exists(
+                    select(UserPhoto.id).where(
+                        UserPhoto.species_id == Species.id,
+                        UserPhoto.profile_id == self.profile_id,
+                        func.coalesce(UserPhoto.encounter_type, "wild") == value,
+                    )
+                )
+                observation_exists = exists(
+                    select(Observation.id).where(
+                        Observation.species_id == Species.id,
+                        Observation.profile_id == self.profile_id,
+                        func.coalesce(Observation.encounter_type, "wild") == value,
+                    )
+                )
+                encounter_conditions.append(or_(photo_exists, observation_exists))
+            if encounter_conditions:
+                stmt = stmt.where(or_(*encounter_conditions))
         return stmt
 
     def apply_sort(self, stmt: Select, sort: str) -> Select:
@@ -142,6 +189,8 @@ class SpeciesQuery:
             return stmt.order_by(Species.scientific_name.asc())
         if sort == "created_desc":
             return stmt.order_by(Species.created_at.desc(), Species.id.desc())
+        if sort == "updated_desc":
+            return stmt.order_by(Species.updated_at.desc(), Species.id.desc())
         if sort == "recent":
             return stmt.order_by(
                 self.photos.c.last_photo_at.desc().nullslast(), Species.common_name.asc()
@@ -163,19 +212,25 @@ class SpeciesQuery:
 
 # ---------------------------------------------------------------- photos ----
 def display_photos(
-    db: Session, species_ids: Iterable[int], profile_id: int
+    db: Session,
+    species_ids: Iterable[int],
+    profile_id: int,
+    wild_only: bool = False,
 ) -> dict[int, UserPhoto]:
     """One photo per species for the card: the best photo, else the oldest."""
     ids = list(species_ids)
     if not ids:
         return {}
+    filters = [
+        UserPhoto.species_id.in_(ids),
+        UserPhoto.profile_id == profile_id,
+    ]
+    if wild_only:
+        filters.append(func.coalesce(UserPhoto.encounter_type, "wild") == "wild")
     rows = (
         db.execute(
             select(UserPhoto)
-            .where(
-                UserPhoto.species_id.in_(ids),
-                UserPhoto.profile_id == profile_id,
-            )
+            .where(*filters)
             .order_by(
                 UserPhoto.species_id,
                 UserPhoto.is_best_photo.desc(),
@@ -204,6 +259,7 @@ def photo_out(photo: UserPhoto) -> dict[str, Any]:
         "time": photo.time,
         "location_name": photo.location_name,
         "caption": photo.caption,
+        "encounter_type": photo.encounter_type or "wild",
         "is_best_photo": photo.is_best_photo,
         "photo_metadata": photo.photo_metadata or {},
         "created_at": photo.created_at,
@@ -212,7 +268,12 @@ def photo_out(photo: UserPhoto) -> dict[str, Any]:
 
 # ----------------------------------------------------------- serialisation --
 def to_list_item(
-    sp: Species, photo_count: int, obs_count: int, photo: UserPhoto | None
+    sp: Species,
+    photo_count: int,
+    obs_count: int,
+    photo: UserPhoto | None,
+    raw_photo_count: int | None = None,
+    raw_obs_count: int | None = None,
 ) -> SpeciesListItem:
     return SpeciesListItem(
         id=sp.id,
@@ -220,26 +281,32 @@ def to_list_item(
         common_name=sp.common_name,
         scientific_name=sp.scientific_name,
         group=sp.group,
+        class_name=sp.class_name or "",
         family=sp.family,
         difficulty=sp.difficulty,
         regions=sp.regions or [],
         habitats=sp.habitats or [],
+        activity=sp.activity or "diurnal",
         size=sp.size,
         reference_image_url=media_url(sp.reference_image),
         reference_thumb_url=media_url(sp.reference_thumb or sp.reference_image),
         status=derive_status(photo_count),
-        photo_count=photo_count,
-        observation_count=obs_count,
+        photo_count=photo_count if raw_photo_count is None else raw_photo_count,
+        observation_count=obs_count if raw_obs_count is None else raw_obs_count,
         best_photo_url=media_url(photo.display_key or photo.storage_key) if photo else None,
         best_photo_thumb_url=media_url(
             photo.thumb_key or photo.display_key or photo.storage_key
         ) if photo else None,
         display_photo_date=photo.date if photo else None,
         display_photo_location=photo.location_name if photo else "",
+        created_at=sp.created_at,
+        updated_at=sp.updated_at,
     )
 
 
-def to_detail(sp: Species, profile_id: int) -> SpeciesDetail:
+def to_detail(
+    sp: Species, profile_id: int, exclude_captive: bool = False
+) -> SpeciesDetail:
     profile_photos = [p for p in sp.photos if p.profile_id == profile_id]
     profile_observations = [o for o in sp.observations if o.profile_id == profile_id]
     photos = sorted(
@@ -247,7 +314,22 @@ def to_detail(sp: Species, profile_id: int) -> SpeciesDetail:
         key=lambda p: (not p.is_best_photo, p.date is None, p.date or p.created_at.date()),
     )
     display = photos[0] if photos else None
-    base = to_list_item(sp, len(profile_photos), len(profile_observations), display)
+    progress_photos = [
+        p for p in profile_photos
+        if not exclude_captive or (p.encounter_type or "wild") == "wild"
+    ]
+    progress_observations = [
+        o for o in profile_observations
+        if not exclude_captive or (o.encounter_type or "wild") == "wild"
+    ]
+    base = to_list_item(
+        sp,
+        len(progress_photos),
+        len(progress_observations),
+        display,
+        len(profile_photos),
+        len(profile_observations),
+    )
     return SpeciesDetail(
         **base.model_dump(),
         order_name=sp.order_name,
@@ -273,6 +355,7 @@ def to_detail(sp: Species, profile_id: int) -> SpeciesDetail:
                     "latitude": o.latitude,
                     "longitude": o.longitude,
                     "notes": o.notes,
+                    "encounter_type": o.encounter_type or "wild",
                     "has_photo": o.has_photo,
                     "created_at": o.created_at,
                 }

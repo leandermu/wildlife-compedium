@@ -36,6 +36,7 @@ class ImportedSpecies:
     scientific_name: str
     description: str
     group: str
+    class_name: str
     family: str
     order_name: str
     size: str
@@ -244,10 +245,10 @@ def _wikidata_entity(entity_id: str) -> dict:
     return data.get("entities", {}).get(entity_id, {})
 
 
-def _wikidata_taxonomy(entity_id: str | None) -> tuple[str, str, str, str]:
+def _wikidata_taxonomy(entity_id: str | None) -> tuple[str, str, str, str, str]:
     """Return scientific name and taxonomic classification."""
     if not entity_id:
-        return "", "other", "", ""
+        return "", "other", "", "", ""
     entity = _wikidata_entity(entity_id)
     claims = entity.get("claims", {})
 
@@ -263,7 +264,7 @@ def _wikidata_taxonomy(entity_id: str | None) -> tuple[str, str, str, str]:
     scientific = claim_value("P225") or ""
 
     seen: set[str] = set()
-    group, family, order_name = "other", "", ""
+    group, class_name, family, order_name = "other", "", "", ""
     group_ids = {
         "Q5113": "bird", "Q7377": "mammal", "Q1390": "insect",
         "Q28319": "butterfly", "Q10811": "reptile", "Q10876": "amphibian",
@@ -292,19 +293,21 @@ def _wikidata_taxonomy(entity_id: str | None) -> tuple[str, str, str, str]:
             family = label
         elif rank == "Q36602" and not order_name:  # order
             order_name = label
+        elif rank == "Q37517" and not class_name:  # class
+            class_name = label
         if current in group_ids:
             candidate_group = group_ids[current]
             # Lepidoptera is more specific than the later Insecta ancestor.
             if group == "other" or candidate_group == "butterfly":
                 group = candidate_group
-        if group != "other" and family and order_name:
+        if group != "other" and class_name and family and order_name:
             break
         try:
             parent = node["claims"]["P171"][0]["mainsnak"]["datavalue"]["value"]
             current = parent.get("id") if isinstance(parent, dict) else parent
         except (KeyError, IndexError, TypeError):
             current = None
-    return scientific, group, family, order_name
+    return scientific, group, class_name, family, order_name
 
 
 def _article_text(host: str, title: str) -> str:
@@ -491,6 +494,7 @@ def _gbif_enrichment(scientific_name: str, article_text: str, group: str) -> dic
     return {
         "scientific_name": match.get("canonicalName") or scientific_name,
         "group": gbif_group,
+        "class_name": match.get("class") or "",
         "family": match.get("family") or "",
         "order_name": match.get("order") or "",
         "regions": regions,
@@ -585,9 +589,9 @@ def import_species_automatically(name: str) -> ImportedSpecies:
     if host != "de.wikipedia.org":
         common_name = name.strip()
     try:
-        scientific, group, family, order_name = _wikidata_taxonomy(page.get("pageprops", {}).get("wikibase_item"))
+        scientific, group, class_name, family, order_name = _wikidata_taxonomy(page.get("pageprops", {}).get("wikibase_item"))
     except Exception:
-        scientific, group, family, order_name = "", "other", "", ""
+        scientific, group, class_name, family, order_name = "", "other", "", "", ""
     if group == "other":
         group = _group_from_categories(page)
     article_text = page.get("extract") or ""
@@ -600,6 +604,7 @@ def import_species_automatically(name: str) -> ImportedSpecies:
     enrichment = _gbif_enrichment(scientific, article_text, group)
     scientific = enrichment.get("scientific_name", scientific)
     group = enrichment.get("group", group)
+    class_name = enrichment.get("class_name") or class_name
     family = enrichment.get("family") or family
     order_name = enrichment.get("order_name") or order_name
     difficulty = enrichment.get("difficulty", difficulty)
@@ -643,7 +648,8 @@ def import_species_automatically(name: str) -> ImportedSpecies:
     return ImportedSpecies(
         common_name=common_name, scientific_name=scientific,
         description=description,
-        group=group, family=family, order_name=order_name, size=size, wingspan=wingspan,
+        group=group, class_name=class_name, family=family, order_name=order_name,
+        size=size, wingspan=wingspan,
         weight=weight, difficulty=difficulty, rarity=rarity,
         habitats=habitats, regions=enrichment.get("regions", []),
         countries=enrichment.get("countries", []), tags=tags,

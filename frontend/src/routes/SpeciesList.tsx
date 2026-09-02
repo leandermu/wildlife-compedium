@@ -8,7 +8,10 @@ import { formatNumber } from "../lib/format";
 
 const PAGE_SIZE = 48;
 
-const MULTI_KEYS = ["group", "habitat", "region", "family", "tag", "difficulty", "status", "seen"] as const;
+const MULTI_KEYS = [
+  "group", "class_name", "order", "habitat", "region", "family", "tag",
+  "difficulty", "status", "seen", "encounter", "activity",
+] as const;
 type MultiKey = (typeof MULTI_KEYS)[number];
 
 const SORTS = [
@@ -102,13 +105,6 @@ export function SpeciesList() {
 
   const activeCount = MULTI_KEYS.reduce((n, k) => n + searchParams.getAll(k).length, 0);
 
-  const clearAll = () => {
-    const next = new URLSearchParams();
-    const sort = searchParams.get("sort");
-    if (sort) next.set("sort", sort);
-    setSearchParams(next);
-  };
-
   const collected = items.filter((i) => i.status !== "locked").length;
 
   const facetLabels = useMemo(() => {
@@ -123,12 +119,13 @@ export function SpeciesList() {
   const facetProperty: Record<MultiKey, keyof Facets> = {
     group: "groups", habitat: "habitats", region: "regions", family: "families",
     tag: "tags", difficulty: "difficulties", status: "statuses", seen: "seen",
+    encounter: "encounters", class_name: "classes", order: "orders", activity: "activities",
   };
 
   return (
     <div className="grid gap-8 lg:grid-cols-[16rem_1fr]">
       <div className="no-print space-y-3 lg:hidden">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setMobileFiltersOpen((open) => !open)}
@@ -137,11 +134,6 @@ export function SpeciesList() {
           >
             <span aria-hidden>☰</span> Filter {activeCount > 0 && `(${activeCount})`}
           </button>
-          {activeCount > 0 && (
-            <button type="button" onClick={clearAll} className="text-xs text-ink-3 underline underline-offset-4">
-              Zurücksetzen
-            </button>
-          )}
         </div>
         {activeCount > 0 && (
           <div className="flex flex-wrap gap-1.5">
@@ -173,15 +165,6 @@ export function SpeciesList() {
           </p>
         </div>
 
-        {activeCount > 0 && (
-          <button
-            onClick={clearAll}
-            className="w-full rounded-sm border border-rule-2 bg-paper-2 px-3 py-1.5 text-[13px] text-ink-2 hover:bg-paper-3"
-          >
-            {activeCount} Filter zurücksetzen
-          </button>
-        )}
-
         {facets && (
           <>
             <StatusFacetGroup
@@ -190,7 +173,10 @@ export function SpeciesList() {
               searchParams={searchParams}
               toggle={toggle}
             />
-            <FacetGroup title="Tiergruppe" k="group" facets={facets.groups} searchParams={searchParams} toggle={toggle} />
+            <FacetGroup title="Begegnungsart" k="encounter" facets={facets.encounters} searchParams={searchParams} toggle={toggle} />
+            <FacetGroup title="Klasse" k="class_name" facets={facets.classes} searchParams={searchParams} toggle={toggle} />
+            <FacetGroup title="Ordnung" k="order" facets={facets.orders} searchParams={searchParams} toggle={toggle} />
+            <FacetGroup title="Aktivität" k="activity" facets={facets.activities} searchParams={searchParams} toggle={toggle} />
             <FacetGroup title="Region" k="region" facets={facets.regions} searchParams={searchParams} toggle={toggle} />
             <FacetGroup title="Lebensraum" k="habitat" facets={facets.habitats} searchParams={searchParams} toggle={toggle} />
             <FacetGroup title="Schwierigkeit" k="difficulty" facets={facets.difficulties} searchParams={searchParams} toggle={toggle} />
@@ -243,13 +229,13 @@ export function SpeciesList() {
         ) : items.length === 0 ? (
           <Empty
             title="Keine Art gefunden"
-            hint="Andere Schreibweise probieren oder Filter zurücksetzen."
+            hint="Andere Schreibweise probieren, Filter einzeln entfernen oder oben „Alle Arten“ öffnen."
           />
         ) : (
           <>
             <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-4">
               {items.map((s) => (
-                <SpeciesCard key={s.id} species={s} />
+                <SpeciesCard key={s.id} species={s} listSearch={searchParams.toString()} />
               ))}
             </div>
             {page < pages && (

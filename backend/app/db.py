@@ -111,7 +111,44 @@ def _ensure_linked_encounters() -> None:
     from .encounters import reconcile_linked_encounters
 
     with SessionLocal.begin() as db:
+        from .models import Observation, Profile, UserPhoto
+
+        for profile in db.execute(select(Profile)).scalars():
+            if profile.exclude_captive_from_progress is None:
+                profile.exclude_captive_from_progress = False
+        for photo in db.execute(select(UserPhoto)).scalars():
+            if not photo.encounter_type:
+                value = (photo.photo_metadata or {}).get("encounter_type", "wild")
+                photo.encounter_type = value if value in {"wild", "captive"} else "wild"
+        for observation in db.execute(select(Observation)).scalars():
+            if not observation.encounter_type:
+                linked = next(iter(observation.photos), None)
+                observation.encounter_type = (
+                    (linked.encounter_type or "wild") if linked else "wild"
+                )
         reconcile_linked_encounters(db)
+
+
+def _ensure_species_metadata() -> None:
+    """Migrate legacy tags into taxonomy, region, habitat and activity fields."""
+    from .models import Species
+
+    with SessionLocal.begin() as db:
+        original_updates: dict[int, object] = {}
+        for species in db.execute(select(Species)).scalars():
+            previous_update = species.updated_at
+            species.refresh_derived()
+            if db.is_modified(species, include_collections=False):
+                original_updates[species.id] = previous_update
+        if not original_updates:
+            return
+        db.flush()
+        for species_id, updated_at in original_updates.items():
+            db.execute(
+                update(Species)
+                .where(Species.id == species_id)
+                .values(updated_at=updated_at)
+            )
 
 
 def init_db() -> None:
@@ -122,4 +159,5 @@ def init_db() -> None:
     Base.metadata.create_all(engine)
     _ensure_columns()
     _ensure_default_profile()
+    _ensure_species_metadata()
     _ensure_linked_encounters()

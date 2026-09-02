@@ -19,6 +19,11 @@ def sync_photos_from_observation(observation: Observation) -> None:
         photo.time = observation.time
         photo.location_name = observation.location_name
         photo.caption = observation.notes
+        photo.encounter_type = observation.encounter_type or "wild"
+        photo.photo_metadata = {
+            **(photo.photo_metadata or {}),
+            "encounter_type": observation.encounter_type or "wild",
+        }
 
 
 def sync_observation_from_photo(photo: UserPhoto) -> None:
@@ -30,6 +35,7 @@ def sync_observation_from_photo(photo: UserPhoto) -> None:
     observation.time = photo.time
     observation.location_name = photo.location_name
     observation.notes = photo.caption
+    observation.encounter_type = photo.encounter_type or "wild"
     sync_photos_from_observation(observation)
 
 
@@ -59,6 +65,8 @@ def reconcile_linked_encounters(db: Session) -> int:
             observation.location_name = source.location_name
         if not observation.notes:
             observation.notes = source.caption
+        if not observation.encounter_type:
+            observation.encounter_type = source.encounter_type or "wild"
         before = [
             (photo.date, photo.time, photo.location_name, photo.caption)
             for photo in photos

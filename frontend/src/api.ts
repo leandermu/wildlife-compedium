@@ -1,5 +1,5 @@
 import type {
-  Achievement, Dashboard, Facets, Meta, Observation, Page, Photo,
+  Achievement, Activity, Dashboard, Facets, Meta, Observation, Page, Photo,
   Profile, SpeciesDetail, SpeciesListItem,
 } from "./types";
 
@@ -39,6 +39,8 @@ const json = (body: unknown): RequestInit => ({
 export interface SpeciesQueryParams {
   q?: string;
   group?: string[];
+  class_name?: string[];
+  order?: string[];
   habitat?: string[];
   region?: string[];
   family?: string[];
@@ -46,6 +48,8 @@ export interface SpeciesQueryParams {
   difficulty?: string[];
   status?: string[];
   seen?: string[];
+  encounter?: string[];
+  activity?: string[];
   sort?: string;
   page?: number;
   page_size?: number;
@@ -65,7 +69,12 @@ export const api = {
   profiles: () => request<Profile[]>("/api/profiles"),
   createProfile: (name: string) =>
     request<Profile>("/api/profiles", json({ name })),
-  updateProfile: (id: number, body: { name?: string; avatar?: string; gender?: "male" | "female" }) =>
+  updateProfile: (id: number, body: {
+    name?: string;
+    avatar?: string;
+    gender?: "male" | "female";
+    exclude_captive_from_progress?: boolean;
+  }) =>
     request<Profile>(`/api/profiles/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -89,6 +98,8 @@ export const api = {
 
   meta: () => request<Meta>("/api/meta"),
   dashboard: () => request<Dashboard>("/api/dashboard"),
+  activities: (page = 1, pageSize = 50) =>
+    request<Page<Activity>>(`/api/activity?page=${page}&page_size=${pageSize}`),
 
   species: (params: SpeciesQueryParams) =>
     request<Page<SpeciesListItem>>(`/api/species?${toSearchParams(params)}`),

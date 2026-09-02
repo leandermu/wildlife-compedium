@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db import Base
 from app.models import Observation, Profile, Species, UserPhoto
-from app.routers.stats import _recent_activity
+from app.routers.stats import _activity_entries, _recent_activity
 
 
 class ActivityFeedTest(unittest.TestCase):
@@ -63,6 +63,38 @@ class ActivityFeedTest(unittest.TestCase):
                     ("Leander", "added"),
                 ],
             )
+            self.assertTrue(all(entry.occurred_at.tzinfo is not None for entry in feed))
+
+            db.delete(sighting)
+            db.commit()
+
+            feed_after_delete = _activity_entries(db)
+            self.assertNotIn(
+                ("Angelika", "seen"),
+                [(entry.profile_name, entry.kind) for entry in feed_after_delete],
+            )
+
+    def test_recent_feed_is_limited_to_ten_entries_by_default(self) -> None:
+        with Session(self.engine) as db:
+            profile = Profile(name="Leander", avatar="🦊")
+            db.add(profile)
+            db.flush()
+            for index in range(12):
+                species = Species(
+                    slug=f"art-{index}",
+                    common_name=f"Art {index}",
+                    group="bird",
+                )
+                db.add(species)
+                db.flush()
+                db.add(Observation(
+                    profile_id=profile.id,
+                    species_id=species.id,
+                    created_at=dt.datetime(2026, 9, 1, 10, index),
+                ))
+            db.commit()
+
+            self.assertEqual(len(_recent_activity(db)), 10)
 
 
 if __name__ == "__main__":

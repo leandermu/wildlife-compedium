@@ -23,6 +23,7 @@ export function Layout() {
   const [settingsName, setSettingsName] = useState("");
   const [settingsAvatar, setSettingsAvatar] = useState("🐾");
   const [settingsGender, setSettingsGender] = useState<"male" | "female">("male");
+  const [settingsExcludeCaptive, setSettingsExcludeCaptive] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -120,6 +121,7 @@ export function Layout() {
     setSettingsName(activeProfile.name);
     setSettingsAvatar(activeProfile.avatar || "🐾");
     setSettingsGender(activeProfile.gender || "male");
+    setSettingsExcludeCaptive(activeProfile.exclude_captive_from_progress);
     setProfileView("settings");
   };
 
@@ -132,9 +134,10 @@ export function Layout() {
         name: settingsName.trim(),
         avatar: settingsAvatar,
         gender: settingsGender,
+        exclude_captive_from_progress: settingsExcludeCaptive,
       });
       setProfiles((items) => items.map((item) => item.id === updated.id ? updated : item));
-      setProfileView("profiles");
+      window.location.reload();
     } catch (error) {
       alert(error instanceof Error ? error.message : "Profil konnte nicht gespeichert werden.");
     } finally {
@@ -363,6 +366,24 @@ export function Layout() {
                         </p>
                       </fieldset>
 
+                      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-rule bg-paper-2/60 p-3">
+                        <input
+                          type="checkbox"
+                          checked={settingsExcludeCaptive}
+                          onChange={(event) => setSettingsExcludeCaptive(event.target.checked)}
+                          className="mt-0.5 h-4 w-4 accent-[var(--color-moss)]"
+                        />
+                        <span>
+                          <span className="block text-sm font-medium text-ink">
+                            Gefangenschaft nicht werten
+                          </span>
+                          <span className="mt-1 block text-[11px] leading-4 text-ink-3">
+                            Fotos und Begegnungen in Gefangenschaft bleiben sichtbar und filterbar,
+                            zählen aber nicht zum Compedium-Fortschritt oder zu Auszeichnungen.
+                          </span>
+                        </span>
+                      </label>
+
                       <button
                         type="submit"
                         disabled={!settingsName.trim() || profileSaving}
@@ -467,6 +488,7 @@ export function Layout() {
           <p className="font-serif italic text-ink-3">
             „Ein Tier ist erst durch das eigene Foto wirklich gesammelt."
           </p>
+          <p className="mt-2 text-[11px] tracking-wide text-ink-3">v1.0.0</p>
         </div>
       </footer>
     </div>

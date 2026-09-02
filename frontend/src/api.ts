@@ -1,5 +1,5 @@
 import type {
-  Achievement, Activity, Dashboard, Facets, Meta, Observation, Page, Photo,
+  Achievement, Activity, AutomaticSpeciesPreview, Dashboard, Facets, Meta, Observation, Page, Photo,
   Profile, SpeciesDetail, SpeciesListItem,
 } from "./types";
 
@@ -112,11 +112,21 @@ export const api = {
     request<SpeciesDetail>("/api/species/manual", { method: "POST", body: form }),
   createSpeciesAutomatically: (commonName: string) =>
     request<SpeciesDetail>("/api/species/automatic", json({ common_name: commonName })),
+  previewSpeciesAutomatically: (commonName: string) =>
+    request<AutomaticSpeciesPreview>(
+      "/api/species/automatic/preview",
+      json({ common_name: commonName }),
+    ),
   updateSpecies: (key: string, body: Record<string, unknown>) =>
     request<SpeciesDetail>(`/api/species/${key}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+    }),
+  updateSpeciesManual: (key: string, form: FormData) =>
+    request<SpeciesDetail>(`/api/species/${key}/manual`, {
+      method: "PATCH",
+      body: form,
     }),
   deleteSpecies: (key: string) =>
     request<void>(`/api/species/${key}`, { method: "DELETE" }),

@@ -10,6 +10,7 @@ import html
 import io
 import json
 import re
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -21,6 +22,7 @@ from PIL import Image, ImageEnhance, ImageOps
 from pillow_heif import register_heif_opener
 
 from .storage import get_storage
+from .vocab import group_from_taxonomy
 
 USER_AGENT = "WildlifeCompedium/0.2 (https://github.com/leandermu/wildlife-compedium)"
 THUMB_WIDTH = 1400
@@ -28,6 +30,27 @@ ASPECT = 4 / 3
 INK = (36, 42, 33)
 PAPER = (243, 237, 223)
 register_heif_opener()
+
+_API_RATE_LOCKS: dict[str, threading.Lock] = {}
+_API_LAST_REQUEST: dict[str, float] = {}
+_API_BACKOFF_UNTIL: dict[str, float] = {}
+_API_STATE_LOCK = threading.Lock()
+
+
+def _wait_for_api_slot(host: str) -> None:
+    """Space concurrent API calls and share rate-limit backoff per host."""
+    with _API_STATE_LOCK:
+        host_lock = _API_RATE_LOCKS.setdefault(host, threading.Lock())
+    with host_lock:
+        minimum_interval = 0.14 if host == "www.wikidata.org" else 0.04
+        now = time.monotonic()
+        wait_until = max(
+            _API_BACKOFF_UNTIL.get(host, 0.0),
+            _API_LAST_REQUEST.get(host, 0.0) + minimum_interval,
+        )
+        if wait_until > now:
+            time.sleep(wait_until - now)
+        _API_LAST_REQUEST[host] = time.monotonic()
 
 
 @dataclass
@@ -57,19 +80,29 @@ class ImportedSpecies:
 def _api(host: str, params: dict) -> dict:
     url = f"https://{host}/w/api.php?" + urllib.parse.urlencode({**params, "format": "json"})
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    for attempt in range(3):
+    for attempt in range(6):
+        _wait_for_api_slot(host)
         try:
             with urllib.request.urlopen(request, timeout=20) as response:
                 return json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
-            if exc.code != 429 or attempt == 2:
+            if exc.code != 429 or attempt == 5:
                 raise
-            # Respect throttling instead of immediately repeating the request.
-            time.sleep(min(5, int(exc.headers.get("Retry-After", "2"))))
+            retry_after = exc.headers.get("Retry-After", "")
+            try:
+                delay = float(retry_after)
+            except ValueError:
+                delay = min(30.0, 2.0 ** (attempt + 1))
+            delay = max(2.0, min(30.0, delay))
+            with _API_STATE_LOCK:
+                _API_BACKOFF_UNTIL[host] = max(
+                    _API_BACKOFF_UNTIL.get(host, 0.0),
+                    time.monotonic() + delay,
+                )
     raise RuntimeError("Wikipedia-Abfrage fehlgeschlagen")
 
 
-@lru_cache(maxsize=256)
+@lru_cache(maxsize=2048)
 def _json_api(url: str, params: tuple[tuple[str, str], ...]) -> dict:
     request = urllib.request.Request(
         url + "?" + urllib.parse.urlencode(dict(params)),
@@ -79,7 +112,7 @@ def _json_api(url: str, params: tuple[tuple[str, str], ...]) -> dict:
         return json.loads(response.read().decode("utf-8"))
 
 
-@lru_cache(maxsize=256)
+@lru_cache(maxsize=1024)
 def _first_page(host: str, title: str) -> tuple[dict, str] | None:
     data = _api(host, {
         "action": "query", "titles": title, "redirects": "1",
@@ -111,10 +144,10 @@ def _find_page(name: str) -> tuple[dict, str, str]:
         exact = _first_page(host, name)
         if exact:
             page, title = exact
-            if _is_animal_article(page):
+            if _is_species_article(page):
                 return page, title, host
             resolved = _resolve_disambiguation(host, page, title, name)
-            if resolved != exact and _is_animal_article(resolved[0]):
+            if resolved != exact and _is_species_article(resolved[0]):
                 return resolved[0], resolved[1], host
 
         for query in (f'intitle:"{name}"', f'"{name}" Tier'):
@@ -126,14 +159,16 @@ def _find_page(name: str) -> tuple[dict, str, str]:
                 {row["title"] for row in search}, key=_animal_title_priority
             )
             for candidate in candidate_titles:
+                if not _title_matches_request(candidate, name):
+                    continue
                 hit = _first_page(host, candidate)
                 if not hit:
                     continue
                 page, title = hit
-                if _is_animal_article(page):
+                if _is_species_article(page):
                     return page, title, host
                 resolved = _resolve_disambiguation(host, page, title, name)
-                if resolved != (page, title) and _is_animal_article(resolved[0]):
+                if resolved != (page, title) and _is_species_article(resolved[0]):
                     return resolved[0], resolved[1], host
     raise LookupError(
         "Es wurde kein eindeutig passender Tierartikel gefunden. "
@@ -154,6 +189,31 @@ def _animal_title_priority(title: str) -> tuple[bool, int]:
     return not any(marker in folded for marker in _ANIMAL_TITLE_MARKERS), len(title)
 
 
+def _title_matches_request(title: str, requested_name: str) -> bool:
+    folded_title = re.sub(r"\([^)]*\)", "", title.casefold()).strip()
+
+    def tokens(value: str) -> list[str]:
+        value = re.sub(r"\([^)]*\)", "", value.casefold())
+        return re.findall(r"[a-zäöüß0-9]+", value)
+
+    title_tokens = tokens(title)
+    request_tokens = tokens(requested_name)
+    if not request_tokens:
+        return False
+    if title_tokens == request_tokens:
+        return True
+    # A validated species article may add one qualifier, for example
+    # "Gemeiner Schimpanse" for "Schimpanse" or "Atlantischer Hering" for
+    # "Hering". The species-rank Wikidata check still rejects sculptures,
+    # places and other namesakes.
+    return len(request_tokens) == 1 and bool(
+        re.search(
+            rf"(?<![-\w]){re.escape(request_tokens[0])}(?![-\w])",
+            folded_title,
+        )
+    )
+
+
 def _resolve_disambiguation(host: str, page: dict, title: str, requested_name: str) -> tuple[dict, str]:
     """Prefer the species article when an entered name is a disambiguation page."""
     categories = " ".join(c.get("title", "").lower() for c in page.get("categories", []))
@@ -172,7 +232,7 @@ def _resolve_disambiguation(host: str, page: dict, title: str, requested_name: s
     # A name-specific species link is unambiguous here.  Do not walk every
     # link on the page: that creates needless API traffic and rate limiting.
     for candidate in candidates[:8]:
-        if (hit := _first_page(host, candidate)) and _is_animal_article(hit[0]):
+        if (hit := _first_page(host, candidate)) and _is_species_article(hit[0]):
             return hit
     return page, title
 
@@ -188,15 +248,43 @@ def _is_animal_article(page: dict) -> bool:
         "tierart", "säugetier", "saeugetier", "vogel", "fischart", "reptil",
         "amphib", "insekt", "käfer", "kaefer", "libelle", "schmetterling",
         "falter", "weichtier", "spinnentier", "krebstier", "haustier",
-        "wildtier", "zoolog",
+        "wildtier", "zoolog", "fuchsart", "wildhunde", "hirsche", "mangusten",
     )
     non_animal_markers = (
         "film", "fernsehserie", "musikalbum", "ortsteil", "familienname",
-        "bauwerk", "unternehmen", "software", "fahrzeug",
+        "bauwerk", "unternehmen", "software", "fahrzeug", "steinskulptur",
+        "skulptur", "plastik", "statue", "archäologischer fund",
     )
     return any(marker in evidence for marker in animal_markers) and not any(
         marker in evidence for marker in non_animal_markers
     )
+
+
+def _is_species_article(page: dict) -> bool:
+    """Require a species-rank Wikidata entity when available.
+
+    Lead text alone is too ambiguous: an article about an elk sculpture can
+    contain plenty of animal vocabulary. A taxonomic name plus a species or
+    subspecies rank is a much stronger signal.
+    """
+    entity_id = page.get("pageprops", {}).get("wikibase_item")
+    if not entity_id:
+        return _is_animal_article(page)
+    try:
+        claims = _wikidata_entity(entity_id).get("claims", {})
+        scientific = claims.get("P225")
+        rank = claims.get("P105", [{}])[0].get("mainsnak", {}).get(
+            "datavalue", {}
+        ).get("value", {})
+        rank_id = rank.get("id") if isinstance(rank, dict) else None
+        if scientific and rank_id in {"Q7432", "Q68947"}:  # species / subspecies
+            return True
+        # A successfully loaded Wikidata entity without species-rank taxon
+        # claims is not an animal species page (for example a heraldic ostrich).
+        return False
+    except Exception:
+        pass
+    return _is_animal_article(page)
 
 
 _COLLAGE_MARKERS = ("collage", "montage", "mosaic", "gallery", "multiple")
@@ -236,13 +324,26 @@ def _strip(value: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html.unescape(value or ""))).strip()
 
 
-@lru_cache(maxsize=256)
+@lru_cache(maxsize=4096)
 def _wikidata_entity(entity_id: str) -> dict:
     data = _api("www.wikidata.org", {
-        "action": "wbgetentities", "ids": entity_id, "props": "claims|labels",
-        "languages": "de|en",
+        "action": "wbgetentities", "ids": entity_id,
+        "props": "claims|labels|sitelinks", "languages": "de|en",
+        "sitefilter": "dewiki",
     })
     return data.get("entities", {}).get(entity_id, {})
+
+
+def _taxon_name(node: dict) -> str:
+    """Prefer the German Wikipedia taxon title over a Latin fallback label."""
+    title = node.get("sitelinks", {}).get("dewiki", {}).get("title", "")
+    if title:
+        return re.sub(r"\s+\([^)]*\)$", "", title).strip()
+    return (
+        node.get("labels", {}).get("de")
+        or node.get("labels", {}).get("en")
+        or {}
+    ).get("value", "")
 
 
 def _wikidata_taxonomy(entity_id: str | None) -> tuple[str, str, str, str, str]:
@@ -273,7 +374,7 @@ def _wikidata_taxonomy(entity_id: str | None) -> tuple[str, str, str, str, str]:
     current = entity_id
     # The parent-taxon chain supplies order/family/class without relying on a
     # brittle Wikipedia infobox parser.
-    for _ in range(14):
+    for _ in range(64):
         if not current or current in seen:
             break
         seen.add(current)
@@ -283,7 +384,7 @@ def _wikidata_taxonomy(entity_id: str | None) -> tuple[str, str, str, str, str]:
             # Wikidata can throttle a long lineage lookup.  Keep the article
             # import usable with the details obtained up to this point.
             break
-        label = (node.get("labels", {}).get("de") or node.get("labels", {}).get("en") or {}).get("value", "")
+        label = _taxon_name(node)
         rank = ""
         try:
             rank = node["claims"]["P105"][0]["mainsnak"]["datavalue"]["value"]["id"]
@@ -308,6 +409,45 @@ def _wikidata_taxonomy(entity_id: str | None) -> tuple[str, str, str, str, str]:
         except (KeyError, IndexError, TypeError):
             current = None
     return scientific, group, class_name, family, order_name
+
+
+_GERMAN_TAXON_NAMES = {
+    "Carnivora": "Raubtiere",
+    "Artiodactyla": "Paarhufer",
+    "Cetartiodactyla": "Paarhufer",
+    "Herpestidae": "Mangusten",
+    "Canidae": "Hunde",
+    "Cervidae": "Hirsche",
+    "Equidae": "Pferde",
+    "Bradypodidae": "Dreifinger-Faultiere",
+    "Castoridae": "Biber",
+    "Upupidae": "Wiedehopfe",
+    "Pelecaniformes": "Ruderfüßer",
+    "Haematopodidae": "Austernfischer",
+    "Suliformes": "Tölpelartige",
+    "Varanidae": "Warane",
+    "Dermochelyidae": "Lederschildkröten",
+    "Pelobatidae": "Europäische Schaufelfußkröten",
+    "Esocidae": "Hechte",
+    "Salmoniformes": "Lachsartige",
+    "Myliobatidae": "Adlerrochen",
+    "Xiphiidae": "Schwertfische",
+    "Mantidae": "Gottesanbeterinnen",
+    "Diapheromeridae": "Stabschrecken",
+    "Lepismatidae": "Fischchen",
+    "Forficulidae": "Eigentliche Ohrwürmer",
+}
+
+
+def _german_taxon_name(value: str) -> str:
+    return _GERMAN_TAXON_NAMES.get(value, value)
+
+
+_COMMON_NAME_ALIASES = {
+    "atlantischer blauflossen-thunfisch": "Roter Thun",
+    "japanischer kugelfisch": "Takifugu rubripes",
+    "europäische hornisse": "Hornisse",
+}
 
 
 def _article_text(host: str, title: str) -> str:
@@ -431,6 +571,46 @@ def _controlled_habitats_and_tags(text: str, group: str) -> tuple[list[str], lis
     return habitats[:6], tags[:8]
 
 
+def _regions_from_article(text: str) -> list[str]:
+    """Derive broad native ranges from the article instead of raw sightings.
+
+    Unfiltered occurrence portals also contain zoo animals and accidental
+    records. Those must not turn an African species into a German one.
+    """
+    # The first paragraph normally states the native range. Later paragraphs
+    # often mention zoos, introduced pets or comparison species and would
+    # create false continents (for example North America for the Fennek).
+    normalized = text.split("\n", 1)[0][:2500].casefold()
+    regions: list[str] = []
+
+    def add(value: str) -> None:
+        if value not in regions:
+            regions.append(value)
+
+    if "bayern" in normalized:
+        add("bavaria")
+        add("germany")
+        add("europe")
+    elif "deutschland" in normalized:
+        add("germany")
+        add("europe")
+
+    region_terms = {
+        "europe": ("europa", "europäisch", "nordeuropa", "südeuropa", "osteuropa", "westeuropa"),
+        "africa": ("afrika", "afrikanisch", "sahara", "sahel"),
+        "asia": ("asien", "asiatisch", "sibirien", "indischer subkontinent"),
+        "north_america": ("nordamerika", "kanada", "alaska"),
+        "south_america": ("südamerika", "amazonas", "patagonien"),
+        "oceania": ("australien", "ozeanien", "neuseeland"),
+        "antarctica": ("antarktis", "antarktisch"),
+        "arctic": ("arktis", "arktisch", "polarkreis"),
+    }
+    for region, terms in region_terms.items():
+        if any(term in normalized for term in terms):
+            add(region)
+    return regions or ["world"]
+
+
 def _gbif_enrichment(scientific_name: str, article_text: str, group: str) -> dict:
     """Supplement taxonomy and regional occurrence signals from GBIF."""
     if not scientific_name:
@@ -466,42 +646,34 @@ def _gbif_enrichment(scientific_name: str, article_text: str, group: str) -> dic
         except Exception:
             return 0
 
-    germany = count(country="DE")
-    bavaria = count(country="DE", state_province="Bayern")
-    europe = count(continent="EUROPE") if not germany else germany
-    regions: list[str] = []
-    if bavaria:
-        regions.append("bavaria")
-    if germany:
-        regions.append("germany")
-    if europe:
-        regions.append("europe")
-    if not europe:
-        regions.append("world")
-
-    difficulty = 4
-    rarity = "Keine regionalen GBIF-Nachweise"
-    if germany >= 1000:
-        difficulty, rarity = 1, "Viele Nachweise in Deutschland"
-    elif germany >= 100:
-        difficulty, rarity = 2, "Regelmäßig in Deutschland nachgewiesen"
-    elif germany >= 10:
-        difficulty, rarity = 3, "Wenige Nachweise in Deutschland"
-    elif germany > 0:
-        difficulty, rarity = 4, "Sehr wenige Nachweise in Deutschland"
-    if any(term in article_text.casefold() for term in ("nachtaktiv", "dämmerungsaktiv", "sehr scheu")):
-        difficulty = min(5, difficulty + 1)
-    return {
+    regions = _regions_from_article(article_text)
+    result = {
         "scientific_name": match.get("canonicalName") or scientific_name,
         "group": gbif_group,
         "class_name": match.get("class") or "",
-        "family": match.get("family") or "",
-        "order_name": match.get("order") or "",
+        "family": _german_taxon_name(match.get("family") or ""),
+        "order_name": _german_taxon_name(match.get("order") or ""),
         "regions": regions,
-        "countries": ["Deutschland"] if germany else [],
-        "difficulty": difficulty,
-        "rarity": rarity,
+        "countries": ["Deutschland"] if "germany" in regions else [],
     }
+    # GBIF counts are useful for locally occurring species, but not as proof
+    # that an exotic species belongs to Germany (zoo records are included).
+    if "germany" in regions:
+        germany = count(country="DE")
+        difficulty = 4
+        rarity = "Keine regionalen GBIF-Nachweise"
+        if germany >= 1000:
+            difficulty, rarity = 1, "Viele Nachweise in Deutschland"
+        elif germany >= 100:
+            difficulty, rarity = 2, "Regelmäßig in Deutschland nachgewiesen"
+        elif germany >= 10:
+            difficulty, rarity = 3, "Wenige Nachweise in Deutschland"
+        elif germany > 0:
+            difficulty, rarity = 4, "Sehr wenige Nachweise in Deutschland"
+        if any(term in article_text.casefold() for term in ("nachtaktiv", "dämmerungsaktiv", "sehr scheu")):
+            difficulty = min(5, difficulty + 1)
+        result.update(difficulty=difficulty, rarity=rarity)
+    return result
 
 
 def _german_fallback_description(
@@ -580,14 +752,20 @@ def _group_from_categories(page: dict) -> str:
     return "other"
 
 
-def import_species_automatically(name: str) -> ImportedSpecies:
-    page, title, host = _find_page(name.strip())
+def import_species_automatically(
+    name: str,
+    *,
+    save_reference: bool = True,
+) -> ImportedSpecies:
+    requested_name = name.strip()
+    lookup_name = _COMMON_NAME_ALIASES.get(requested_name.casefold(), requested_name)
+    page, title, host = _find_page(lookup_name)
     # Wikipedia distinguishes an animal article from a family/genus using
     # suffixes such as "(Art)".  They are useful for lookup, but should never
     # become part of the collection's common name.
     common_name = re.sub(r"\s+\((?:art|species)\)$", "", title, flags=re.IGNORECASE)
-    if host != "de.wikipedia.org":
-        common_name = name.strip()
+    if host != "de.wikipedia.org" or lookup_name != requested_name:
+        common_name = requested_name
     try:
         scientific, group, class_name, family, order_name = _wikidata_taxonomy(page.get("pageprops", {}).get("wikibase_item"))
     except Exception:
@@ -601,18 +779,27 @@ def import_species_automatically(name: str) -> ImportedSpecies:
     except Exception:
         size = wingspan = weight = ""
     difficulty, rarity = _difficulty_from_article(article_text + " " + common_name)
-    enrichment = _gbif_enrichment(scientific, article_text, group)
+    enrichment = _gbif_enrichment(
+        scientific,
+        page.get("extract") or article_text,
+        group,
+    )
     scientific = enrichment.get("scientific_name", scientific)
-    group = enrichment.get("group", group)
-    class_name = enrichment.get("class_name") or class_name
-    family = enrichment.get("family") or family
-    order_name = enrichment.get("order_name") or order_name
+    enriched_group = enrichment.get("group", "other")
+    if group == "other" and enriched_group != "other":
+        group = enriched_group
+    class_name = class_name or enrichment.get("class_name", "")
+    family = _german_taxon_name(family or enrichment.get("family", ""))
+    order_name = _german_taxon_name(order_name or enrichment.get("order_name", ""))
+    group = group_from_taxonomy(class_name, order_name, group)
     difficulty = enrichment.get("difficulty", difficulty)
     rarity = enrichment.get("rarity", rarity)
     habitats, tags = _controlled_habitats_and_tags(article_text, group)
     image = page.get("thumbnail", {})
     image_url, filename = image.get("source"), page.get("pageimage", "")
-    if filename and any(marker in filename.lower() for marker in _COLLAGE_MARKERS):
+    if not image_url or (
+        filename and any(marker in filename.lower() for marker in _COLLAGE_MARKERS)
+    ):
         try:
             alternative = _single_article_image(host, title)
             if alternative:
@@ -622,7 +809,7 @@ def import_species_automatically(name: str) -> ImportedSpecies:
             # is temporarily unavailable.
             pass
     image_key = thumb_key = credit = source = None
-    if image_url:
+    if image_url and save_reference:
         request = urllib.request.Request(image_url, headers={"User-Agent": USER_AGENT})
         with urllib.request.urlopen(request, timeout=45) as response:
             raw = response.read()
@@ -640,6 +827,9 @@ def import_species_automatically(name: str) -> ImportedSpecies:
             # if Commons has a short-lived metadata/API problem.
             credit, source = "Wikimedia Commons", ""
     article_url = f"https://{host}/wiki/{urllib.parse.quote(title.replace(' ', '_'))}"
+    if image_url and not save_reference:
+        image_key = thumb_key = image_url
+        credit, source = "Wikimedia Commons", article_url
     description = (
         _short_description(page.get("extract") or article_text, common_name)
         if host == "de.wikipedia.org"
@@ -651,7 +841,8 @@ def import_species_automatically(name: str) -> ImportedSpecies:
         group=group, class_name=class_name, family=family, order_name=order_name,
         size=size, wingspan=wingspan,
         weight=weight, difficulty=difficulty, rarity=rarity,
-        habitats=habitats, regions=enrichment.get("regions", []),
+        habitats=habitats,
+        regions=enrichment.get("regions") or _regions_from_article(page.get("extract") or article_text),
         countries=enrichment.get("countries", []), tags=tags,
         reference_image=image_key,
         reference_thumb=thumb_key, reference_credit=credit, reference_source=source or article_url,

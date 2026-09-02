@@ -23,6 +23,7 @@ from ..schemas import (
     SpeciesListItem,
     SpeciesUpdate,
     AutomaticSpeciesCreate,
+    AutomaticSpeciesPreview,
 )
 from ..text import slugify
 from ..storage import ALLOWED_SUFFIXES, get_storage
@@ -255,6 +256,45 @@ def _get_species(db: Session, key: str) -> Species:
     return sp
 
 
+async def _prepare_reference_image(
+    image: UploadFile,
+    slug: str,
+) -> tuple[dict[str, str | None], list[str]]:
+    """Validate an upload and store the processed 4:3 reference variants."""
+    raw = await image.read()
+    if not raw:
+        raise HTTPException(400, "Das Referenzbild ist leer")
+    if len(raw) > 40 * 1024 * 1024:
+        raise HTTPException(413, "Referenzbild größer als 40 MB")
+    suffix = "." + (image.filename or "referenz.jpg").rsplit(".", 1)[-1].lower()
+    if suffix not in ALLOWED_SUFFIXES:
+        raise HTTPException(415, f"Dateityp {suffix} wird nicht unterstützt")
+    try:
+        plate = make_reference_plate(raw, 1000)
+        thumb = make_reference_plate(raw, 480)
+    except Exception as exc:
+        raise HTTPException(415, "Das Referenzbild konnte nicht gelesen werden") from exc
+
+    storage = get_storage()
+    saved: list[str] = []
+    try:
+        saved.append(storage.save("reference", f"{slug}.jpg", io.BytesIO(plate)))
+        saved.append(storage.save("reference-thumb", f"{slug}.jpg", io.BytesIO(thumb)))
+    except Exception:
+        for storage_key in saved:
+            storage.delete(storage_key)
+        raise
+    return (
+        {
+            "reference_image": saved[0],
+            "reference_thumb": saved[1],
+            "reference_credit": "Eigenes Referenzbild",
+            "reference_source": None,
+        },
+        saved,
+    )
+
+
 @router.get("/{key}", response_model=SpeciesDetail)
 def get_species(
     key: str, db: Annotated[Session, Depends(get_db)], profile: CurrentProfile
@@ -295,6 +335,39 @@ def create_species_automatically(
     db.commit()
     db.refresh(sp)
     return to_detail(sp, profile.id, bool(profile.exclude_captive_from_progress))
+
+
+@router.post("/automatic/preview", response_model=AutomaticSpeciesPreview)
+def preview_species_automatically(
+    payload: AutomaticSpeciesCreate,
+    _profile: CurrentProfile,
+) -> AutomaticSpeciesPreview:
+    """Resolve and validate a species without writing database or media files.
+
+    This explicit preview step keeps a bad source match out of the catalogue.
+    """
+    try:
+        imported = import_species_automatically(
+            payload.common_name,
+            save_reference=False,
+        )
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, "Die Artendatenquellen konnten nicht erreicht werden.") from exc
+    return AutomaticSpeciesPreview(
+        common_name=imported.common_name,
+        scientific_name=imported.scientific_name,
+        description=imported.description,
+        group=imported.group,
+        class_name=imported.class_name,
+        family=imported.family,
+        order_name=imported.order_name,
+        habitats=imported.habitats,
+        regions=imported.regions,
+        reference_image_url=imported.reference_image,
+        reference_source=imported.reference_source,
+    )
 
 
 @router.post("", response_model=SpeciesDetail, status_code=201)
@@ -342,33 +415,59 @@ async def create_species_manual(
         reference_source=None,
     )
     if image is not None:
-        raw = await image.read()
-        if not raw:
-            raise HTTPException(400, "Das Referenzbild ist leer")
-        if len(raw) > 40 * 1024 * 1024:
-            raise HTTPException(413, "Referenzbild größer als 40 MB")
-        suffix = "." + (image.filename or "referenz.jpg").rsplit(".", 1)[-1].lower()
-        if suffix not in ALLOWED_SUFFIXES:
-            raise HTTPException(415, f"Dateityp {suffix} wird nicht unterstützt")
-        try:
-            plate = make_reference_plate(raw, 1000)
-            thumb = make_reference_plate(raw, 480)
-        except Exception as exc:
-            raise HTTPException(415, "Das Referenzbild konnte nicht gelesen werden") from exc
-        storage = get_storage()
-        values["reference_image"] = storage.save(
-            "reference", f"{slug}.jpg", io.BytesIO(plate)
-        )
-        values["reference_thumb"] = storage.save(
-            "reference-thumb", f"{slug}.jpg", io.BytesIO(thumb)
-        )
-        values["reference_credit"] = "Eigenes Referenzbild"
+        reference_values, _ = await _prepare_reference_image(image, slug)
+        values.update(reference_values)
 
     sp = Species(**values, slug=slug, created_by_profile_id=profile.id)
     sp.refresh_derived()
     db.add(sp)
     db.commit()
     db.refresh(sp)
+    return to_detail(sp, profile.id, bool(profile.exclude_captive_from_progress))
+
+
+@router.patch("/{key}/manual", response_model=SpeciesDetail)
+async def update_species_manual(
+    key: str,
+    db: Annotated[Session, Depends(get_db)],
+    profile: CurrentProfile,
+    data: Annotated[str, Form()],
+    image: Annotated[UploadFile | None, File()] = None,
+) -> SpeciesDetail:
+    """Update species fields and optionally replace its processed reference image."""
+    try:
+        payload = SpeciesUpdate.model_validate_json(data)
+    except Exception as exc:
+        raise HTTPException(422, "Die eingegebenen Artdaten sind ungültig") from exc
+
+    sp = _get_species(db, key)
+    old_reference_keys = [sp.reference_image, sp.reference_thumb]
+    new_reference_keys: list[str] = []
+    values = payload.model_dump(exclude_unset=True)
+    if image is not None:
+        reference_values, new_reference_keys = await _prepare_reference_image(
+            image, sp.slug
+        )
+        values.update(reference_values)
+
+    for field, value in values.items():
+        setattr(sp, field, value)
+    sp.refresh_derived()
+    try:
+        db.commit()
+        db.refresh(sp)
+    except Exception:
+        db.rollback()
+        storage = get_storage()
+        for storage_key in new_reference_keys:
+            storage.delete(storage_key)
+        raise
+
+    if new_reference_keys:
+        storage = get_storage()
+        for storage_key in old_reference_keys:
+            if storage_key and storage_key not in new_reference_keys:
+                storage.delete(storage_key)
     return to_detail(sp, profile.id, bool(profile.exclude_captive_from_progress))
 
 

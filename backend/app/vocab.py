@@ -129,7 +129,10 @@ def group_from_taxonomy(class_name: str, order_name: str, fallback: str) -> str:
         return "amphibian"
     if "reptilia" in cls or "reptil" in cls:
         return "reptile"
-    if any(value in cls for value in ("actinopterygii", "chondrichthyes", "fische")):
+    if any(value in cls for value in (
+        "actinopteri", "actinopterygii", "chondrichthyes", "strahlenflosser",
+        "knorpelfische", "fische",
+    )):
         return "fish"
     return fallback if fallback in GROUPS else "other"
 
@@ -181,7 +184,7 @@ def normalize_species_metadata(
     clean_group = group_from_taxonomy(clean_class, clean_order, group)
     if clean_class.casefold() in {
         "vögel", "voegel", "säugetiere", "saeugetiere", "insekten",
-        "amphibien", "reptilien", "fische",
+        "amphibien", "reptilien", "fische", "actinopteri",
     }:
         clean_class = GROUP_CLASSES[clean_group]
     return {

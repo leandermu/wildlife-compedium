@@ -86,6 +86,20 @@ export interface SpeciesDetail extends SpeciesListItem {
   observations: Observation[];
 }
 
+export interface AutomaticSpeciesPreview {
+  common_name: string;
+  scientific_name: string;
+  description: string;
+  group: string;
+  class_name: string;
+  family: string;
+  order_name: string;
+  habitats: string[];
+  regions: string[];
+  reference_image_url: string | null;
+  reference_source: string | null;
+}
+
 export interface Page<T> {
   items: T[];
   total: number;

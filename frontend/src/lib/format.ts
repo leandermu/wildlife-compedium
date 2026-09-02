@@ -19,7 +19,10 @@ export function formatDateLong(iso: string | null | undefined): string {
 }
 
 export function formatRelativeTime(iso: string): string {
-  const elapsed = Date.now() - new Date(iso).getTime();
+  // SQLite stores UTC timestamps without a timezone suffix. Browsers otherwise
+  // interpret them as local time, shifting recent edits by the local offset.
+  const timestamp = /(?:z|[+-]\d{2}:\d{2})$/i.test(iso) ? iso : `${iso}Z`;
+  const elapsed = Date.now() - new Date(timestamp).getTime();
   if (!Number.isFinite(elapsed) || elapsed < 0) return formatDate(iso);
   const minutes = Math.floor(elapsed / 60_000);
   if (minutes < 1) return "gerade eben";

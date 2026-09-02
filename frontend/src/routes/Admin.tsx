@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
-import type { Meta, SpeciesDetail, SpeciesListItem } from "../types";
+import type { AutomaticSpeciesPreview, Meta, SpeciesDetail, SpeciesListItem } from "../types";
 import { SectionTitle } from "../components/ui";
 import { formatNumber, formatRelativeTime } from "../lib/format";
 
@@ -25,6 +25,8 @@ export function AdminPage() {
   const [isSavingSpecies, setIsSavingSpecies] = useState(false);
   const [createMode, setCreateMode] = useState<"automatic" | "manual">("automatic");
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
+  const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null);
+  const [autoPreview, setAutoPreview] = useState<AutomaticSpeciesPreview | null>(null);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<SpeciesListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -32,10 +34,21 @@ export function AdminPage() {
   const [backupError, setBackupError] = useState(false);
   const [backupLoading, setBackupLoading] = useState(false);
   const backupRef = useRef<HTMLInputElement>(null);
+  const referenceImageRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api.meta().then(setMeta);
   }, []);
+
+  useEffect(() => {
+    if (!referenceImage) {
+      setReferenceImagePreview(null);
+      return;
+    }
+    const previewUrl = URL.createObjectURL(referenceImage);
+    setReferenceImagePreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [referenceImage]);
 
   const refresh = () => {
     api.species({ q: search || undefined, page_size: 24, sort: "updated_desc" }).then((r) => {
@@ -63,6 +76,11 @@ export function AdminPage() {
         setIsSavingSpecies(true);
         let imported: SpeciesDetail;
         if (createMode === "automatic") {
+          if (!autoPreview) {
+            const preview = await api.previewSpeciesAutomatically(form.common_name);
+            setAutoPreview(preview);
+            return;
+          }
           imported = await api.createSpeciesAutomatically(form.common_name);
         } else {
           const fd = new FormData();
@@ -77,7 +95,9 @@ export function AdminPage() {
         setMessage({ kind: "ok", text: `„${imported.common_name}" wurde angelegt.` });
         setForm({ ...EMPTY });
         setTagInput("");
+        setAutoPreview(null);
         setReferenceImage(null);
+        if (referenceImageRef.current) referenceImageRef.current.value = "";
         refresh();
         return;
       }
@@ -86,10 +106,15 @@ export function AdminPage() {
         difficulty: Number(form.difficulty),
         tags: [...new Set([...form.tags, ...parseTags(tagInput)])],
       };
-      await api.updateSpecies(editing.slug, payload);
+      const fd = new FormData();
+      fd.append("data", JSON.stringify(payload));
+      if (referenceImage) fd.append("image", referenceImage);
+      await api.updateSpeciesManual(editing.slug, fd);
       setMessage({ kind: "ok", text: `„${form.common_name}" aktualisiert.` });
       setForm({ ...EMPTY });
       setTagInput("");
+      setReferenceImage(null);
+      if (referenceImageRef.current) referenceImageRef.current.value = "";
       setEditing(null);
       setSearchParams({});
       refresh();
@@ -103,6 +128,8 @@ export function AdminPage() {
   const edit = async (slug: string) => {
     const s = await api.speciesDetail(slug);
     setEditing(s);
+    setReferenceImage(null);
+    if (referenceImageRef.current) referenceImageRef.current.value = "";
     setForm({
       common_name: s.common_name, scientific_name: s.scientific_name, group: s.group,
       class_name: s.class_name, family: s.family, order_name: s.order_name,
@@ -183,6 +210,8 @@ export function AdminPage() {
                   setSearchParams({});
                   setForm({ ...EMPTY });
                   setTagInput("");
+                  setReferenceImage(null);
+                  if (referenceImageRef.current) referenceImageRef.current.value = "";
                 }}
                 className="text-[13px] text-ink-3 hover:text-ink-2"
               >
@@ -202,7 +231,10 @@ export function AdminPage() {
                   className={`rounded-md px-3 py-2 text-sm ${createMode === "automatic" ? "bg-paper text-ink shadow-sm" : "text-ink-3"}`}>
                   Automatisch
                 </button>
-                <button type="button" onClick={() => setCreateMode("manual")}
+                <button type="button" onClick={() => {
+                  setCreateMode("manual");
+                  setAutoPreview(null);
+                }}
                   className={`rounded-md px-3 py-2 text-sm ${createMode === "manual" ? "bg-paper text-ink shadow-sm" : "text-ink-3"}`}>
                   Manuell erstellen
                 </button>
@@ -213,9 +245,21 @@ export function AdminPage() {
                   : "Trage die Angaben selbst ein. Ein hochgeladenes Bild wird automatisch als einheitliches Referenz- und Vorschaubild aufbereitet."}
               </p>
               {createMode === "automatic" && (
-                <Input label="Name des Tiers *" value={form.common_name} required
-                  placeholder="z. B. Eisvogel"
-                  onChange={(v) => setForm({ ...form, common_name: v })} />
+                <>
+                  <Input label="Name des Tiers *" value={form.common_name} required
+                    placeholder="z. B. Eisvogel"
+                    onChange={(v) => {
+                      setForm({ ...form, common_name: v });
+                      setAutoPreview(null);
+                    }} />
+                  {autoPreview && (
+                    <AutomaticPreview
+                      preview={autoPreview}
+                      meta={meta}
+                      onReset={() => setAutoPreview(null)}
+                    />
+                  )}
+                </>
               )}
             </>
           )}
@@ -296,20 +340,32 @@ export function AdminPage() {
 
           <Input label="Weitere Merkmale (Komma-getrennt)" value={tagInput}
             onChange={setTagInput} />
-          {!editing && (
-            <label className="block rounded-sm border border-dashed border-rule-2 bg-paper-2/50 p-4">
-              <span className="label-caps mb-1.5 block">Referenzbild (optional)</span>
+          <label className="block rounded-sm border border-dashed border-rule-2 bg-paper-2/50 p-4">
+              <span className="label-caps mb-1.5 block">
+                {editing ? "Eigenes Referenzbild hochladen oder ersetzen" : "Referenzbild (optional)"}
+              </span>
+              {editing && (referenceImagePreview || editing.reference_thumb_url || editing.reference_image_url) && (
+                <img
+                  src={referenceImagePreview ?? editing.reference_thumb_url ?? editing.reference_image_url ?? ""}
+                  alt={referenceImage ? "Vorschau des neuen Referenzbilds" : "Aktuelles Referenzbild"}
+                  className="mb-3 aspect-[4/3] w-full max-w-xs rounded-sm border border-rule object-cover"
+                />
+              )}
               <input
+                ref={referenceImageRef}
                 type="file"
                 accept="image/*,.heic,.heif,image/heic,image/heif"
                 onChange={(event) => setReferenceImage(event.target.files?.[0] ?? null)}
                 className="block w-full text-sm text-ink-2 file:mr-3 file:rounded-sm file:border file:border-rule file:bg-paper file:px-3 file:py-2"
               />
               <span className="mt-2 block text-xs text-ink-3">
-                {referenceImage ? referenceImage.name : "JPG, PNG, WebP, TIFF oder HEIC/HEIF"}
+                {referenceImage
+                  ? `${referenceImage.name} wird beim Speichern automatisch zugeschnitten und aufbereitet.`
+                  : editing?.reference_image_url
+                    ? "Ohne neue Datei bleibt das aktuelle Bild erhalten. JPG, PNG, WebP, TIFF oder HEIC/HEIF."
+                    : "JPG, PNG, WebP, TIFF oder HEIC/HEIF"}
               </span>
             </label>
-          )}
             </>
           )}
 
@@ -324,7 +380,15 @@ export function AdminPage() {
             disabled={isSavingSpecies}
             className="rounded-sm bg-moss px-6 py-2.5 text-[15px] text-paper hover:bg-moss-2"
           >
-            {isSavingSpecies ? "Wird gespeichert …" : editing ? "Änderungen speichern" : "Anlegen"}
+            {isSavingSpecies
+              ? editing
+                ? "Wird gespeichert …"
+                : autoPreview ? "Wird angelegt …" : "Daten werden geprüft …"
+              : editing
+                ? "Änderungen speichern"
+                : createMode === "automatic" && !autoPreview
+                  ? "Artdaten prüfen"
+                  : "Art jetzt anlegen"}
           </button>
         </form>
       </section>
@@ -445,6 +509,63 @@ const GROUP_CLASS_LABEL: Record<string, string> = {
 
 function classLabel(value: string, group: string): string {
   return CLASS_LABEL[value] ?? GROUP_CLASS_LABEL[group] ?? "Tiere";
+}
+
+function AutomaticPreview({
+  preview,
+  meta,
+  onReset,
+}: {
+  preview: AutomaticSpeciesPreview;
+  meta: Meta | null;
+  onReset: () => void;
+}) {
+  const regionLabels = preview.regions.map(
+    (value) => meta?.regions.find((item) => item.value === value)?.label ?? value,
+  );
+  return (
+    <section className="mt-4 overflow-hidden rounded-sm border border-moss/50 bg-sage/10">
+      <div className="grid gap-4 p-4 sm:grid-cols-[8rem_1fr]">
+        {preview.reference_image_url ? (
+          <img
+            src={preview.reference_image_url}
+            alt={`Vorschau: ${preview.common_name}`}
+            className="aspect-square w-full rounded-sm object-cover"
+          />
+        ) : <div className="aspect-square rounded-sm bg-paper-2" />}
+        <div>
+          <p className="label-caps text-moss-2">Erkannter Tierartikel</p>
+          <h3 className="mt-1 font-serif text-2xl">{preview.common_name}</h3>
+          <p className="font-serif italic text-ink-3">{preview.scientific_name}</p>
+          <dl className="mt-3 grid grid-cols-[5rem_1fr] gap-x-3 gap-y-1 text-[13px]">
+            <dt className="text-ink-3">Klasse</dt>
+            <dd>{classLabel(preview.class_name, preview.group)}</dd>
+            <dt className="text-ink-3">Ordnung</dt>
+            <dd>{preview.order_name || "–"}</dd>
+            <dt className="text-ink-3">Familie</dt>
+            <dd>{preview.family || "–"}</dd>
+            <dt className="text-ink-3">Region</dt>
+            <dd>{regionLabels.join(", ") || "–"}</dd>
+          </dl>
+        </div>
+      </div>
+      {preview.description && (
+        <p className="border-t border-moss/20 px-4 py-3 text-[13px] leading-5 text-ink-2">
+          {preview.description}
+        </p>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-moss/20 px-4 py-3 text-[12px]">
+        {preview.reference_source ? (
+          <a href={preview.reference_source} target="_blank" rel="noreferrer" className="link-quiet">
+            Quelle prüfen ↗
+          </a>
+        ) : <span />}
+        <button type="button" onClick={onReset} className="text-ink-3 underline underline-offset-4 hover:text-ink">
+          Anderen Namen eingeben
+        </button>
+      </div>
+    </section>
+  );
 }
 
 function Input({

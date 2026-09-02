@@ -150,6 +150,20 @@ class AutomaticSpeciesCreate(BaseModel):
     common_name: str = Field(min_length=1, max_length=160)
 
 
+class AutomaticSpeciesPreview(BaseModel):
+    common_name: str
+    scientific_name: str = ""
+    description: str = ""
+    group: str = "other"
+    class_name: str = ""
+    family: str = ""
+    order_name: str = ""
+    habitats: list[str] = Field(default_factory=list)
+    regions: list[str] = Field(default_factory=list)
+    reference_image_url: str | None = None
+    reference_source: str | None = None
+
+
 class SpeciesUpdate(BaseModel):
     common_name: str | None = None
     scientific_name: str | None = None

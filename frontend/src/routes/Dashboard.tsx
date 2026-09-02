@@ -204,7 +204,7 @@ export function Dashboard() {
             {data.challenges.map((c) => (
               <li key={c.label}>
                 <Link
-                  to={`/arten?family=${encodeURIComponent(c.filter.family ?? "")}`}
+                  to={`/arten?${new URLSearchParams(c.filter).toString()}`}
                   className="flex items-center justify-between gap-4 rounded-sm border border-rule bg-paper px-4 py-3 transition-colors hover:border-rule-2 hover:bg-paper-2"
                 >
                   <span className="text-[15px] text-ink-2">{c.label}</span>

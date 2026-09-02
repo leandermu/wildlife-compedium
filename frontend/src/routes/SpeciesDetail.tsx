@@ -11,6 +11,12 @@ const GROUP_LABEL: Record<string, string> = {
   bird: "Vögel", mammal: "Säugetiere", butterfly: "Schmetterlinge", insect: "Insekten",
   amphibian: "Amphibien", reptile: "Reptilien", fish: "Fische", other: "Sonstige",
 };
+const CLASS_LABEL: Record<string, string> = {
+  Aves: "Vögel", Mammalia: "Säugetiere", Insecta: "Insekten", Amphibia: "Amphibien",
+  Reptilia: "Reptilien", Actinopterygii: "Strahlenflosser", Chondrichthyes: "Knorpelfische",
+  Arachnida: "Spinnentiere", Gastropoda: "Schnecken", Malacostraca: "Höhere Krebse",
+  Animalia: "Tiere",
+};
 const HABITAT_LABEL: Record<string, string> = {
   garden: "Garten", city: "Stadt", park: "Park", forest: "Wald", field: "Feld & Wiese",
   water: "Gewässer", moor: "Moor", heath: "Heide & Trockenrasen", alps: "Berge & Alpen",
@@ -85,6 +91,7 @@ export function SpeciesDetailPage() {
   const hero = species.photos.find((p) => p.is_best_photo) ?? species.photos[0];
   const speciesSearch = (location.state as { speciesSearch?: string } | null)?.speciesSearch ?? "";
   const overviewUrl = speciesSearch ? `/arten?${speciesSearch}` : "/arten";
+  const classLabel = CLASS_LABEL[species.class_name] ?? GROUP_LABEL[species.group] ?? "Tiere";
 
   const openPhoto = (photo: Photo) => {
     setLightboxInfo(false);
@@ -135,7 +142,7 @@ export function SpeciesDetailPage() {
       {/* Kopf */}
       <header className="border-b border-rule pb-8 text-center">
         <p className="label-caps">
-          {species.class_name || GROUP_LABEL[species.group] || species.group}
+          {classLabel}
           {species.order_name && ` · ${species.order_name}`}
           {species.family && ` · ${species.family}`}
         </p>
@@ -340,7 +347,7 @@ export function SpeciesDetailPage() {
             )}
             <dl className="divide-y divide-rule border-y border-rule">
               <Row label="Art (wissenschaftlich)" value={<em>{species.scientific_name}</em>} />
-              <Row label="Klasse" value={species.class_name} />
+              <Row label="Klasse" value={classLabel} />
               <Row label="Ordnung" value={species.order_name} />
               <Row label="Familie" value={species.family} />
               <Row label="Aktivität" value={species.activity === "nocturnal" ? "Nachtaktiv" : "Tagaktiv"} />

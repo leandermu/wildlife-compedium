@@ -197,9 +197,15 @@ def facets(
 
     return Facets(
         groups=scalar_facet("group", 1, GROUPS),
-        classes=scalar_facet(
-            "class_name", 9,
-            {key: {"label": label} for key, label in CLASS_LABELS.items()},
+        classes=sorted(
+            (
+                facet for facet in scalar_facet(
+                    "class_name", 9,
+                    {key: {"label": label} for key, label in CLASS_LABELS.items()},
+                )
+                if facet.value.strip() and facet.value != "None"
+            ),
+            key=lambda facet: facet.label,
         ),
         orders=sorted(
             (

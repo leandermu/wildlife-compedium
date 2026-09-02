@@ -26,14 +26,17 @@ GROUP_CLASSES: dict[str, str] = {
 }
 
 CLASS_LABELS: dict[str, str] = {
-    "Aves": "Vögel (Aves)",
-    "Mammalia": "Säugetiere (Mammalia)",
-    "Insecta": "Insekten (Insecta)",
-    "Amphibia": "Amphibien (Amphibia)",
-    "Reptilia": "Reptilien (Reptilia)",
-    "Actinopterygii": "Strahlenflosser (Actinopterygii)",
-    "Chondrichthyes": "Knorpelfische (Chondrichthyes)",
-    "Animalia": "Tiere (Animalia)",
+    "Aves": "Vögel",
+    "Mammalia": "Säugetiere",
+    "Insecta": "Insekten",
+    "Amphibia": "Amphibien",
+    "Reptilia": "Reptilien",
+    "Actinopterygii": "Strahlenflosser",
+    "Chondrichthyes": "Knorpelfische",
+    "Arachnida": "Spinnentiere",
+    "Gastropoda": "Schnecken",
+    "Malacostraca": "Höhere Krebse",
+    "Animalia": "Tiere",
 }
 
 HABITATS: dict[str, dict] = {
@@ -225,6 +228,10 @@ def meta_payload() -> dict:
     return {
         "groups": [
             {"value": k, **v} for k, v in sorted(GROUPS.items(), key=lambda i: i[1]["order"])
+        ],
+        "classes": [
+            {"value": key, "label": label}
+            for key, label in CLASS_LABELS.items()
         ],
         "habitats": [
             {"value": k, **v} for k, v in sorted(HABITATS.items(), key=lambda i: i[1]["order"])

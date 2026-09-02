@@ -51,6 +51,22 @@ export function SpeciesList() {
   // Suchfeld folgt der URL (z. B. bei Suche aus der Kopfzeile)
   useEffect(() => setQueryInput(searchParams.get("q") ?? ""), [searchParams]);
 
+  // Taxonomische Filter bilden eine Hierarchie. Untergeordnete Werte dürfen
+  // nicht unsichtbar aktiv bleiben, wenn ihre übergeordnete Auswahl fehlt.
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    let changed = false;
+    if (!next.has("class_name") && (next.has("order") || next.has("family"))) {
+      next.delete("order");
+      next.delete("family");
+      changed = true;
+    } else if (!next.has("order") && next.has("family")) {
+      next.delete("family");
+      changed = true;
+    }
+    if (changed) setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   // Debounce der Sucheingabe
   useEffect(() => {
     const current = searchParams.get("q") ?? "";
@@ -94,6 +110,12 @@ export function SpeciesList() {
 
   const toggle = (key: MultiKey, value: string) => {
     const next = new URLSearchParams(searchParams);
+    if (key === "class_name") {
+      next.delete("order");
+      next.delete("family");
+    } else if (key === "order") {
+      next.delete("family");
+    }
     const values = next.getAll(key);
     next.delete(key);
     const remaining = values.includes(value)
@@ -106,6 +128,8 @@ export function SpeciesList() {
   const activeCount = MULTI_KEYS.reduce((n, k) => n + searchParams.getAll(k).length, 0);
 
   const collected = items.filter((i) => i.status !== "locked").length;
+  const hasClassFilter = searchParams.has("class_name");
+  const hasOrderFilter = searchParams.has("order");
 
   const facetLabels = useMemo(() => {
     const labels = new Map<string, string>();
@@ -174,13 +198,17 @@ export function SpeciesList() {
               toggle={toggle}
             />
             <FacetGroup title="Begegnungsart" k="encounter" facets={facets.encounters} searchParams={searchParams} toggle={toggle} />
+            <FacetGroup title="Schwierigkeit" k="difficulty" facets={facets.difficulties} searchParams={searchParams} toggle={toggle} />
             <FacetGroup title="Klasse" k="class_name" facets={facets.classes} searchParams={searchParams} toggle={toggle} />
-            <FacetGroup title="Ordnung" k="order" facets={facets.orders} searchParams={searchParams} toggle={toggle} />
-            <FacetGroup title="Aktivität" k="activity" facets={facets.activities} searchParams={searchParams} toggle={toggle} />
+            {hasClassFilter && (
+              <FacetGroup title="Ordnung" k="order" facets={facets.orders} searchParams={searchParams} toggle={toggle} />
+            )}
+            {hasOrderFilter && (
+              <FacetGroup title="Familie" k="family" facets={facets.families.slice(0, 18)} searchParams={searchParams} toggle={toggle} />
+            )}
             <FacetGroup title="Region" k="region" facets={facets.regions} searchParams={searchParams} toggle={toggle} />
             <FacetGroup title="Lebensraum" k="habitat" facets={facets.habitats} searchParams={searchParams} toggle={toggle} />
-            <FacetGroup title="Schwierigkeit" k="difficulty" facets={facets.difficulties} searchParams={searchParams} toggle={toggle} />
-            <FacetGroup title="Familie" k="family" facets={facets.families.slice(0, 18)} searchParams={searchParams} toggle={toggle} />
+            <FacetGroup title="Aktivität" k="activity" facets={facets.activities} searchParams={searchParams} toggle={toggle} />
             {facets.tags.length > 0 && (
               <FacetGroup title="Merkmale" k="tag" facets={facets.tags.slice(0, 16)} searchParams={searchParams} toggle={toggle} />
             )}

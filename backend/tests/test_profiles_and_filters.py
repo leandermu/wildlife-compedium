@@ -31,12 +31,56 @@ class ProfileAndFilterTest(unittest.TestCase):
             self.assertEqual(male_names["alpine_hunter"], "Alpenjäger")
             self.assertEqual(female_names["alpine_hunter"], "Alpenjägerin")
 
+    def test_achievement_level_starts_at_one_and_rises_per_milestone(self) -> None:
+        with Session(self.engine) as db:
+            profile = Profile(name="Leander", gender="male")
+            species = Species(slug="testvogel", common_name="Testvogel", group="bird")
+            db.add_all([profile, species])
+            db.commit()
+
+            initial = {item["id"]: item for item in evaluate(db, profile.id)}
+            self.assertEqual(initial["photo_volume"]["level"], 1)
+            self.assertEqual(initial["photo_volume"]["tiers"][0]["label"], "Level 2")
+
+            db.add_all([
+                UserPhoto(
+                    profile_id=profile.id,
+                    species_id=species.id,
+                    storage_key=f"photo-{index}.jpg",
+                )
+                for index in range(10)
+            ])
+            db.commit()
+            first_milestone = {item["id"]: item for item in evaluate(db, profile.id)}
+            self.assertEqual(first_milestone["photo_volume"]["level"], 2)
+
+            db.add_all([
+                UserPhoto(
+                    profile_id=profile.id,
+                    species_id=species.id,
+                    storage_key=f"photo-{index}.jpg",
+                )
+                for index in range(10, 50)
+            ])
+            db.commit()
+            second_milestone = {item["id"]: item for item in evaluate(db, profile.id)}
+            self.assertEqual(second_milestone["photo_volume"]["level"], 3)
+
     def test_seen_includes_observation_without_photo_and_systematic_sort_uses_group(self) -> None:
         with Session(self.engine) as db:
             profile = Profile(name="Leander", gender="male")
-            mammal = Species(slug="m", common_name="M", group="mammal", sort_index=0)
-            amphibian = Species(slug="a", common_name="A", group="amphibian", sort_index=0)
-            bird = Species(slug="b", common_name="B", group="bird", sort_index=999)
+            mammal = Species(
+                slug="m", common_name="M", group="mammal",
+                class_name="Mammalia", sort_index=0,
+            )
+            amphibian = Species(
+                slug="a", common_name="A", group="amphibian",
+                class_name="Amphibia", sort_index=0,
+            )
+            bird = Species(
+                slug="b", common_name="B", group="bird",
+                class_name="Aves", sort_index=999,
+            )
             db.add_all([profile, mammal, amphibian, bird])
             db.flush()
             db.add(Observation(
@@ -66,6 +110,10 @@ class ProfileAndFilterTest(unittest.TestCase):
             self.assertEqual(
                 {item.value for item in facet_result.seen},
                 {"seen", "unseen"},
+            )
+            self.assertEqual(
+                {item.value: item.label for item in facet_result.classes},
+                {"Amphibia": "Amphibien", "Aves": "Vögel", "Mammalia": "Säugetiere"},
             )
 
     def test_species_status_only_has_locked_and_unlocked(self) -> None:

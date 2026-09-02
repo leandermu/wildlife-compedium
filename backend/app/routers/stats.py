@@ -206,19 +206,26 @@ def dashboard(
         sq.base(
             Species.family,
             Species.group,
+            Species.class_name,
+            Species.order_name,
             func.count(Species.id),
             func.sum(case((sq.photo_count > 0, 1), else_=0)),
         )
-    ).group_by(Species.family, Species.group)
+    ).group_by(Species.family, Species.group, Species.class_name, Species.order_name)
     fam_rows = db.execute(fam_stmt).all()
-    for family, group, cnt, coll in fam_rows:
+    for family, group, class_name, order_name, cnt, coll in fam_rows:
         coll = int(coll or 0)
         if not family or cnt < 3 or coll == 0 or coll >= cnt:
             continue
+        challenge_filter = {"family": family, "group": group}
+        if class_name:
+            challenge_filter["class_name"] = class_name
+        if order_name:
+            challenge_filter["order"] = order_name
         challenges.append(ChallengeHint(
             label=f"noch {cnt - coll} × {family}",
             remaining=cnt - coll,
-            filter={"family": family, "group": group},
+            filter=challenge_filter,
         ))
     challenges.sort(key=lambda c: c.remaining)
     challenges = challenges[:6]

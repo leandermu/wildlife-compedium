@@ -57,6 +57,11 @@ function Card({ item }: { item: Achievement }) {
           <h3 className="font-serif text-xl leading-tight text-ink">{item.name}</h3>
           {item.category && <p className="label-caps mt-0.5">{item.category}</p>}
         </div>
+        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+          item.unlocked ? "border-moss bg-sage/15 text-moss-2" : "border-rule text-ink-3"
+        }`}>
+          Level {item.level}
+        </span>
         {done && <span className="text-ochre" title="Vollständig">★</span>}
       </div>
 
@@ -72,7 +77,7 @@ function Card({ item }: { item: Achievement }) {
         <ProgressBar collected={Math.min(item.progress, item.target)} total={item.target} />
       </div>
 
-      {item.tiers.length > 1 && (
+      {item.tiers.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {item.tiers.map((t) => (
             <span
@@ -83,8 +88,7 @@ function Card({ item }: { item: Achievement }) {
                   : "border-rule text-ink-3"
               }`}
             >
-              {t.unlocked ? "✓ " : ""}
-              {t.threshold}
+              {t.unlocked ? "✓ " : ""}{t.label} · {t.threshold}
             </span>
           ))}
         </div>

@@ -226,8 +226,23 @@ export function AdminPage() {
               onChange={(v) => setForm({ ...form, common_name: v })} />
             <Input label="Art (wissenschaftlicher Name)" value={form.scientific_name}
               onChange={(v) => setForm({ ...form, scientific_name: v })} />
-            <Input label="Klasse" value={form.class_name} placeholder="z. B. Aves"
-              onChange={(v) => setForm({ ...form, class_name: v })} />
+            <label className="block">
+              <span className="label-caps mb-1.5 block">Klasse</span>
+              <select
+                value={form.class_name}
+                onChange={(event) => setForm({ ...form, class_name: event.target.value })}
+                className="w-full rounded-sm border border-rule bg-paper px-3 py-2 text-[14px] focus:outline-none"
+              >
+                {!meta?.classes.some((item) => item.value === form.class_name) && form.class_name && (
+                  <option value={form.class_name}>
+                    {classLabel(form.class_name, form.group)}
+                  </option>
+                )}
+                {meta?.classes.map((item) => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
+              </select>
+            </label>
             <Input label="Ordnung" value={form.order_name}
               onChange={(v) => setForm({ ...form, order_name: v })} />
             <Input label="Familie" value={form.family}
@@ -343,7 +358,7 @@ export function AdminPage() {
                     </Link>
                     <span className="ml-2 font-serif italic text-ink-3">{s.scientific_name}</span>
                   </td>
-                  <td className="py-2 pr-4 text-ink-2">{s.class_name}</td>
+                  <td className="py-2 pr-4 text-ink-2">{classLabel(s.class_name, s.group)}</td>
                   <td className="py-2 pr-4 text-ink-2">{s.family}</td>
                   <td className="py-2 pr-4 text-ink-3">
                     {s.updated_at ? formatRelativeTime(s.updated_at) : "–"}
@@ -407,6 +422,29 @@ export function AdminPage() {
       </section>
     </div>
   );
+}
+
+const CLASS_LABEL: Record<string, string> = {
+  Aves: "Vögel",
+  Mammalia: "Säugetiere",
+  Insecta: "Insekten",
+  Amphibia: "Amphibien",
+  Reptilia: "Reptilien",
+  Actinopterygii: "Strahlenflosser",
+  Chondrichthyes: "Knorpelfische",
+  Arachnida: "Spinnentiere",
+  Gastropoda: "Schnecken",
+  Malacostraca: "Höhere Krebse",
+  Animalia: "Tiere",
+};
+
+const GROUP_CLASS_LABEL: Record<string, string> = {
+  bird: "Vögel", mammal: "Säugetiere", butterfly: "Insekten", insect: "Insekten",
+  amphibian: "Amphibien", reptile: "Reptilien", fish: "Fische", other: "Tiere",
+};
+
+function classLabel(value: string, group: string): string {
+  return CLASS_LABEL[value] ?? GROUP_CLASS_LABEL[group] ?? "Tiere";
 }
 
 function Input({

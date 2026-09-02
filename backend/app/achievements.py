@@ -299,8 +299,12 @@ def evaluate(db: Session, profile_id: int) -> list[dict[str, Any]]:
         # the target shown is the next unreached tier, or the last one when done
         target = thresholds[current_tier] if current_tier < len(thresholds) else thresholds[-1]
         unlocked = current_tier > 0
-        for t in thresholds:
-            tiers.append({"threshold": t, "label": f"{t}", "unlocked": progress >= t})
+        for index, t in enumerate(thresholds):
+            tiers.append({
+                "threshold": t,
+                "label": f"Level {index + 2}",
+                "unlocked": progress >= t,
+            })
 
         st = state.get(d["id"])
         unlocked_at = st.unlocked_at if st else None
@@ -326,6 +330,7 @@ def evaluate(db: Session, profile_id: int) -> list[dict[str, Any]]:
             "icon": d.get("icon", "🏅"), "kind": d.get("kind", "achievement"),
             "category": d.get("category", ""),
             "progress": progress, "target": target,
+            "level": current_tier + 1,
             "unlocked": unlocked, "unlocked_at": unlocked_at,
             "tiers": tiers, "species": species_detail,
             "starts_on": d.get("starts_on"), "ends_on": d.get("ends_on"),

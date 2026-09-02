@@ -318,6 +318,7 @@ class AchievementOut(BaseModel):
     category: str = ""
     progress: int
     target: int
+    level: int = 1
     unlocked: bool
     unlocked_at: dt.datetime | None = None
     tiers: list[AchievementTierOut] = Field(default_factory=list)

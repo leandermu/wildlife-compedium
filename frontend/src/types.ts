@@ -167,6 +167,7 @@ export interface Achievement {
   category: string;
   progress: number;
   target: number;
+  level: number;
   unlocked: boolean;
   unlocked_at: string | null;
   tiers: { threshold: number; label: string; unlocked: boolean }[];
@@ -183,6 +184,7 @@ export interface MetaEntry {
 
 export interface Meta {
   groups: MetaEntry[];
+  classes: MetaEntry[];
   habitats: MetaEntry[];
   regions: MetaEntry[];
   activities: MetaEntry[];

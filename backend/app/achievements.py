@@ -302,7 +302,7 @@ def evaluate(db: Session, profile_id: int) -> list[dict[str, Any]]:
         for index, t in enumerate(thresholds):
             tiers.append({
                 "threshold": t,
-                "label": f"Level {index + 2}",
+                "label": f"Level {index + 1}",
                 "unlocked": progress >= t,
             })
 

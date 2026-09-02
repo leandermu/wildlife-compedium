@@ -40,7 +40,7 @@ class ProfileAndFilterTest(unittest.TestCase):
 
             initial = {item["id"]: item for item in evaluate(db, profile.id)}
             self.assertEqual(initial["photo_volume"]["level"], 1)
-            self.assertEqual(initial["photo_volume"]["tiers"][0]["label"], "Level 2")
+            self.assertEqual(initial["photo_volume"]["tiers"][0]["label"], "Level 1")
 
             db.add_all([
                 UserPhoto(
@@ -53,6 +53,10 @@ class ProfileAndFilterTest(unittest.TestCase):
             db.commit()
             first_milestone = {item["id"]: item for item in evaluate(db, profile.id)}
             self.assertEqual(first_milestone["photo_volume"]["level"], 2)
+            self.assertEqual(
+                first_milestone["photo_volume"]["tiers"][0]["label"], "Level 1"
+            )
+            self.assertTrue(first_milestone["photo_volume"]["tiers"][0]["unlocked"])
 
             db.add_all([
                 UserPhoto(

@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import Observation, Species, UserPhoto
-from ..profiles import CurrentProfile
+from ..profiles import CurrentProfile, scope_profile_id
 from ..queries import derive_status
 from ..storage import get_storage
 from ..text import slugify
@@ -51,6 +51,10 @@ def _photo_dict(p: UserPhoto) -> dict:
         "date": p.date.isoformat() if p.date else None, "location_name": p.location_name,
         "caption": p.caption, "is_best_photo": p.is_best_photo,
         "encounter_type": p.encounter_type or "wild",
+        "animal_sex": p.animal_sex or "unknown",
+        "measurement": p.measurement or "",
+        "observed_weight": p.observed_weight or "",
+        "profile_id": p.profile_id,
         "metadata": p.photo_metadata or {},
         "created_at": p.created_at.isoformat(),
     }
@@ -63,22 +67,23 @@ def _observation_dict(o: Observation) -> dict:
         "location_name": o.location_name, "latitude": o.latitude,
         "longitude": o.longitude, "notes": o.notes, "has_photo": o.has_photo,
         "encounter_type": o.encounter_type or "wild",
+        "animal_sex": o.animal_sex or "unknown",
+        "measurement": o.measurement or "",
+        "observed_weight": o.observed_weight or "",
+        "profile_id": o.profile_id,
         "created_at": o.created_at.isoformat(),
     }
 
 
-def _all(db: Session, profile_id: int):
+def _all(db: Session, profile_id: int | None):
     species = list(db.execute(select(Species).order_by(Species.id)).scalars())
-    observations = list(db.execute(
-        select(Observation)
-        .where(Observation.profile_id == profile_id)
-        .order_by(Observation.id)
-    ).scalars())
-    photos = list(db.execute(
-        select(UserPhoto)
-        .where(UserPhoto.profile_id == profile_id)
-        .order_by(UserPhoto.id)
-    ).scalars())
+    observation_stmt = select(Observation)
+    photo_stmt = select(UserPhoto)
+    if profile_id is not None:
+        observation_stmt = observation_stmt.where(Observation.profile_id == profile_id)
+        photo_stmt = photo_stmt.where(UserPhoto.profile_id == profile_id)
+    observations = list(db.execute(observation_stmt.order_by(Observation.id)).scalars())
+    photos = list(db.execute(photo_stmt.order_by(UserPhoto.id)).scalars())
     return species, observations, photos
 
 
@@ -90,7 +95,7 @@ def _stamp() -> str:
 def export_json(
     db: Annotated[Session, Depends(get_db)], profile: CurrentProfile
 ) -> Response:
-    species, observations, photos = _all(db, profile.id)
+    species, observations, photos = _all(db, scope_profile_id(profile))
     payload = {
         "exported_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "version": 1,
@@ -145,10 +150,10 @@ def export_csv(
     profile: CurrentProfile,
     what: str = "species",
 ) -> Response:
-    species, observations, photos = _all(db, profile.id)
+    species, observations, photos = _all(db, scope_profile_id(profile))
     if what == "observations":
-        cols = ["id", "species_id", "date", "location_name", "latitude", "longitude",
-                "notes", "encounter_type", "has_photo"]
+        cols = ["id", "species_id", "profile_id", "date", "location_name", "latitude", "longitude",
+                "notes", "encounter_type", "animal_sex", "measurement", "observed_weight", "has_photo"]
         by_id = {s.id: s for s in species}
         rows = [
             _observation_dict(o) | {"species_slug": by_id[o.species_id].slug}
@@ -157,8 +162,8 @@ def export_csv(
         cols.insert(2, "species_slug")
         body = _csv(rows, cols)
     elif what == "photos":
-        cols = ["id", "species_id", "species_slug", "observation_id", "file", "date",
-                "location_name", "caption", "encounter_type", "is_best_photo"]
+        cols = ["id", "species_id", "species_slug", "profile_id", "observation_id", "file", "date",
+                "location_name", "caption", "encounter_type", "animal_sex", "measurement", "observed_weight", "is_best_photo"]
         by_id = {s.id: s for s in species}
         rows = [
             _photo_dict(p) | {"species_slug": by_id[p.species_id].slug}
@@ -181,7 +186,7 @@ def export_zip(
     include_photos: bool = True,
 ):
     """Full backup: data files plus the original photo files, foldered by species."""
-    species, observations, photos = _all(db, profile.id)
+    species, observations, photos = _all(db, scope_profile_id(profile))
     by_id = {s.id: s for s in species}
     storage = get_storage()
 

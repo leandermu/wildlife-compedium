@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from .. import achievements as ach
 from ..db import get_db
 from ..models import Observation, Profile, Species, UserPhoto
-from ..profiles import CurrentProfile
+from ..profiles import CurrentProfile, scope_profile_id
 from ..queries import SpeciesQuery, display_photos
 from ..schemas import (
     ActivityOut,
@@ -32,7 +32,7 @@ def meta() -> dict:
 
 
 def _bucket_counts(
-    db: Session, profile_id: int, exclude_captive: bool = False
+    db: Session, profile_id: int | None, exclude_captive: bool = False
 ) -> list[tuple]:
     """species rows with their photo count — one query, used for every bucket."""
     sq = SpeciesQuery(profile_id, exclude_captive)
@@ -130,9 +130,12 @@ def dashboard(
     db: Annotated[Session, Depends(get_db)], profile: CurrentProfile
 ) -> DashboardOut:
     exclude_captive = bool(profile.exclude_captive_from_progress)
-    rows = _bucket_counts(db, profile.id, exclude_captive)
-    photo_filters = [UserPhoto.profile_id == profile.id]
-    observation_filters = [Observation.profile_id == profile.id]
+    scope_id = scope_profile_id(profile)
+    rows = _bucket_counts(db, scope_id, exclude_captive)
+    photo_filters = [] if scope_id is None else [UserPhoto.profile_id == scope_id]
+    observation_filters = [] if scope_id is None else [
+        Observation.profile_id == scope_id
+    ]
     if exclude_captive:
         photo_filters.append(func.coalesce(UserPhoto.encounter_type, "wild") == "wild")
         observation_filters.append(
@@ -184,7 +187,7 @@ def dashboard(
         species = {
             s.id: s for s in db.execute(select(Species).where(Species.id.in_(ids))).scalars()
         }
-        photos = display_photos(db, ids, profile.id, exclude_captive)
+        photos = display_photos(db, ids, scope_id, exclude_captive)
         for sid, _last in recent_rows:
             sp = species.get(sid)
             if not sp:
@@ -201,7 +204,7 @@ def dashboard(
 
     # "Nächste Herausforderungen": families/habitats where she is closest to done
     challenges: list[ChallengeHint] = []
-    sq = SpeciesQuery(profile.id, exclude_captive)
+    sq = SpeciesQuery(scope_id, exclude_captive)
     fam_stmt = sq.apply_filters(
         sq.base(
             Species.family,

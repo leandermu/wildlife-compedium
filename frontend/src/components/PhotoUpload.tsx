@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
-import type { SpeciesDetail } from "../types";
+import type { Profile, SpeciesDetail } from "../types";
 
 /** Foto-Upload mit Metadaten. Das Datum wird, wenn leer, aus den EXIF-Daten
  *  der Datei übernommen (serverseitig). */
@@ -18,10 +18,25 @@ export function PhotoUpload({
   const [location, setLocation] = useState("");
   const [caption, setCaption] = useState("");
   const [encounterType, setEncounterType] = useState<"wild" | "captive">("wild");
+  const [animalSex, setAnimalSex] = useState<"unknown" | "female" | "male">("unknown");
+  const [measurement, setMeasurement] = useState("");
+  const [observedWeight, setObservedWeight] = useState("");
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [observerProfileId, setObserverProfileId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const activeProfile = profiles.find(
+    (profile) => String(profile.id) === localStorage.getItem("wc-profile-id"),
+  );
+  const isShared = Boolean(activeProfile?.is_shared);
+  const personalProfiles = profiles.filter((profile) => !profile.is_shared);
+  const isFish = species.group === "fish" || ["Actinopterygii", "Chondrichthyes"].includes(species.class_name);
+
+  useEffect(() => {
+    api.profiles().then(setProfiles).catch(() => setProfiles([]));
+  }, []);
 
   const pick = (f: File | null) => {
     setError(null);
@@ -53,6 +68,10 @@ export function PhotoUpload({
       if (location) fd.append("location_name", location);
       if (caption) fd.append("caption", caption);
       fd.append("encounter_type", encounterType);
+      fd.append("animal_sex", animalSex);
+      if (isFish && measurement) fd.append("measurement", measurement);
+      if (isFish && observedWeight) fd.append("observed_weight", observedWeight);
+      if (isShared) fd.append("observer_profile_id", observerProfileId);
       await api.uploadPhoto(fd);
       setFile(null);
       setPreview(null);
@@ -61,6 +80,10 @@ export function PhotoUpload({
       setLocation("");
       setCaption("");
       setEncounterType("wild");
+      setAnimalSex("unknown");
+      setMeasurement("");
+      setObservedWeight("");
+      setObserverProfileId("");
       if (inputRef.current) inputRef.current.value = "";
       onDone();
     } catch (err) {
@@ -108,7 +131,9 @@ export function PhotoUpload({
           </div>
         ) : (
           <>
-            <p className="font-serif text-lg text-ink-2">Eigenes Foto hinzufügen</p>
+            <p className="font-serif text-lg text-ink-2">
+              {isShared ? "Foto zur gemeinsamen Sammlung hinzufügen" : "Eigenes Foto hinzufügen"}
+            </p>
             <p className="mt-1 text-[13px] text-ink-3">
               Datei hierher ziehen oder klicken zum Auswählen
             </p>
@@ -161,6 +186,22 @@ export function PhotoUpload({
         Datum, Uhrzeit, Ort und Notiz gehören zur Fotobegegnung und werden gemeinsam bearbeitet.
       </p>
 
+      {isShared && (
+        <Field label="Beobachtet von">
+          <select
+            value={observerProfileId}
+            onChange={(event) => setObserverProfileId(event.target.value)}
+            required
+            className="w-full rounded-sm border border-rule bg-paper px-3 py-2 text-[14px] focus:border-rule-2 focus:outline-none"
+          >
+            <option value="">Profil auswählen …</option>
+            {personalProfiles.map((profile) => (
+              <option key={profile.id} value={profile.id}>{profile.avatar} {profile.name}</option>
+            ))}
+          </select>
+        </Field>
+      )}
+
       <fieldset>
         <legend className="label-caps mb-1.5 block">Beobachtungsart</legend>
         <div className="flex flex-wrap gap-4 text-[14px] text-ink-2">
@@ -187,11 +228,53 @@ export function PhotoUpload({
         </div>
       </fieldset>
 
+      <fieldset>
+        <legend className="label-caps mb-1.5 block">Geschlecht</legend>
+        <div className="flex flex-wrap gap-4 text-[14px] text-ink-2">
+          {([[
+            "unknown", "Unbestimmt",
+          ], ["female", "Weiblich"], ["male", "Männlich"]] as const).map(([value, label]) => (
+            <label key={value} className="flex cursor-pointer items-center gap-2">
+              <input
+                type="radio"
+                name="animal-sex"
+                checked={animalSex === value}
+                onChange={() => setAnimalSex(value)}
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      {isFish && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Maß (optional)">
+            <input
+              value={measurement}
+              onChange={(event) => setMeasurement(event.target.value)}
+              placeholder="z. B. 42 cm"
+              maxLength={80}
+              className="w-full rounded-sm border border-rule bg-paper px-3 py-2 text-[14px] focus:border-rule-2 focus:outline-none"
+            />
+          </Field>
+          <Field label="Gewicht (optional)">
+            <input
+              value={observedWeight}
+              onChange={(event) => setObservedWeight(event.target.value)}
+              placeholder="z. B. 1,2 kg"
+              maxLength={80}
+              className="w-full rounded-sm border border-rule bg-paper px-3 py-2 text-[14px] focus:border-rule-2 focus:outline-none"
+            />
+          </Field>
+        </div>
+      )}
+
       {error && <p className="text-[13px] text-rust">{error}</p>}
 
       <button
         type="submit"
-        disabled={!file || busy}
+        disabled={!file || busy || (isShared && !observerProfileId)}
         className="w-full rounded-sm bg-moss px-5 py-2.5 text-[15px] text-paper transition-colors hover:bg-moss-2 disabled:cursor-not-allowed disabled:bg-rule-2"
       >
         {busy

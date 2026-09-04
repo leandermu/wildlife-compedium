@@ -106,6 +106,30 @@ def _ensure_default_profile() -> None:
                 ))
 
 
+def _ensure_shared_profile() -> None:
+    """Create the protected aggregate profile once for existing installations."""
+    from .models import Profile
+
+    with SessionLocal.begin() as db:
+        shared = db.execute(
+            select(Profile).where(Profile.is_shared.is_(True))
+        ).scalars().first()
+        if shared is None:
+            shared = db.execute(
+                select(Profile).where(Profile.name.ilike("Gemeinsam"))
+            ).scalars().first()
+        if shared is None:
+            shared = Profile(
+                name="Gemeinsam", avatar="👥", gender="male",
+                is_shared=True, is_default=False,
+            )
+            db.add(shared)
+        else:
+            shared.is_shared = True
+            shared.avatar = "👥"
+            shared.is_default = False
+
+
 def _ensure_linked_encounters() -> None:
     """Unify photo/observation fields from versions that stored them separately."""
     from .encounters import reconcile_linked_encounters
@@ -159,5 +183,6 @@ def init_db() -> None:
     Base.metadata.create_all(engine)
     _ensure_columns()
     _ensure_default_profile()
+    _ensure_shared_profile()
     _ensure_species_metadata()
     _ensure_linked_encounters()

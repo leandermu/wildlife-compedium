@@ -15,7 +15,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import Date, DateTime, Time, delete, inspect as sa_inspect, text, update
+from sqlalchemy import Date, DateTime, Time, delete, inspect as sa_inspect, select, text, update
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 
@@ -180,8 +180,12 @@ def _validate_relations(data: dict[str, Any], archive_names: set[str]) -> None:
     try:
         for row in data["profiles"]:
             row.setdefault("exclude_captive_from_progress", False)
+            row.setdefault("is_shared", False)
         photo_encounters: dict[int, str] = {}
         for row in data["photos"]:
+            row.setdefault("animal_sex", "unknown")
+            row.setdefault("measurement", "")
+            row.setdefault("observed_weight", "")
             if "encounter_type" not in row:
                 metadata = row.get("photo_metadata") or {}
                 value = metadata.get("encounter_type", "wild")
@@ -189,6 +193,9 @@ def _validate_relations(data: dict[str, Any], archive_names: set[str]) -> None:
             if row.get("observation_id") is not None:
                 photo_encounters[int(row["observation_id"])] = row["encounter_type"]
         for row in data["observations"]:
+            row.setdefault("animal_sex", "unknown")
+            row.setdefault("measurement", "")
+            row.setdefault("observed_weight", "")
             row.setdefault(
                 "encounter_type",
                 photo_encounters.get(int(row["id"]), "wild"),
@@ -293,6 +300,16 @@ def _replace_database(db: Session, data: dict[str, Any]) -> None:
     db.flush()
     for key, model in BACKUP_TABLES:
         db.add_all(_decode_row(model, row) for row in data[key])
+        db.flush()
+    shared = db.execute(
+        select(Profile).where(Profile.is_shared.is_(True))
+    ).scalars().first()
+    if shared is None:
+        shared = Profile(
+            name="Gemeinsam", avatar="👥", gender="male",
+            is_shared=True, is_default=False,
+        )
+        db.add(shared)
         db.flush()
     original_updates: dict[int, dt.datetime] = {}
     for species in db.query(Species).all():

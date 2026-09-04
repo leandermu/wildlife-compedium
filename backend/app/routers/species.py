@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import Observation, Species, UserPhoto
-from ..profiles import CurrentProfile
+from ..profiles import CurrentProfile, scope_profile_id
 from ..queries import SpeciesQuery, display_photos, to_detail, to_list_item
 from ..schemas import (
     Facets,
@@ -66,7 +66,8 @@ def list_species(
     page: int = Query(1, ge=1),
     page_size: int = Query(60, ge=1, le=500),
 ) -> Page[SpeciesListItem]:
-    sq = SpeciesQuery(profile.id, bool(profile.exclude_captive_from_progress))
+    scope_id = scope_profile_id(profile)
+    sq = SpeciesQuery(scope_id, bool(profile.exclude_captive_from_progress))
     filters = dict(
         q=q, group=group, class_name=class_name, order=order,
         habitat=habitat, region=region, family=family, tag=tag,
@@ -91,7 +92,7 @@ def list_species(
     stmt = sq.apply_sort(stmt, sort).offset((page - 1) * page_size).limit(page_size)
     rows = db.execute(stmt).all()
 
-    photos = display_photos(db, [r[0].id for r in rows], profile.id)
+    photos = display_photos(db, [r[0].id for r in rows], scope_id)
     items = [
         to_list_item(sp, int(pc), int(oc), photos.get(sp.id), int(raw_pc), int(raw_oc))
         for sp, pc, oc, raw_pc, raw_oc in rows
@@ -122,7 +123,8 @@ def facets(
 ) -> Facets:
     """Counts for every filter dimension, each computed *without* the filter it
     describes, so the sidebar never shows a dead end."""
-    sq = SpeciesQuery(profile.id, bool(profile.exclude_captive_from_progress))
+    scope_id = scope_profile_id(profile)
+    sq = SpeciesQuery(scope_id, bool(profile.exclude_captive_from_progress))
     active = dict(q=q, group=group, class_name=class_name, order=order,
                   habitat=habitat, region=region, family=family,
                   tag=tag, difficulty=difficulty, status=status, seen=seen,
@@ -188,11 +190,12 @@ def facets(
     available_ids = {int(row[0]) for row in encounter_rows}
     encounter_species = {"wild": set(), "captive": set()}
     for model in (UserPhoto, Observation):
-        for sid, value in db.execute(
-            select(model.species_id, func.coalesce(model.encounter_type, "wild"))
-            .where(model.profile_id == profile.id)
-            .distinct()
-        ):
+        encounter_stmt = select(
+            model.species_id, func.coalesce(model.encounter_type, "wild")
+        )
+        if scope_id is not None:
+            encounter_stmt = encounter_stmt.where(model.profile_id == scope_id)
+        for sid, value in db.execute(encounter_stmt.distinct()):
             if value in encounter_species:
                 encounter_species[value].add(int(sid))
 
@@ -300,7 +303,7 @@ def get_species(
     key: str, db: Annotated[Session, Depends(get_db)], profile: CurrentProfile
 ) -> SpeciesDetail:
     return to_detail(
-        _get_species(db, key), profile.id,
+        _get_species(db, key), scope_profile_id(profile),
         bool(profile.exclude_captive_from_progress),
     )
 
@@ -334,7 +337,7 @@ def create_species_automatically(
     db.add(sp)
     db.commit()
     db.refresh(sp)
-    return to_detail(sp, profile.id, bool(profile.exclude_captive_from_progress))
+    return to_detail(sp, scope_profile_id(profile), bool(profile.exclude_captive_from_progress))
 
 
 @router.post("/automatic/preview", response_model=AutomaticSpeciesPreview)
@@ -388,7 +391,7 @@ def create_species(
     db.add(sp)
     db.commit()
     db.refresh(sp)
-    return to_detail(sp, profile.id, bool(profile.exclude_captive_from_progress))
+    return to_detail(sp, scope_profile_id(profile), bool(profile.exclude_captive_from_progress))
 
 
 @router.post("/manual", response_model=SpeciesDetail, status_code=201)
@@ -423,7 +426,7 @@ async def create_species_manual(
     db.add(sp)
     db.commit()
     db.refresh(sp)
-    return to_detail(sp, profile.id, bool(profile.exclude_captive_from_progress))
+    return to_detail(sp, scope_profile_id(profile), bool(profile.exclude_captive_from_progress))
 
 
 @router.patch("/{key}/manual", response_model=SpeciesDetail)
@@ -468,7 +471,7 @@ async def update_species_manual(
         for storage_key in old_reference_keys:
             if storage_key and storage_key not in new_reference_keys:
                 storage.delete(storage_key)
-    return to_detail(sp, profile.id, bool(profile.exclude_captive_from_progress))
+    return to_detail(sp, scope_profile_id(profile), bool(profile.exclude_captive_from_progress))
 
 
 @router.patch("/{key}", response_model=SpeciesDetail)
@@ -484,7 +487,7 @@ def update_species(
     sp.refresh_derived()
     db.commit()
     db.refresh(sp)
-    return to_detail(sp, profile.id, bool(profile.exclude_captive_from_progress))
+    return to_detail(sp, scope_profile_id(profile), bool(profile.exclude_captive_from_progress))
 
 
 @router.delete("/{key}", status_code=204)

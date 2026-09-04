@@ -15,13 +15,15 @@ PROFILE_AVATARS = {"🐾", "🦊", "🦉", "🦌", "🐦", "🦋", "🐺", "🌿
 
 
 def _out(db: Session, profile: Profile) -> ProfileOut:
+    photo_scope = [] if profile.is_shared else [UserPhoto.profile_id == profile.id]
+    observation_scope = [] if profile.is_shared else [Observation.profile_id == profile.id]
     photo_count = int(db.execute(
-        select(func.count(UserPhoto.id)).where(UserPhoto.profile_id == profile.id)
+        select(func.count(UserPhoto.id)).where(*photo_scope)
     ).scalar() or 0)
     observation_count = int(db.execute(
-        select(func.count(Observation.id)).where(Observation.profile_id == profile.id)
+        select(func.count(Observation.id)).where(*observation_scope)
     ).scalar() or 0)
-    progress_filters = [UserPhoto.profile_id == profile.id]
+    progress_filters = list(photo_scope)
     if profile.exclude_captive_from_progress:
         progress_filters.append(
             func.coalesce(UserPhoto.encounter_type, "wild") == "wild"
@@ -35,6 +37,7 @@ def _out(db: Session, profile: Profile) -> ProfileOut:
         avatar=profile.avatar or "🐾",
         gender=profile.gender or "male",
         is_default=profile.is_default,
+        is_shared=bool(profile.is_shared),
         exclude_captive_from_progress=bool(profile.exclude_captive_from_progress),
         photo_count=photo_count,
         observation_count=observation_count,
@@ -46,7 +49,11 @@ def _out(db: Session, profile: Profile) -> ProfileOut:
 @router.get("", response_model=list[ProfileOut])
 def list_profiles(db: Annotated[Session, Depends(get_db)]) -> list[ProfileOut]:
     profiles = db.execute(
-        select(Profile).order_by(Profile.is_default.desc(), Profile.name)
+        select(Profile).order_by(
+            func.coalesce(Profile.is_shared, False).desc(),
+            Profile.is_default.desc(),
+            Profile.name,
+        )
     ).scalars().all()
     return [_out(db, profile) for profile in profiles]
 
@@ -81,6 +88,13 @@ def update_profile(
     profile = db.get(Profile, profile_id)
     if profile is None:
         raise HTTPException(404, "Profil nicht gefunden")
+
+    if profile.is_shared:
+        if payload.exclude_captive_from_progress is not None:
+            profile.exclude_captive_from_progress = payload.exclude_captive_from_progress
+        db.commit()
+        db.refresh(profile)
+        return _out(db, profile)
 
     if payload.name is not None:
         name = " ".join(payload.name.split())
@@ -119,8 +133,12 @@ def delete_profile(
     profile = db.get(Profile, profile_id)
     if profile is None:
         raise HTTPException(404, "Profil nicht gefunden")
+    if profile.is_shared:
+        raise HTTPException(409, "Das gemeinsame Profil kann nicht gelöscht werden")
 
-    profile_count = int(db.execute(select(func.count(Profile.id))).scalar() or 0)
+    profile_count = int(db.execute(
+        select(func.count(Profile.id)).where(Profile.is_shared.is_not(True))
+    ).scalar() or 0)
     if profile_count <= 1:
         raise HTTPException(409, "Das einzige Profil kann nicht gelöscht werden")
 
@@ -139,7 +157,7 @@ def delete_profile(
     if profile.is_default:
         successor = db.execute(
             select(Profile)
-            .where(Profile.id != profile.id)
+            .where(Profile.id != profile.id, Profile.is_shared.is_not(True))
             .order_by(Profile.id)
         ).scalars().first()
         if successor:

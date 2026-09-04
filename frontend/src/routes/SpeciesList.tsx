@@ -19,8 +19,9 @@ const SORTS = [
   { value: "name", label: "Name A–Z" },
   { value: "difficulty", label: "Leicht zuerst" },
   { value: "difficulty_desc", label: "Schwer zuerst" },
-  { value: "status", label: "Gesammelte zuerst" },
-  { value: "recent", label: "Zuletzt fotografiert" },
+  { value: "collected_first", label: "Zuerst gesammelt" },
+  { value: "collected_last", label: "Zuletzt gesammelt" },
+  { value: "recent", label: "Zuletzt eingetragen" },
 ];
 
 export function SpeciesList() {

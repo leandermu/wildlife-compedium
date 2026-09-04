@@ -95,9 +95,11 @@ export function Layout() {
   };
 
   const activeProfile = profiles.find((profile) => String(profile.id) === profileId);
+  const personalProfileCount = profiles.filter((profile) => !profile.is_shared).length;
   const canDeleteProfile = Boolean(
     activeProfile &&
-    profiles.length > 1 &&
+    !activeProfile.is_shared &&
+    personalProfileCount > 1 &&
     activeProfile.photo_count === 0 &&
     activeProfile.observation_count === 0,
   );
@@ -127,15 +129,20 @@ export function Layout() {
 
   const saveProfile = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!activeProfile || !settingsName.trim()) return;
+    if (!activeProfile || (!activeProfile.is_shared && !settingsName.trim())) return;
     setProfileSaving(true);
     try {
-      const updated = await api.updateProfile(activeProfile.id, {
-        name: settingsName.trim(),
-        avatar: settingsAvatar,
-        gender: settingsGender,
-        exclude_captive_from_progress: settingsExcludeCaptive,
-      });
+      const updated = await api.updateProfile(
+        activeProfile.id,
+        activeProfile.is_shared
+          ? { exclude_captive_from_progress: settingsExcludeCaptive }
+          : {
+              name: settingsName.trim(),
+              avatar: settingsAvatar,
+              gender: settingsGender,
+              exclude_captive_from_progress: settingsExcludeCaptive,
+            },
+      );
       setProfiles((items) => items.map((item) => item.id === updated.id ? updated : item));
       window.location.reload();
     } catch (error) {
@@ -232,7 +239,7 @@ export function Layout() {
                   <>
                     <div className="border-b border-rule px-4 py-3">
                       <p className="font-serif text-lg text-ink">Profile</p>
-                      <p className="mt-0.5 text-xs text-ink-3">Fortschritt und Fotos getrennt sammeln</p>
+                      <p className="mt-0.5 text-xs text-ink-3">Gemeinsam oder getrennt sammeln</p>
                     </div>
 
                     <div className="max-h-64 space-y-1 overflow-y-auto p-2">
@@ -252,6 +259,7 @@ export function Layout() {
                               <span className="block truncate text-sm font-medium text-ink">{profile.name}</span>
                               <span className="block text-xs text-ink-3">
                                 {profile.collected_species} {profile.collected_species === 1 ? "Art" : "Arten"} gesammelt
+                                {profile.is_shared && " · alle Profile"}
                               </span>
                             </span>
                             {selected && (
@@ -317,7 +325,12 @@ export function Layout() {
                     </div>
 
                     <div className="space-y-5 p-4">
-                      <fieldset>
+                      {activeProfile?.is_shared && (
+                        <p className="rounded-xl bg-sage/10 px-3 py-2.5 text-[12px] leading-5 text-ink-2">
+                          Dieses Profil fasst die Begegnungen und Erfolge aller persönlichen Profile zusammen. Neue Begegnungen werden weiterhin einer Person zugeordnet.
+                        </p>
+                      )}
+                      {!activeProfile?.is_shared && <fieldset>
                         <legend className="label-caps mb-2">Profilbild</legend>
                         <div className="grid grid-cols-5 gap-2">
                           {PROFILE_AVATARS.map((avatar) => (
@@ -333,9 +346,9 @@ export function Layout() {
                             </button>
                           ))}
                         </div>
-                      </fieldset>
+                      </fieldset>}
 
-                      <label className="block">
+                      {!activeProfile?.is_shared && <label className="block">
                         <span className="label-caps mb-1.5 block">Name</span>
                         <input
                           value={settingsName}
@@ -344,9 +357,9 @@ export function Layout() {
                           required
                           className="w-full rounded-lg border border-rule bg-paper-2 px-3 py-2 text-sm text-ink focus:border-rule-2 focus:bg-paper focus:outline-none"
                         />
-                      </label>
+                      </label>}
 
-                      <fieldset>
+                      {!activeProfile?.is_shared && <fieldset>
                         <legend className="label-caps mb-2">Anrede für Auszeichnungen</legend>
                         <div className="grid grid-cols-2 gap-2 rounded-xl bg-paper-2 p-1">
                           {(["male", "female"] as const).map((gender) => (
@@ -364,7 +377,7 @@ export function Layout() {
                         <p className="mt-1.5 text-[11px] text-ink-3">
                           Passt Namen wie Alpenjäger oder Alpenjägerin an.
                         </p>
-                      </fieldset>
+                      </fieldset>}
 
                       <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-rule bg-paper-2/60 p-3">
                         <input
@@ -386,14 +399,14 @@ export function Layout() {
 
                       <button
                         type="submit"
-                        disabled={!settingsName.trim() || profileSaving}
+                        disabled={(!activeProfile?.is_shared && !settingsName.trim()) || profileSaving}
                         className="w-full rounded-lg bg-ink px-4 py-2.5 text-sm text-paper transition hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         {profileSaving ? "Wird gespeichert …" : "Änderungen speichern"}
                       </button>
                     </div>
 
-                    <div className="border-t border-rule bg-rust/5 p-4">
+                    {!activeProfile?.is_shared && <div className="border-t border-rule bg-rust/5 p-4">
                       <button
                         type="button"
                         onClick={removeProfile}
@@ -403,13 +416,13 @@ export function Layout() {
                         Profil löschen
                       </button>
                       <p className="mt-2 text-center text-[11px] leading-4 text-ink-3">
-                        {profiles.length <= 1
+                        {personalProfileCount <= 1
                           ? "Das einzige Profil kann nicht gelöscht werden."
                           : canDeleteProfile
                             ? "Nur dieses leere Profil wird entfernt."
                             : "Löschen ist nur ohne Fotos und Begegnungen möglich."}
                       </p>
-                    </div>
+                    </div>}
                   </form>
                 )}
               </div>
@@ -488,7 +501,7 @@ export function Layout() {
           <p className="font-serif italic text-ink-3">
             „Ein Tier ist erst durch das eigene Foto wirklich gesammelt."
           </p>
-          <p className="mt-2 text-[11px] tracking-wide text-ink-3">v1.4.1</p>
+          <p className="mt-2 text-[11px] tracking-wide text-ink-3">v1.5.0</p>
         </div>
       </footer>
     </div>

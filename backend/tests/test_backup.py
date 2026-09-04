@@ -86,7 +86,10 @@ class BackupRoundtripTest(unittest.TestCase):
             _replace_database(db, restored)
 
         with Session(engine) as db:
-            self.assertEqual(db.scalar(select(func.count(Profile.id))), 1)
+            self.assertEqual(db.scalar(select(func.count(Profile.id))), 2)
+            self.assertIsNotNone(
+                db.scalar(select(Profile).where(Profile.is_shared.is_(True)))
+            )
             self.assertEqual(db.scalar(select(func.count(Species.id))), 1)
             photo = db.scalar(select(UserPhoto))
             observation = db.scalar(select(Observation))

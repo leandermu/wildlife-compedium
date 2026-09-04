@@ -15,11 +15,15 @@ from .models import Observation, UserPhoto
 def sync_photos_from_observation(observation: Observation) -> None:
     """Copy the canonical encounter fields to every linked photo."""
     for photo in observation.photos:
+        photo.profile_id = observation.profile_id
         photo.date = observation.date
         photo.time = observation.time
         photo.location_name = observation.location_name
         photo.caption = observation.notes
         photo.encounter_type = observation.encounter_type or "wild"
+        photo.animal_sex = observation.animal_sex or "unknown"
+        photo.measurement = observation.measurement
+        photo.observed_weight = observation.observed_weight
         photo.photo_metadata = {
             **(photo.photo_metadata or {}),
             "encounter_type": observation.encounter_type or "wild",
@@ -36,6 +40,9 @@ def sync_observation_from_photo(photo: UserPhoto) -> None:
     observation.location_name = photo.location_name
     observation.notes = photo.caption
     observation.encounter_type = photo.encounter_type or "wild"
+    observation.animal_sex = photo.animal_sex or "unknown"
+    observation.measurement = photo.measurement
+    observation.observed_weight = photo.observed_weight
     sync_photos_from_observation(observation)
 
 
@@ -67,13 +74,27 @@ def reconcile_linked_encounters(db: Session) -> int:
             observation.notes = source.caption
         if not observation.encounter_type:
             observation.encounter_type = source.encounter_type or "wild"
+        if not observation.animal_sex:
+            observation.animal_sex = source.animal_sex or "unknown"
+        if not observation.measurement:
+            observation.measurement = source.measurement
+        if not observation.observed_weight:
+            observation.observed_weight = source.observed_weight
         before = [
-            (photo.date, photo.time, photo.location_name, photo.caption)
+            (
+                photo.profile_id, photo.date, photo.time, photo.location_name,
+                photo.caption, photo.encounter_type, photo.animal_sex,
+                photo.measurement, photo.observed_weight,
+            )
             for photo in photos
         ]
         sync_photos_from_observation(observation)
         after = [
-            (photo.date, photo.time, photo.location_name, photo.caption)
+            (
+                photo.profile_id, photo.date, photo.time, photo.location_name,
+                photo.caption, photo.encounter_type, photo.animal_sex,
+                photo.measurement, photo.observed_weight,
+            )
             for photo in photos
         ]
         changed += int(before != after)

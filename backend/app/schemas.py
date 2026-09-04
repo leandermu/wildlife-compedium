@@ -31,6 +31,7 @@ class ProfileOut(ORMModel):
     avatar: str = "🐾"
     gender: str = "male"
     is_default: bool = False
+    is_shared: bool = False
     exclude_captive_from_progress: bool = False
     photo_count: int = 0
     observation_count: int = 0
@@ -57,6 +58,9 @@ class PhotoUpdate(BaseModel):
     is_best_photo: bool | None = None
     photo_metadata: dict[str, Any] | None = None
     encounter_type: str | None = Field(default=None, pattern="^(wild|captive)$")
+    animal_sex: str | None = Field(default=None, pattern="^(unknown|female|male)$")
+    measurement: str | None = Field(default=None, max_length=80)
+    observed_weight: str | None = Field(default=None, max_length=80)
 
 
 class PhotoOut(ORMModel):
@@ -71,6 +75,10 @@ class PhotoOut(ORMModel):
     location_name: str = ""
     caption: str = ""
     encounter_type: str = "wild"
+    animal_sex: str = "unknown"
+    measurement: str = ""
+    observed_weight: str = ""
+    profile_id: int
     is_best_photo: bool = False
     photo_metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: dt.datetime
@@ -85,10 +93,14 @@ class ObservationBase(BaseModel):
     longitude: float | None = None
     notes: str = ""
     encounter_type: str = Field(default="wild", pattern="^(wild|captive)$")
+    animal_sex: str = Field(default="unknown", pattern="^(unknown|female|male)$")
+    measurement: str = Field(default="", max_length=80)
+    observed_weight: str = Field(default="", max_length=80)
 
 
 class ObservationCreate(ObservationBase):
     species_id: int
+    observer_profile_id: int | None = None
 
 
 class ObservationUpdate(BaseModel):
@@ -99,6 +111,9 @@ class ObservationUpdate(BaseModel):
     longitude: float | None = None
     notes: str | None = None
     encounter_type: str | None = Field(default=None, pattern="^(wild|captive)$")
+    animal_sex: str | None = Field(default=None, pattern="^(unknown|female|male)$")
+    measurement: str | None = Field(default=None, max_length=80)
+    observed_weight: str | None = Field(default=None, max_length=80)
 
 
 class ObservationOut(ORMModel):
@@ -111,6 +126,10 @@ class ObservationOut(ORMModel):
     longitude: float | None = None
     notes: str = ""
     encounter_type: str = "wild"
+    animal_sex: str = "unknown"
+    measurement: str = ""
+    observed_weight: str = ""
+    profile_id: int
     has_photo: bool = False
     created_at: dt.datetime
 

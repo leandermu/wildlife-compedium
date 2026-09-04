@@ -6,6 +6,7 @@ export interface Profile {
   avatar: string;
   gender: "male" | "female";
   is_default: boolean;
+  is_shared: boolean;
   exclude_captive_from_progress: boolean;
   photo_count: number;
   observation_count: number;
@@ -51,6 +52,10 @@ export interface Photo {
   location_name: string;
   caption: string;
   encounter_type: "wild" | "captive";
+  animal_sex: "unknown" | "female" | "male";
+  measurement: string;
+  observed_weight: string;
+  profile_id: number;
   is_best_photo: boolean;
   photo_metadata: Record<string, unknown>;
   created_at: string;
@@ -66,6 +71,10 @@ export interface Observation {
   longitude: number | null;
   notes: string;
   encounter_type: "wild" | "captive";
+  animal_sex: "unknown" | "female" | "male";
+  measurement: string;
+  observed_weight: string;
+  profile_id: number;
   has_photo: boolean;
   created_at: string;
 }

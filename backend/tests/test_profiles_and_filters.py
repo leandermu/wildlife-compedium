@@ -8,7 +8,9 @@ from app.achievements import evaluate
 from app.db import Base
 from app.models import Observation, Profile, Species, UserPhoto
 from app.queries import SpeciesQuery, derive_status
+from app.routers.observations import create_observation
 from app.routers.species import facets as species_facets
+from app.schemas import ObservationCreate
 from app.vocab import STATUSES
 
 
@@ -226,6 +228,108 @@ class ProfileAndFilterTest(unittest.TestCase):
             db.commit()
             achievements = {item["id"]: item for item in evaluate(db, profile.id)}
             self.assertEqual(achievements["photo_volume"]["progress"], 2)
+
+    def test_shared_profile_aggregates_personal_collections(self) -> None:
+        with Session(self.engine) as db:
+            shared = Profile(name="Gemeinsam", is_shared=True)
+            first = Profile(name="Leander")
+            second = Profile(name="Angelika")
+            fox = Species(slug="fuchs", common_name="Fuchs", group="mammal")
+            owl = Species(slug="uhu", common_name="Uhu", group="bird")
+            db.add_all([shared, first, second, fox, owl])
+            db.flush()
+            db.add_all([
+                UserPhoto(
+                    profile_id=first.id, species_id=fox.id,
+                    storage_key="fox.jpg", date=dt.date(2024, 1, 1),
+                ),
+                UserPhoto(
+                    profile_id=second.id, species_id=owl.id,
+                    storage_key="owl.jpg", date=dt.date(2025, 1, 1),
+                ),
+            ])
+            db.commit()
+
+            shared_query = SpeciesQuery(None)
+            first_query = SpeciesQuery(first.id)
+            shared_rows = db.scalars(
+                shared_query.apply_filters(
+                    shared_query.base(Species), status=["unlocked"]
+                )
+            ).all()
+            first_rows = db.scalars(
+                first_query.apply_filters(
+                    first_query.base(Species), status=["unlocked"]
+                )
+            ).all()
+            self.assertEqual({item.slug for item in shared_rows}, {"fuchs", "uhu"})
+            self.assertEqual([item.slug for item in first_rows], ["fuchs"])
+            shared_achievements = {item["id"]: item for item in evaluate(db, shared.id)}
+            self.assertEqual(shared_achievements["photo_volume"]["progress"], 2)
+
+    def test_shared_entry_requires_and_uses_a_personal_profile(self) -> None:
+        with Session(self.engine) as db:
+            shared = Profile(name="Gemeinsam", is_shared=True)
+            person = Profile(name="Leander")
+            species = Species(slug="elch", common_name="Elch", group="mammal")
+            db.add_all([shared, person, species])
+            db.commit()
+
+            with self.assertRaisesRegex(Exception, "wer die Begegnung"):
+                create_observation(
+                    ObservationCreate(species_id=species.id), db, shared
+                )
+            result = create_observation(
+                ObservationCreate(
+                    species_id=species.id,
+                    observer_profile_id=person.id,
+                    animal_sex="male",
+                ),
+                db,
+                shared,
+            )
+            self.assertEqual(result.profile_id, person.id)
+            self.assertEqual(result.animal_sex, "male")
+
+    def test_collection_and_entry_sorting_use_the_requested_dates(self) -> None:
+        with Session(self.engine) as db:
+            profile = Profile(name="Leander")
+            early = Species(slug="frueh", common_name="Früh", group="bird")
+            late = Species(slug="spaet", common_name="Spät", group="bird")
+            newest_entry = Species(slug="neu", common_name="Neu", group="bird")
+            db.add_all([profile, early, late, newest_entry])
+            db.flush()
+            db.add_all([
+                UserPhoto(
+                    profile_id=profile.id, species_id=early.id,
+                    storage_key="early.jpg", date=dt.date(2020, 1, 1),
+                    created_at=dt.datetime(2026, 1, 1),
+                ),
+                UserPhoto(
+                    profile_id=profile.id, species_id=late.id,
+                    storage_key="late.jpg", date=dt.date(2025, 1, 1),
+                    created_at=dt.datetime(2025, 1, 1),
+                ),
+                Observation(
+                    profile_id=profile.id, species_id=newest_entry.id,
+                    created_at=dt.datetime(2026, 2, 1),
+                ),
+            ])
+            db.commit()
+            query = SpeciesQuery(profile.id)
+
+            first = db.scalars(
+                query.apply_sort(query.base(Species), "collected_first")
+            ).all()
+            last = db.scalars(
+                query.apply_sort(query.base(Species), "collected_last")
+            ).all()
+            recent = db.scalars(
+                query.apply_sort(query.base(Species), "recent")
+            ).all()
+            self.assertEqual([item.slug for item in first[:2]], ["frueh", "spaet"])
+            self.assertEqual([item.slug for item in last[:2]], ["spaet", "frueh"])
+            self.assertEqual(recent[0].slug, "neu")
 
 
 if __name__ == "__main__":

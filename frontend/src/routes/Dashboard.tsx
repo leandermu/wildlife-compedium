@@ -13,10 +13,15 @@ const GROUP_ICON: Record<string, string> = {
 
 export function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [isShared, setIsShared] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.dashboard().then(setData).catch((e) => setError(String(e.message ?? e)));
+    api.profiles().then((profiles) => {
+      const activeId = localStorage.getItem("wc-profile-id");
+      setIsShared(Boolean(profiles.find((profile) => String(profile.id) === activeId)?.is_shared));
+    });
   }, []);
 
   if (error) {
@@ -38,7 +43,9 @@ export function Dashboard() {
     <div className="animate-fade-up space-y-14">
       {/* Titelblatt */}
       <section className="relative overflow-hidden rounded-sm border border-rule bg-paper px-6 py-12 text-center shadow-[var(--shadow-card)] sm:px-12">
-        <p className="label-caps">Deine Sammlung der Tierwelt</p>
+        <p className="label-caps">
+          {isShared ? "Eure Sammlung der Tierwelt" : "Deine Sammlung der Tierwelt"}
+        </p>
         <h1 className="mt-3 font-serif text-4xl leading-tight text-ink sm:text-5xl">
           {formatNumber(data.collected)}
           <span className="text-ink-3"> / {formatNumber(data.total_species)}</span>
@@ -92,7 +99,7 @@ export function Dashboard() {
             </Link>
           }
         >
-          Deine Sammlung
+          {isShared ? "Eure Sammlung" : "Deine Sammlung"}
         </SectionTitle>
         <div className="grid gap-x-10 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
           {data.by_group.map((b) => (

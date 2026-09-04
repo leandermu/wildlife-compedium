@@ -70,6 +70,7 @@ class Profile(Base):
     exclude_captive_from_progress: Mapped[bool | None] = mapped_column(
         Boolean, default=False, nullable=True
     )
+    is_shared: Mapped[bool | None] = mapped_column(Boolean, default=False, nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_utcnow)
 
@@ -193,6 +194,11 @@ class Observation(Base):
     encounter_type: Mapped[str | None] = mapped_column(
         String(12), default="wild", nullable=True, index=True
     )
+    animal_sex: Mapped[str | None] = mapped_column(
+        String(12), default="unknown", nullable=True, index=True
+    )
+    measurement: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    observed_weight: Mapped[str | None] = mapped_column(String(80), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_utcnow)
 
     species: Mapped[Species] = relationship(back_populates="observations")
@@ -234,6 +240,11 @@ class UserPhoto(Base):
     encounter_type: Mapped[str | None] = mapped_column(
         String(12), default="wild", nullable=True, index=True
     )
+    animal_sex: Mapped[str | None] = mapped_column(
+        String(12), default="unknown", nullable=True, index=True
+    )
+    measurement: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    observed_weight: Mapped[str | None] = mapped_column(String(80), nullable=True)
     is_best_photo: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     # camera, lens, iso, aperture, shutter, focal_length, width, height ...

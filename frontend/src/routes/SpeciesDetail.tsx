@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { api } from "../api";
-import type { Observation, Photo, SpeciesDetail } from "../types";
+import type { Observation, Photo, Profile, SpeciesDetail } from "../types";
 import { PlaceholderArt } from "../components/PlaceholderArt";
 import { PhotoUpload } from "../components/PhotoUpload";
 import { DifficultyStars, LockIcon, SectionTitle, Spinner } from "../components/ui";
@@ -52,6 +52,11 @@ export function SpeciesDetailPage() {
   const [obsPlace, setObsPlace] = useState("");
   const [obsNote, setObsNote] = useState("");
   const [obsEncounterType, setObsEncounterType] = useState<"wild" | "captive">("wild");
+  const [obsAnimalSex, setObsAnimalSex] = useState<"unknown" | "female" | "male">("unknown");
+  const [obsMeasurement, setObsMeasurement] = useState("");
+  const [obsWeight, setObsWeight] = useState("");
+  const [observerProfileId, setObserverProfileId] = useState("");
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
   const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
 
@@ -76,6 +81,7 @@ export function SpeciesDetailPage() {
     setSpecies(null);
     setError(null);
     load();
+    api.profiles().then(setProfiles).catch(() => setProfiles([]));
   }, [load]);
 
   useEffect(() => {
@@ -92,6 +98,13 @@ export function SpeciesDetailPage() {
   const speciesSearch = (location.state as { speciesSearch?: string } | null)?.speciesSearch ?? "";
   const overviewUrl = speciesSearch ? `/arten?${speciesSearch}` : "/arten";
   const classLabel = CLASS_LABEL[species.class_name] ?? GROUP_LABEL[species.group] ?? "Tiere";
+  const activeProfile = profiles.find(
+    (profile) => String(profile.id) === localStorage.getItem("wc-profile-id"),
+  );
+  const isShared = Boolean(activeProfile?.is_shared);
+  const personalProfiles = profiles.filter((profile) => !profile.is_shared);
+  const isFish = species.group === "fish" || ["Actinopterygii", "Chondrichthyes"].includes(species.class_name);
+  const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
 
   const openPhoto = (photo: Photo) => {
     setLightboxInfo(false);
@@ -116,12 +129,20 @@ export function SpeciesDetailPage() {
       location_name: obsPlace,
       notes: obsNote,
       encounter_type: obsEncounterType,
+      animal_sex: obsAnimalSex,
+      measurement: isFish ? obsMeasurement : "",
+      observed_weight: isFish ? obsWeight : "",
+      observer_profile_id: isShared ? Number(observerProfileId) : null,
     });
     setObsDate("");
     setObsTime("");
     setObsPlace("");
     setObsNote("");
     setObsEncounterType("wild");
+    setObsAnimalSex("unknown");
+    setObsMeasurement("");
+    setObsWeight("");
+    setObserverProfileId("");
     load();
   };
 
@@ -264,7 +285,11 @@ export function SpeciesDetailPage() {
           {species.photos.length > 0 && (
             <section className="mt-8">
               <SectionTitle>
-                {species.photos.length === 1
+                {isShared
+                  ? species.photos.length === 1
+                    ? "Gemeinsames Foto"
+                    : `${species.photos.length} gemeinsame Fotos`
+                  : species.photos.length === 1
                   ? "Dein Foto"
                   : `Deine ${species.photos.length} Fotos`}
               </SectionTitle>
@@ -389,7 +414,9 @@ export function SpeciesDetailPage() {
         {/* Seitenspalte */}
         <aside className="no-print space-y-8">
           <section className="paper-card rounded-sm p-5">
-            <h2 className="mb-4 font-serif text-xl">📷 Eigenes Foto</h2>
+            <h2 className="mb-4 font-serif text-xl">
+              📷 {isShared ? "Foto hinzufügen" : "Eigenes Foto"}
+            </h2>
             {!unlocked && (
               <p className="mb-4 rounded-sm bg-paper-2 px-3 py-2 text-[13px] text-ink-3">
                 {species.photo_count > 0
@@ -444,6 +471,18 @@ export function SpeciesDetailPage() {
                       ) : <p className="text-ink-3">{o.location_name}</p>
                     )}
                     {o.notes && <p className="italic text-ink-3">{o.notes}</p>}
+                    {isShared && profileById.get(o.profile_id) && (
+                      <p className="mt-0.5 text-[12px] text-moss-2">
+                        {profileById.get(o.profile_id)?.avatar} {profileById.get(o.profile_id)?.name}
+                      </p>
+                    )}
+                    {(o.animal_sex !== "unknown" || (isFish && (o.measurement || o.observed_weight))) && (
+                      <p className="mt-0.5 text-[12px] text-ink-3">
+                        {o.animal_sex === "female" ? "Weiblich" : o.animal_sex === "male" ? "Männlich" : ""}
+                        {isFish && o.measurement ? `${o.animal_sex !== "unknown" ? " · " : ""}Maß: ${o.measurement}` : ""}
+                        {isFish && o.observed_weight ? ` · Gewicht: ${o.observed_weight}` : ""}
+                      </p>
+                    )}
                   </li>
                 ))}
               </ol>
@@ -451,6 +490,19 @@ export function SpeciesDetailPage() {
 
             <form onSubmit={addObservation} className="space-y-2.5 border-t border-rule pt-4">
               <p className="label-caps">Begegnung ohne Foto notieren</p>
+              {isShared && (
+                <select
+                  value={observerProfileId}
+                  onChange={(event) => setObserverProfileId(event.target.value)}
+                  required
+                  className="w-full rounded-sm border border-rule bg-paper px-2 py-1.5 text-[13px] focus:outline-none"
+                >
+                  <option value="">Beobachtet von …</option>
+                  {personalProfiles.map((profile) => (
+                    <option key={profile.id} value={profile.id}>{profile.avatar} {profile.name}</option>
+                  ))}
+                </select>
+              )}
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <input
                   type="date"
@@ -487,8 +539,28 @@ export function SpeciesDetailPage() {
                   Gefangenschaft
                 </label>
               </div>
+              <fieldset>
+                <legend className="mb-1 text-[11px] uppercase tracking-wide text-ink-3">Geschlecht</legend>
+                <div className="flex flex-wrap gap-4 text-[13px] text-ink-2">
+                  {([[
+                    "unknown", "Unbestimmt",
+                  ], ["female", "Weiblich"], ["male", "Männlich"]] as const).map(([value, label]) => (
+                    <label key={value} className="flex cursor-pointer items-center gap-2">
+                      <input type="radio" name="observation-animal-sex" checked={obsAnimalSex === value} onChange={() => setObsAnimalSex(value)} />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              {isFish && (
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={obsMeasurement} onChange={(event) => setObsMeasurement(event.target.value)} maxLength={80} placeholder="Maß, z. B. 42 cm" className="rounded-sm border border-rule bg-paper px-2 py-1.5 text-[13px] focus:outline-none" />
+                  <input value={obsWeight} onChange={(event) => setObsWeight(event.target.value)} maxLength={80} placeholder="Gewicht, z. B. 1,2 kg" className="rounded-sm border border-rule bg-paper px-2 py-1.5 text-[13px] focus:outline-none" />
+                </div>
+              )}
               <button
                 type="submit"
+                disabled={isShared && !observerProfileId}
                 className="w-full rounded-sm border border-rule-2 bg-paper-2 px-3 py-1.5 text-[13px] text-ink-2 hover:bg-paper-3"
               >
                 Begegnung eintragen
@@ -552,6 +624,10 @@ export function SpeciesDetailPage() {
           location={editingPhoto.location_name}
           note={editingPhoto.caption}
           encounterType={editingPhoto.encounter_type}
+          animalSex={editingPhoto.animal_sex}
+          measurement={editingPhoto.measurement}
+          observedWeight={editingPhoto.observed_weight}
+          isFish={isFish}
           onClose={() => setEditingPhoto(null)}
           onSave={async (values) => {
             await api.updatePhoto(editingPhoto.id, {
@@ -560,6 +636,9 @@ export function SpeciesDetailPage() {
               location_name: values.location,
               caption: values.note,
               encounter_type: values.encounterType,
+              animal_sex: values.animalSex,
+              measurement: values.measurement,
+              observed_weight: values.observedWeight,
             });
             setEditingPhoto(null);
             setLightbox(null);
@@ -576,6 +655,10 @@ export function SpeciesDetailPage() {
           location={editingObservation.location_name}
           note={editingObservation.notes}
           encounterType={editingObservation.encounter_type}
+          animalSex={editingObservation.animal_sex}
+          measurement={editingObservation.measurement}
+          observedWeight={editingObservation.observed_weight}
+          isFish={isFish}
           onClose={() => setEditingObservation(null)}
           onDelete={!editingObservation.has_photo ? async () => {
             await api.deleteObservation(editingObservation.id);
@@ -589,6 +672,9 @@ export function SpeciesDetailPage() {
               location_name: values.location,
               notes: values.note,
               encounter_type: values.encounterType,
+              animal_sex: values.animalSex,
+              measurement: values.measurement,
+              observed_weight: values.observedWeight,
             });
             setEditingObservation(null);
             await load();
@@ -600,7 +686,8 @@ export function SpeciesDetailPage() {
 }
 
 function EditEntryDialog({
-  title, date, time, location, note, encounterType, onClose, onSave, onDelete,
+  title, date, time, location, note, encounterType, animalSex,
+  measurement, observedWeight, isFish, onClose, onSave, onDelete,
 }: {
   title: string;
   date: string;
@@ -608,11 +695,15 @@ function EditEntryDialog({
   location: string;
   note: string;
   encounterType: "wild" | "captive";
+  animalSex: "unknown" | "female" | "male";
+  measurement: string;
+  observedWeight: string;
+  isFish: boolean;
   onClose: () => void;
-  onSave: (values: { date: string; time: string; location: string; note: string; encounterType: "wild" | "captive" }) => Promise<void>;
+  onSave: (values: { date: string; time: string; location: string; note: string; encounterType: "wild" | "captive"; animalSex: "unknown" | "female" | "male"; measurement: string; observedWeight: string }) => Promise<void>;
   onDelete?: () => Promise<void>;
 }) {
-  const [values, setValues] = useState({ date, time, location, note, encounterType });
+  const [values, setValues] = useState({ date, time, location, note, encounterType, animalSex, measurement, observedWeight });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return (
@@ -672,6 +763,27 @@ function EditEntryDialog({
             </label>
           </div>
         </fieldset>
+        <fieldset>
+          <legend className="mb-1 text-xs text-ink-3">Geschlecht</legend>
+          <div className="flex flex-wrap gap-4 text-sm text-ink-2">
+            {([["unknown", "Unbestimmt"], ["female", "Weiblich"], ["male", "Männlich"]] as const).map(([value, label]) => (
+              <label key={value} className="flex cursor-pointer items-center gap-2">
+                <input type="radio" name="edit-animal-sex" checked={values.animalSex === value} onChange={() => setValues((current) => ({ ...current, animalSex: value }))} />
+                {label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {isFish && (
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-xs text-ink-3">Maß
+              <input value={values.measurement} onChange={(event) => setValues((current) => ({ ...current, measurement: event.target.value }))} maxLength={80} className="mt-1 w-full rounded-sm border border-rule bg-paper px-3 py-2 text-sm text-ink" />
+            </label>
+            <label className="block text-xs text-ink-3">Gewicht
+              <input value={values.observedWeight} onChange={(event) => setValues((current) => ({ ...current, observedWeight: event.target.value }))} maxLength={80} className="mt-1 w-full rounded-sm border border-rule bg-paper px-3 py-2 text-sm text-ink" />
+            </label>
+          </div>
+        )}
         {error && <p className="text-xs text-rust">{error}</p>}
         <div className="flex flex-wrap items-center justify-between gap-2">
           {onDelete ? (

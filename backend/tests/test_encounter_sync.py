@@ -33,6 +33,9 @@ class EncounterSyncTest(unittest.TestCase):
             time=dt.time(9, 15),
             location_name="Am See",
             notes="Erste Notiz",
+            animal_sex="female",
+            measurement="42 cm",
+            observed_weight="1,2 kg",
         )
         db.add(observation)
         db.flush()
@@ -62,6 +65,9 @@ class EncounterSyncTest(unittest.TestCase):
                 self.assertEqual(photo.time, observation.time)
                 self.assertEqual(photo.location_name, observation.location_name)
                 self.assertEqual(photo.caption, observation.notes)
+                self.assertEqual(photo.animal_sex, "female")
+                self.assertEqual(photo.measurement, "42 cm")
+                self.assertEqual(photo.observed_weight, "1,2 kg")
 
     def test_photo_edit_updates_encounter_and_sibling_photo(self) -> None:
         with Session(self.engine) as db:
@@ -73,6 +79,9 @@ class EncounterSyncTest(unittest.TestCase):
                     time=dt.time(18, 20),
                     location_name="Im Wald",
                     caption="Gemeinsame Notiz",
+                    animal_sex="male",
+                    measurement="43 cm",
+                    observed_weight="1,3 kg",
                 ),
                 db,
                 profile,
@@ -83,6 +92,9 @@ class EncounterSyncTest(unittest.TestCase):
             self.assertEqual(observation.time, dt.time(18, 20))
             self.assertEqual(observation.location_name, "Im Wald")
             self.assertEqual(observation.notes, "Gemeinsame Notiz")
+            self.assertEqual(observation.animal_sex, "male")
+            self.assertEqual(observation.measurement, "43 cm")
+            self.assertEqual(observation.observed_weight, "1,3 kg")
             self.assertEqual(sibling.date, observation.date)
             self.assertEqual(sibling.caption, observation.notes)
 
@@ -96,6 +108,9 @@ class EncounterSyncTest(unittest.TestCase):
                     time=dt.time(7, 5),
                     location_name="Im Garten",
                     notes="Zwei Fotos, eine Begegnung",
+                    animal_sex="unknown",
+                    measurement="44 cm",
+                    observed_weight="1,4 kg",
                 ),
                 db,
                 profile,
@@ -109,6 +124,9 @@ class EncounterSyncTest(unittest.TestCase):
                 self.assertEqual(photo.time, dt.time(7, 5))
                 self.assertEqual(photo.location_name, "Im Garten")
                 self.assertEqual(photo.caption, "Zwei Fotos, eine Begegnung")
+                self.assertEqual(photo.animal_sex, "unknown")
+                self.assertEqual(photo.measurement, "44 cm")
+                self.assertEqual(photo.observed_weight, "1,4 kg")
 
 
 if __name__ == "__main__":

@@ -163,15 +163,15 @@ def load_definitions() -> list[dict[str, Any]]:
 
 
 # ------------------------------------------------------------- evaluation --
-def _encounter_filters(model, profile_id: int, wild_only: bool):
-    filters = [model.profile_id == profile_id]
+def _encounter_filters(model, profile_id: int | None, wild_only: bool):
+    filters = [] if profile_id is None else [model.profile_id == profile_id]
     if wild_only:
         filters.append(func.coalesce(model.encounter_type, "wild") == "wild")
     return filters
 
 
 def _collected_count(
-    db: Session, filt: dict[str, Any], profile_id: int, wild_only: bool
+    db: Session, filt: dict[str, Any], profile_id: int | None, wild_only: bool
 ) -> int:
     sq = SpeciesQuery(profile_id, wild_only)
     stmt = sq.apply_filters(
@@ -184,20 +184,20 @@ def _collected_count(
 
 
 def _species_progress(
-    db: Session, slugs: list[str], profile_id: int, wild_only: bool
+    db: Session, slugs: list[str], profile_id: int | None, wild_only: bool
 ) -> tuple[int, list[dict]]:
+    photo_join_conditions = [UserPhoto.species_id == Species.id]
+    if profile_id is not None:
+        photo_join_conditions.append(UserPhoto.profile_id == profile_id)
+    if wild_only:
+        photo_join_conditions.append(
+            func.coalesce(UserPhoto.encounter_type, "wild") == "wild"
+        )
     rows = db.execute(
         select(Species.slug, Species.common_name, func.count(UserPhoto.id))
         .outerjoin(
             UserPhoto,
-            and_(
-                UserPhoto.species_id == Species.id,
-                UserPhoto.profile_id == profile_id,
-                *(
-                    [func.coalesce(UserPhoto.encounter_type, "wild") == "wild"]
-                    if wild_only else []
-                ),
-            ),
+            and_(*photo_join_conditions),
         )
         .where(Species.slug.in_(slugs))
         .group_by(Species.id)
@@ -214,7 +214,7 @@ def _species_progress(
 
 
 def _seasonal_progress(
-    db: Session, from_month: int, to_month: int, profile_id: int, wild_only: bool
+    db: Session, from_month: int, to_month: int, profile_id: int | None, wild_only: bool
 ) -> int:
     months = (
         list(range(from_month, to_month + 1))
@@ -234,6 +234,7 @@ def evaluate(db: Session, profile_id: int) -> list[dict[str, Any]]:
     definitions = load_definitions()
     profile = db.get(Profile, profile_id)
     wild_only = bool(profile and profile.exclude_captive_from_progress)
+    scope_id = None if profile and profile.is_shared else profile_id
     use_male_names = profile is None or (profile.gender or "male") == "male"
     state = {
         s.achievement_id: s
@@ -254,18 +255,18 @@ def evaluate(db: Session, profile_id: int) -> list[dict[str, Any]]:
 
         if rtype == "count":
             progress = _collected_count(
-                db, rule.get("filter", {}), profile_id, wild_only
+                db, rule.get("filter", {}), scope_id, wild_only
             )
             thresholds = rule.get("thresholds", [1])
         elif rtype == "species":
             progress, species_detail = _species_progress(
-                db, rule["slugs"], profile_id, wild_only
+                db, rule["slugs"], scope_id, wild_only
             )
             thresholds = [len(rule["slugs"])]
         elif rtype == "photos":
             progress = int(db.execute(
                 select(func.count(UserPhoto.id)).where(
-                    *_encounter_filters(UserPhoto, profile_id, wild_only)
+                    *_encounter_filters(UserPhoto, scope_id, wild_only)
                 )
             ).scalar() or 0)
             thresholds = rule.get("thresholds", [1])
@@ -275,11 +276,7 @@ def evaluate(db: Session, profile_id: int) -> list[dict[str, Any]]:
                     select(func.count(func.distinct(func.lower(UserPhoto.location_name))))
                     .where(
                         UserPhoto.location_name != "",
-                        UserPhoto.profile_id == profile_id,
-                        *(
-                            [func.coalesce(UserPhoto.encounter_type, "wild") == "wild"]
-                            if wild_only else []
-                        ),
+                        *_encounter_filters(UserPhoto, scope_id, wild_only),
                     )
                 ).scalar()
                 or 0
@@ -287,7 +284,7 @@ def evaluate(db: Session, profile_id: int) -> list[dict[str, Any]]:
             thresholds = rule.get("thresholds", [1])
         elif rtype == "seasonal":
             progress = _seasonal_progress(
-                db, rule["from_month"], rule["to_month"], profile_id, wild_only
+                db, rule["from_month"], rule["to_month"], scope_id, wild_only
             )
             thresholds = [rule.get("target", 1)]
         else:

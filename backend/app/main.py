@@ -43,7 +43,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(
     title="Wildlife Compedium API",
     description="Persönliches Tierfoto-Compedium",
-    version="1.4.1",
+    version="1.5.0",
     lifespan=lifespan,
 )
 

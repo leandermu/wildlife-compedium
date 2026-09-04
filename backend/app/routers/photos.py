@@ -16,7 +16,12 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..encounters import sync_observation_from_photo
 from ..models import Observation, Species, UserPhoto
-from ..profiles import CurrentProfile
+from ..profiles import (
+    CurrentProfile,
+    can_access_entry,
+    resolve_entry_profile,
+    scope_profile_id,
+)
 from ..queries import photo_out
 from ..schemas import PhotoOut, PhotoUpdate
 from ..storage import ALLOWED_SUFFIXES, LocalStorage, get_storage
@@ -261,17 +266,24 @@ async def upload_photo(
     longitude: Annotated[float | None, Form()] = None,
     create_observation: Annotated[bool, Form()] = True,
     encounter_type: Annotated[Literal["wild", "captive"], Form()] = "wild",
+    observer_profile_id: Annotated[int | None, Form()] = None,
+    animal_sex: Annotated[Literal["unknown", "female", "male"], Form()] = "unknown",
+    measurement: Annotated[str, Form()] = "",
+    observed_weight: Annotated[str, Form()] = "",
 ) -> PhotoOut:
     sp = db.get(Species, species_id)
     if sp is None:
         raise HTTPException(404, "Art nicht gefunden")
+    owner = resolve_entry_profile(db, profile, observer_profile_id)
     observation = None
     if observation_id is not None:
         observation = db.get(Observation, observation_id)
-        if observation is None or observation.profile_id != profile.id:
+        if observation is None or not can_access_entry(profile, observation.profile_id):
             raise HTTPException(404, "Begegnung nicht gefunden")
         if observation.species_id != sp.id:
             raise HTTPException(400, "Begegnung gehört zu einer anderen Art")
+        if observation.profile_id != owner.id:
+            raise HTTPException(400, "Begegnung gehört zu einem anderen Profil")
 
     data = await file.read()
     if not data:
@@ -292,18 +304,18 @@ async def upload_photo(
     meta["encounter_type"] = encounter_type
     storage = get_storage()
     storage_key = storage.save(
-        f"photos/{profile.id}/{sp.slug}", file.filename or "foto.jpg", io.BytesIO(data)
+        f"photos/{owner.id}/{sp.slug}", file.filename or "foto.jpg", io.BytesIO(data)
     )
     display_key = None
     if display:
         display_name = f"{Path(file.filename or 'foto').stem}.jpg"
         display_key = storage.save(
-            f"display/{profile.id}/{sp.slug}", display_name, io.BytesIO(display)
+            f"display/{owner.id}/{sp.slug}", display_name, io.BytesIO(display)
         )
     thumb_key = None
     if thumb and isinstance(storage, LocalStorage):
         stem = storage_key.rsplit("/", 1)[-1].rsplit(".", 1)[0]
-        thumb_key = storage.save_bytes(f"thumbs/{profile.id}/{sp.slug}/{stem}.jpg", thumb)
+        thumb_key = storage.save_bytes(f"thumbs/{owner.id}/{sp.slug}/{stem}.jpg", thumb)
 
     explicit_date = _parse_date(date)
     exif_time = _metadata_time(meta)
@@ -321,11 +333,14 @@ async def upload_photo(
 
     if observation_id is None and create_observation:
         obs = Observation(
-            profile_id=profile.id, species_id=sp.id, date=photo_date, time=photo_time,
+            profile_id=owner.id, species_id=sp.id, date=photo_date, time=photo_time,
             location_name=location_name,
             latitude=latitude, longitude=longitude,
             notes=caption,
             encounter_type=encounter_type,
+            animal_sex=animal_sex,
+            measurement=measurement.strip(),
+            observed_weight=observed_weight.strip(),
         )
         db.add(obs)
         db.flush()
@@ -333,7 +348,7 @@ async def upload_photo(
         observation_id = obs.id
 
     photo = UserPhoto(
-        profile_id=profile.id,
+        profile_id=owner.id,
         species_id=sp.id,
         observation_id=observation_id,
         storage_key=storage_key,
@@ -345,12 +360,15 @@ async def upload_photo(
         location_name=location_name,
         caption=caption,
         encounter_type=encounter_type,
+        animal_sex=animal_sex,
+        measurement=measurement.strip(),
+        observed_weight=observed_weight.strip(),
         photo_metadata=meta,
     )
     # first photo of a species is automatically the best one
     existing = db.execute(
         select(UserPhoto.id).where(
-            UserPhoto.species_id == sp.id, UserPhoto.profile_id == profile.id
+            UserPhoto.species_id == sp.id, UserPhoto.profile_id == owner.id
         ).limit(1)
     ).first()
     photo.is_best_photo = existing is None
@@ -371,7 +389,9 @@ def list_photos(
     limit: int = 100,
     offset: int = 0,
 ) -> list[PhotoOut]:
-    stmt = select(UserPhoto).where(UserPhoto.profile_id == profile.id)
+    stmt = select(UserPhoto)
+    if (profile_id := scope_profile_id(profile)) is not None:
+        stmt = stmt.where(UserPhoto.profile_id == profile_id)
     if species_id:
         stmt = stmt.where(UserPhoto.species_id == species_id)
     stmt = stmt.order_by(UserPhoto.created_at.desc()).offset(offset).limit(limit)
@@ -386,13 +406,17 @@ def update_photo(
     profile: CurrentProfile,
 ) -> PhotoOut:
     photo = db.get(UserPhoto, photo_id)
-    if photo is None or photo.profile_id != profile.id:
+    if photo is None or not can_access_entry(profile, photo.profile_id):
         raise HTTPException(404, "Foto nicht gefunden")
     data = payload.model_dump(exclude_unset=True)
     if "observation_id" in data:
         new_observation_id = data.pop("observation_id")
         observation = db.get(Observation, new_observation_id) if new_observation_id else None
-        if new_observation_id and (observation is None or observation.profile_id != profile.id):
+        if new_observation_id and (
+            observation is None
+            or not can_access_entry(profile, observation.profile_id)
+            or observation.profile_id != photo.profile_id
+        ):
             raise HTTPException(404, "Begegnung nicht gefunden")
         if observation is not None and observation.species_id != photo.species_id:
             raise HTTPException(400, "Begegnung gehört zu einer anderen Art")
@@ -402,7 +426,7 @@ def update_photo(
             update(UserPhoto)
             .where(
                 UserPhoto.species_id == photo.species_id,
-                UserPhoto.profile_id == profile.id,
+                UserPhoto.profile_id == photo.profile_id,
             )
             .values(is_best_photo=False)
         )
@@ -427,10 +451,12 @@ def delete_photo(
     profile: CurrentProfile,
 ) -> None:
     photo = db.get(UserPhoto, photo_id)
-    if photo is None or photo.profile_id != profile.id:
+    if photo is None or not can_access_entry(profile, photo.profile_id):
         raise HTTPException(404, "Foto nicht gefunden")
     storage = get_storage()
-    species_id, was_best = photo.species_id, photo.is_best_photo
+    species_id, owner_profile_id, was_best = (
+        photo.species_id, photo.profile_id, photo.is_best_photo
+    )
     observation = photo.observation
     storage.delete(photo.storage_key)
     if photo.display_key:
@@ -455,7 +481,7 @@ def delete_photo(
             select(UserPhoto)
             .where(
                 UserPhoto.species_id == species_id,
-                UserPhoto.profile_id == profile.id,
+                UserPhoto.profile_id == owner_profile_id,
             )
             .order_by(UserPhoto.date.asc().nullslast(), UserPhoto.id.asc())
             .limit(1)

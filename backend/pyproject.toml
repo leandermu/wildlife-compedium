@@ -1,6 +1,6 @@
 [project]
 name = "wildlife-compedium-backend"
-version = "2.2.0"
+version = "2.2.1"
 description = "Wildlife Compedium API"
 requires-python = ">=3.11"
 dependencies = [

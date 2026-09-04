@@ -23,7 +23,7 @@ from app.routers.species import (
 )
 from app.schemas import ObservationCreate
 from app.routers.stats import _activity_entries
-from app.vocab import GROUP_CLASSES, STATUSES
+from app.vocab import STATUSES
 
 
 class ProfileAndFilterTest(unittest.TestCase):
@@ -46,11 +46,16 @@ class ProfileAndFilterTest(unittest.TestCase):
             self.assertEqual(female_names["alpine_hunter"], "Alpenjägerin")
 
     def test_achievement_milestones_fit_the_catalogue(self) -> None:
-        rows = load_seed_rows()
+        species = []
+        for index, row in enumerate(load_seed_rows()):
+            item = Species(slug=f"catalog-{index}", sort_index=index, **row)
+            item.refresh_derived()
+            species.append(item)
         field_names = {
             "habitat": "habitats",
             "region": "regions",
             "order": "order_name",
+            "tag": "tags",
         }
         for definition in BUILTIN:
             rule = definition["rule"]
@@ -58,12 +63,10 @@ class ProfileAndFilterTest(unittest.TestCase):
                 continue
             filters = rule.get("filter", {})
 
-            def matches(row: dict) -> bool:
+            def matches(item: Species) -> bool:
                 for key, values in filters.items():
                     field = field_names.get(key, key)
-                    actual = row.get(field)
-                    if key == "class_name" and not actual:
-                        actual = GROUP_CLASSES.get(row.get("group", "other"), "Animalia")
+                    actual = getattr(item, field)
                     if actual is None:
                         actual = [] if key in {"habitat", "region", "tag"} else ""
                     if isinstance(actual, list):
@@ -73,12 +76,30 @@ class ProfileAndFilterTest(unittest.TestCase):
                         return False
                 return True
 
-            available = sum(1 for row in rows if matches(row))
+            available = sum(1 for item in species if matches(item))
             self.assertLessEqual(
                 max(rule.get("thresholds", [1])),
                 available,
                 definition["id"],
             )
+
+        definitions = {definition["id"]: definition for definition in BUILTIN}
+        self.assertEqual(
+            definitions["insect_friend"]["rule"]["filter"],
+            {"class_name": ["Insecta"]},
+        )
+        self.assertEqual(
+            definitions["alpine_hunter"]["rule"]["filter"],
+            {"habitat": ["alps"]},
+        )
+        self.assertEqual(
+            definitions["quest_five_owls"]["rule"]["filter"],
+            {"class_name": ["Aves"], "order": ["Eulen"]},
+        )
+        self.assertEqual(
+            definitions["night_master"]["rule"]["filter"],
+            {"activity": ["nocturnal"]},
+        )
 
     def test_achievement_level_starts_at_one_and_rises_per_milestone(self) -> None:
         with Session(self.engine) as db:
@@ -125,7 +146,12 @@ class ProfileAndFilterTest(unittest.TestCase):
                 name="Leander", gender="male", exclude_captive_from_progress=True
             )
             species = [
-                Species(slug=f"insekt-{index}", common_name=f"Insekt {index}", group="insect")
+                Species(
+                    slug=f"insekt-{index}",
+                    common_name=f"Insekt {index}",
+                    group="insect",
+                    class_name="Insecta",
+                )
                 for index in range(3)
             ]
             db.add_all([profile, *species])

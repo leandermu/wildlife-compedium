@@ -43,10 +43,10 @@ function Card({ item }: { item: Achievement }) {
   for (const [key, values] of Object.entries(item.filter ?? {})) {
     values.forEach((value) => filterParams.append(key, String(value)));
   }
-  return (
+  const card = (
     <article
       id={item.id}
-      className={`flex flex-col rounded-sm border p-5 transition-colors ${
+      className={`flex flex-col rounded-sm border p-5 transition-colors ${filterParams.size > 0 ? "h-full hover:border-moss hover:shadow-[var(--shadow-card)]" : ""} ${
         done
           ? "border-ochre bg-paper shadow-[var(--shadow-card)]"
           : item.unlocked
@@ -60,7 +60,6 @@ function Card({ item }: { item: Achievement }) {
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="font-serif text-xl leading-tight text-ink">{item.name}</h3>
-          {item.category && <p className="label-caps mt-0.5">{item.category}</p>}
         </div>
         <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
           item.unlocked ? "border-moss bg-sage/15 text-moss-2" : "border-rule text-ink-3"
@@ -71,15 +70,6 @@ function Card({ item }: { item: Achievement }) {
       </div>
 
       <p className="mt-3 text-[14px] text-ink-2">{item.description}</p>
-
-      {filterParams.size > 0 && (
-        <Link
-          to={`/arten?${filterParams.toString()}`}
-          className="mt-2 self-start text-[12px] text-moss-2 underline decoration-rule-2 underline-offset-2"
-        >
-          Passende Arten anzeigen
-        </Link>
-      )}
 
       <div className="mt-4">
         <div className="mb-1.5 flex items-baseline justify-between text-[13px]">
@@ -132,5 +122,17 @@ function Card({ item }: { item: Achievement }) {
         </p>
       )}
     </article>
+  );
+
+  if (filterParams.size === 0) return card;
+
+  return (
+    <Link
+      to={`/arten?${filterParams.toString()}`}
+      className="block h-full rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss"
+      aria-label={`${item.name} öffnen`}
+    >
+      {card}
+    </Link>
   );
 }

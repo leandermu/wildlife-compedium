@@ -50,10 +50,10 @@ MALE_NAMES = {
 }
 
 
-def _tiered(id_, name, desc, icon, category, filt, thresholds):
+def _tiered(id_, name, desc, icon, category, filt, thresholds, *, kind="achievement"):
     return {
         "id": id_, "name": name, "description": desc, "icon": icon,
-        "kind": "achievement", "category": category,
+        "kind": kind, "category": category,
         "rule": {"type": "count", "filter": filt, "thresholds": thresholds},
     }
 
@@ -70,7 +70,7 @@ BUILTIN: list[dict[str, Any]] = [
             {"group": ["butterfly"]}, [5, 10, 15]),
     _tiered("insect_friend", "Freundin der Kleinen",
             "Insekten und andere Sechsbeiner.", "🐝", "Sammlung",
-            {"group": ["insect"]}, [3, 5, 10]),
+            {"class_name": ["Insecta"]}, [3, 5, 10]),
     _tiered("bavaria_native", "Bayerische Heimatforscherin",
             "Arten, die in Bayern vorkommen.", "🥨", "Region",
             {"region": ["bavaria"]}, [25, 50, 100, 125]),
@@ -86,21 +86,12 @@ BUILTIN: list[dict[str, Any]] = [
     _tiered("raptor_specialist", "Greifvogelspezialistin",
             "Adler, Bussarde, Milane und Falken.", "🦅", "Herausforderung",
             {"class_name": ["Aves"], "order": ["Greifvögel"]}, [3, 6, 10]),
-    {
-        "id": "night_master", "name": "Meisterin der Nacht",
-        "description": "Fotografiere die Nachtjäger Bayerns.",
-        "icon": "🌙", "kind": "achievement", "category": "Herausforderung",
-        "rule": {"type": "species", "slugs": [
-            "waldkauz", "uhu", "schleiereule", "waldohreule", "grosses-mausohr"]},
-    },
-    {
-        "id": "alpine_hunter", "name": "Alpenjägerin",
-        "description": "Die Hochlagen fordern Kondition und Geduld.",
-        "icon": "🏔", "kind": "achievement", "category": "Herausforderung",
-        "rule": {"type": "species", "slugs": [
-            "steinadler", "alpenmurmeltier", "gaemse", "alpensteinbock",
-            "alpendohle", "alpenschneehuhn", "bartgeier"]},
-    },
+    _tiered("night_master", "Meisterin der Nacht",
+            "Sammle nachtaktive Arten.", "🌙", "Herausforderung",
+            {"activity": ["nocturnal"]}, [3, 8, 15]),
+    _tiered("alpine_hunter", "Alpenjägerin",
+            "Sammle Arten aus dem Lebensraum Alpen.", "🏔", "Herausforderung",
+            {"habitat": ["alps"]}, [3, 10, 20]),
     {
         "id": "woodpecker_trio", "name": "Spechtwald",
         "description": "Drei Spechte, drei Trommelwirbel.",
@@ -120,13 +111,9 @@ BUILTIN: list[dict[str, Any]] = [
         "rule": {"type": "locations", "thresholds": [3, 10, 25, 50]},
     },
     # ------------------------------------------------------------- Quests --
-    {
-        "id": "quest_five_owls", "name": "Die fünf Eulen",
-        "description": "Waldkauz, Uhu, Schleiereule, Waldohreule und Sperlingskauz.",
-        "icon": "🦉", "kind": "quest", "category": "Fotoquest",
-        "rule": {"type": "species", "slugs": [
-            "waldkauz", "uhu", "schleiereule", "waldohreule", "sperlingskauz"]},
-    },
+    _tiered("quest_five_owls", "Eulen",
+            "Sammle verschiedene Eulenarten.", "🦉", "Fotoquest",
+            {"class_name": ["Aves"], "order": ["Eulen"]}, [1, 3, 5], kind="quest"),
     {
         "id": "quest_spring_bavaria", "name": "Frühling in Bayern",
         "description": "Fotografiere 20 Arten zwischen März und Mai.",
@@ -187,6 +174,7 @@ def _collected_count(
         group=filt.get("group"), habitat=filt.get("habitat"), region=filt.get("region"),
         class_name=filt.get("class_name"), order=filt.get("order"),
         family=filt.get("family"), tag=filt.get("tag"), difficulty=filt.get("difficulty"),
+        activity=filt.get("activity"),
         status=["unlocked"],
     )
     return int(db.execute(stmt).scalar() or 0)

@@ -54,11 +54,11 @@ export function Dashboard() {
         >
           <h1 className="font-serif text-4xl leading-tight text-ink sm:text-5xl">
             {formatNumber(data.collected)}
-            <span className="ml-3 font-sans text-lg font-medium text-ink-3 group-hover:text-moss-2">
-              {data.collected === 1 ? "Art fotografiert" : "Arten fotografiert"}
+            <span className="mx-2 font-sans text-lg font-medium text-ink-3 group-hover:text-moss-2">
+              / {formatNumber(data.total_species)}
             </span>
-            <span className="ml-2 font-sans text-sm font-normal text-ink-3">
-              von {formatNumber(data.total_species)}
+            <span className="font-sans text-sm font-normal text-ink-3">
+              Arten entdeckt
             </span>
           </h1>
         </Link>
@@ -73,13 +73,18 @@ export function Dashboard() {
 
         <dl className="mx-auto mt-10 grid max-w-3xl grid-cols-2 gap-y-6 sm:grid-cols-3">
           {[
-            ["Eigene Fotos", formatNumber(data.photo_count)],
-            ["Begegnungen", formatNumber(data.observation_count)],
-            ["Auszeichnungen", `${data.achievements_unlocked} / ${data.achievements_total}`],
-          ].map(([label, value]) => (
+            ["Eigene Fotos", formatNumber(data.photo_count), "/arten?status=unlocked"],
+            ["Begegnungen", formatNumber(data.observation_count), "/arten?seen=seen"],
+            ["Auszeichnungen", `${data.achievements_unlocked} / ${data.achievements_total}`, "/auszeichnungen"],
+          ].map(([label, value, to]) => (
             <div key={label}>
-              <dd className="font-serif text-2xl text-ink">{value}</dd>
-              <dt className="label-caps mt-0.5">{label}</dt>
+              <Link
+                to={to}
+                className="group block rounded-sm px-2 py-1 transition hover:bg-paper-2"
+              >
+                <dd className="font-serif text-2xl text-ink">{value}</dd>
+                <dt className="label-caps mt-0.5 group-hover:text-moss-2">{label}</dt>
+              </Link>
             </div>
           ))}
         </dl>

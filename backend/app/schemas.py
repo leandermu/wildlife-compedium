@@ -84,6 +84,22 @@ class PhotoOut(ORMModel):
     created_at: dt.datetime
 
 
+class PhotoMapOut(BaseModel):
+    id: int
+    species_id: int
+    species_slug: str
+    species_name: str
+    profile_id: int
+    profile_name: str
+    profile_avatar: str = "🐾"
+    url: str | None = None
+    thumb_url: str | None = None
+    date: dt.date | None = None
+    location_name: str = ""
+    latitude: float | None = None
+    longitude: float | None = None
+
+
 # --------------------------------------------------------------- observations
 class ObservationBase(BaseModel):
     date: dt.date | None = None
@@ -209,6 +225,17 @@ class SpeciesUpdate(BaseModel):
     active: bool | None = None
 
 
+class PhotographerProfile(BaseModel):
+    id: int
+    name: str
+    avatar: str = "🐾"
+    is_thumbnail: bool = False
+    photo_url: str | None = None
+    thumb_url: str | None = None
+    photo_date: dt.date | None = None
+    photo_location: str = ""
+
+
 class SpeciesListItem(ORMModel):
     """Lean payload for grid views — no descriptions, no nested photo lists."""
 
@@ -233,6 +260,7 @@ class SpeciesListItem(ORMModel):
     best_photo_thumb_url: str | None = None
     display_photo_date: dt.date | None = None
     display_photo_location: str = ""
+    photographers: list[PhotographerProfile] = Field(default_factory=list)
     created_at: dt.datetime | None = None
     updated_at: dt.datetime | None = None
 
@@ -333,6 +361,21 @@ class DashboardOut(BaseModel):
     challenges: list[ChallengeHint]
     achievements_unlocked: int
     achievements_total: int
+
+
+class StorageStatsOut(BaseModel):
+    total_bytes: int
+    media_bytes: int
+    database_bytes: int
+    originals_bytes: int
+    derivatives_bytes: int
+    references_bytes: int
+    other_bytes: int
+    stored_file_count: int
+    profile_count: int
+    species_count: int
+    observation_count: int
+    photo_count: int
 
 
 # --------------------------------------------------------------- achievements

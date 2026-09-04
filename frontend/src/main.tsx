@@ -20,6 +20,13 @@ const router = createBrowserRouter([
       { path: "arten", element: <SpeciesList /> },
       { path: "arten/:slug", element: <SpeciesDetailPage /> },
       { path: "auszeichnungen", element: <AchievementsPage /> },
+      {
+        path: "karte",
+        lazy: async () => {
+          const { PhotoMapPage } = await import("./routes/PhotoMap");
+          return { Component: PhotoMapPage };
+        },
+      },
       { path: "aktivitaeten", element: <ActivityPage /> },
       { path: "verwaltung", element: <AdminPage /> },
       { path: "*", element: <NotFound /> },

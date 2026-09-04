@@ -15,10 +15,11 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import Date, DateTime, Time, delete, inspect as sa_inspect, select, text, update
+from sqlalchemy import Date, DateTime, Time, delete, func, inspect as sa_inspect, select, text, update
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 
+from ..config import settings
 from ..db import get_db
 from ..models import (
     AchievementState,
@@ -30,6 +31,7 @@ from ..models import (
     UserPhoto,
 )
 from ..storage import LocalStorage, get_storage
+from ..schemas import StorageStatsOut
 
 router = APIRouter(prefix="/api/backup", tags=["backup"])
 
@@ -72,6 +74,75 @@ def _local_storage() -> LocalStorage:
     if not isinstance(storage, LocalStorage):
         raise HTTPException(501, "Backups werden derzeit nur mit lokalem Medienspeicher unterstützt")
     return storage
+
+
+def _safe_file_size(path: Path) -> int:
+    try:
+        return path.stat().st_size
+    except OSError:
+        return 0
+
+
+@router.get("/stats", response_model=StorageStatsOut)
+def storage_stats(db: Annotated[Session, Depends(get_db)]) -> StorageStatsOut:
+    """Return the actual disk usage of the collection and compact record counts."""
+    storage = _local_storage()
+    categories = {
+        "originals": 0,
+        "derivatives": 0,
+        "references": 0,
+        "other": 0,
+    }
+    stored_file_count = 0
+
+    if storage.root.exists():
+        for path in storage.root.rglob("*"):
+            try:
+                if path.is_symlink() or not path.is_file():
+                    continue
+                relative = path.relative_to(storage.root)
+            except (OSError, ValueError):
+                continue
+
+            stored_file_count += 1
+            size = _safe_file_size(path)
+            prefix = relative.parts[0] if relative.parts else ""
+            if prefix == "photos":
+                categories["originals"] += size
+            elif prefix in {"display", "thumbs"}:
+                categories["derivatives"] += size
+            elif prefix in {"reference", "reference-thumb", "distribution"}:
+                categories["references"] += size
+            else:
+                categories["other"] += size
+
+    media_bytes = sum(categories.values())
+    database_bytes = 0
+    sqlite_path = settings.sqlite_path
+    if sqlite_path is not None:
+        # SQLite can keep committed data in sidecar files, so include them in
+        # the number displayed on the administration page.
+        for candidate in (
+            sqlite_path,
+            Path(f"{sqlite_path}-wal"),
+            Path(f"{sqlite_path}-shm"),
+        ):
+            database_bytes += _safe_file_size(candidate)
+
+    return StorageStatsOut(
+        total_bytes=media_bytes + database_bytes,
+        media_bytes=media_bytes,
+        database_bytes=database_bytes,
+        originals_bytes=categories["originals"],
+        derivatives_bytes=categories["derivatives"],
+        references_bytes=categories["references"],
+        other_bytes=categories["other"],
+        stored_file_count=stored_file_count,
+        profile_count=db.scalar(select(func.count(Profile.id))) or 0,
+        species_count=db.scalar(select(func.count(Species.id))) or 0,
+        observation_count=db.scalar(select(func.count(Observation.id))) or 0,
+        photo_count=db.scalar(select(func.count(UserPhoto.id))) or 0,
+    )
 
 
 def _json_value(value: Any) -> Any:
@@ -211,6 +282,12 @@ def _validate_relations(data: dict[str, Any], archive_names: set[str]) -> None:
             creator_id = row.get("created_by_profile_id")
             if creator_id is not None and int(creator_id) not in profile_ids:
                 row["created_by_profile_id"] = None
+            thumbnail_profile_id = row.get("shared_thumbnail_profile_id")
+            if (
+                thumbnail_profile_id is not None
+                and int(thumbnail_profile_id) not in profile_ids
+            ):
+                row["shared_thumbnail_profile_id"] = None
 
         for row in data["observations"]:
             if int(row["profile_id"]) not in profile_ids or int(row["species_id"]) not in species_ids:

@@ -5,6 +5,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from sqlalchemy import create_engine, func, select
@@ -19,6 +20,7 @@ from app.routers.backup import (
     _replace_database,
     load_backup,
     save_backup,
+    storage_stats,
     _stage_media,
     _validate_relations,
 )
@@ -141,6 +143,58 @@ class BackupRoundtripTest(unittest.TestCase):
             with Session(engine) as db:
                 self.assertEqual(db.scalar(select(func.count(Species.id))), 1)
                 self.assertEqual(db.scalar(select(func.count(UserPhoto.id))), 1)
+
+        engine.dispose()
+
+    def test_storage_stats_include_media_database_and_collection_counts(self) -> None:
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(engine)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            media_root = root / "media"
+            files = {
+                "photos/original.jpg": b"12345",
+                "display/photo.jpg": b"123",
+                "thumbs/photo.jpg": b"12",
+                "reference/species.jpg": b"1234",
+                "reference-thumb/species.jpg": b"1",
+                "misc/cache.bin": b"123456",
+            }
+            for key, content in files.items():
+                target = media_root / key
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(content)
+
+            database_path = root / "compendium.db"
+            database_path.write_bytes(b"1234567")
+            Path(f"{database_path}-wal").write_bytes(b"12345678")
+            Path(f"{database_path}-shm").write_bytes(b"123456789")
+            storage = LocalStorage(media_root, "/media")
+
+            with Session(engine) as db:
+                self._collection(db)
+                with (
+                    patch("app.routers.backup.get_storage", return_value=storage),
+                    patch(
+                        "app.routers.backup.settings",
+                        SimpleNamespace(sqlite_path=database_path),
+                    ),
+                ):
+                    result = storage_stats(db)
+
+            self.assertEqual(result.originals_bytes, 5)
+            self.assertEqual(result.derivatives_bytes, 5)
+            self.assertEqual(result.references_bytes, 5)
+            self.assertEqual(result.other_bytes, 6)
+            self.assertEqual(result.media_bytes, 21)
+            self.assertEqual(result.database_bytes, 24)
+            self.assertEqual(result.total_bytes, 45)
+            self.assertEqual(result.stored_file_count, 6)
+            self.assertEqual(result.profile_count, 1)
+            self.assertEqual(result.species_count, 1)
+            self.assertEqual(result.observation_count, 1)
+            self.assertEqual(result.photo_count, 1)
 
         engine.dispose()
 

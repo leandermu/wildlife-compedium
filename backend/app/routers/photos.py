@@ -11,11 +11,11 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from PIL import ExifTags, Image, ImageOps
 from pillow_heif import register_heif_opener
 from sqlalchemy import func, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from ..db import get_db
 from ..encounters import sync_observation_from_photo
-from ..models import Observation, Species, UserPhoto
+from ..models import Observation, Profile, Species, UserPhoto
 from ..profiles import (
     CurrentProfile,
     can_access_entry,
@@ -23,8 +23,8 @@ from ..profiles import (
     scope_profile_id,
 )
 from ..queries import photo_out
-from ..schemas import PhotoOut, PhotoUpdate
-from ..storage import ALLOWED_SUFFIXES, LocalStorage, get_storage
+from ..schemas import PhotoMapOut, PhotoOut, PhotoUpdate
+from ..storage import ALLOWED_SUFFIXES, LocalStorage, get_storage, media_url
 
 router = APIRouter(prefix="/api/photos", tags=["photos"])
 register_heif_opener()
@@ -396,6 +396,71 @@ def list_photos(
         stmt = stmt.where(UserPhoto.species_id == species_id)
     stmt = stmt.order_by(UserPhoto.created_at.desc()).offset(offset).limit(limit)
     return [PhotoOut(**photo_out(p)) for p in db.execute(stmt).scalars()]
+
+
+def _map_coordinates(photo: UserPhoto) -> tuple[float | None, float | None]:
+    if (
+        photo.observation is not None
+        and photo.observation.latitude is not None
+        and photo.observation.longitude is not None
+    ):
+        return photo.observation.latitude, photo.observation.longitude
+    metadata = photo.photo_metadata or {}
+    try:
+        latitude = float(metadata["latitude"])
+        longitude = float(metadata["longitude"])
+    except (KeyError, TypeError, ValueError):
+        return None, None
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        return None, None
+    return latitude, longitude
+
+
+@router.get("/map", response_model=list[PhotoMapOut])
+def map_photos(
+    db: Annotated[Session, Depends(get_db)],
+    profile: CurrentProfile,
+) -> list[PhotoMapOut]:
+    """All located photos in the selected personal or shared collection."""
+    stmt = select(UserPhoto).options(
+        selectinload(UserPhoto.species),
+        selectinload(UserPhoto.observation),
+    )
+    if (profile_id := scope_profile_id(profile)) is not None:
+        stmt = stmt.where(UserPhoto.profile_id == profile_id)
+    photos = db.execute(
+        stmt.order_by(UserPhoto.date.desc().nullslast(), UserPhoto.id.desc())
+    ).scalars()
+    owners = {
+        owner.id: owner
+        for owner in db.execute(select(Profile)).scalars()
+    }
+    result: list[PhotoMapOut] = []
+    for photo in photos:
+        latitude, longitude = _map_coordinates(photo)
+        if not photo.location_name.strip() and latitude is None:
+            continue
+        owner = owners.get(photo.profile_id)
+        if owner is None:
+            continue
+        result.append(PhotoMapOut(
+            id=photo.id,
+            species_id=photo.species_id,
+            species_slug=photo.species.slug,
+            species_name=photo.species.common_name,
+            profile_id=owner.id,
+            profile_name=owner.name,
+            profile_avatar=owner.avatar or "🐾",
+            url=media_url(photo.display_key or photo.storage_key),
+            thumb_url=media_url(
+                photo.thumb_key or photo.display_key or photo.storage_key
+            ),
+            date=photo.date,
+            location_name=photo.location_name,
+            latitude=latitude,
+            longitude=longitude,
+        ))
+    return result
 
 
 @router.patch("/{photo_id}", response_model=PhotoOut)

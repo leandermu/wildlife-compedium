@@ -12,13 +12,73 @@ from sqlalchemy.orm import Session, sessionmaker
 from starlette.datastructures import UploadFile
 
 from app.db import Base
-from app.models import Profile, Species, UserPhoto
+from app.models import Observation, Profile, Species, UserPhoto
 from app.queries import photo_out, to_list_item
-from app.routers.photos import _extract, ensure_browser_derivatives, upload_photo
+from app.routers.photos import (
+    _extract,
+    ensure_browser_derivatives,
+    map_photos,
+    upload_photo,
+)
 from app.storage import LocalStorage
 
 
 class PhotoMetadataTest(unittest.TestCase):
+    def test_map_photos_respects_profile_scope_and_both_coordinate_sources(self) -> None:
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(engine)
+        try:
+            with Session(engine) as db:
+                shared = Profile(name="Gemeinsam", is_shared=True)
+                first = Profile(name="Leander", avatar="🦊")
+                second = Profile(name="Angelika", avatar="🦉")
+                species = Species(slug="eisvogel", common_name="Eisvogel", group="bird")
+                db.add_all([shared, first, second, species])
+                db.flush()
+                observation = Observation(
+                    profile_id=second.id,
+                    species_id=species.id,
+                    location_name="Am See",
+                    latitude=48.1,
+                    longitude=11.5,
+                )
+                db.add(observation)
+                db.flush()
+                db.add_all([
+                    UserPhoto(
+                        profile_id=first.id,
+                        species_id=species.id,
+                        storage_key="first.jpg",
+                        location_name="Im Wald",
+                        photo_metadata={"latitude": 47.9, "longitude": 11.2},
+                    ),
+                    UserPhoto(
+                        profile_id=second.id,
+                        species_id=species.id,
+                        observation_id=observation.id,
+                        storage_key="second.jpg",
+                        location_name="Am See",
+                    ),
+                    UserPhoto(
+                        profile_id=first.id,
+                        species_id=species.id,
+                        storage_key="without-location.jpg",
+                    ),
+                ])
+                db.commit()
+
+                personal = map_photos(db, first)
+                combined = map_photos(db, shared)
+                self.assertEqual(len(personal), 1)
+                self.assertEqual((personal[0].latitude, personal[0].longitude), (47.9, 11.2))
+                self.assertEqual(len(combined), 2)
+                self.assertEqual(
+                    {(photo.profile_name, photo.latitude, photo.longitude) for photo in combined},
+                    {("Leander", 47.9, 11.2), ("Angelika", 48.1, 11.5)},
+                )
+        finally:
+            engine.dispose()
+
     def test_heif_is_decoded_with_exif_thumbnail_and_display_copy(self) -> None:
         exif = Image.Exif()
         exif[271] = "Compedium Camera"

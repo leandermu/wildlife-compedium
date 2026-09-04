@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { api } from "../api";
 import type { SpeciesListItem } from "../types";
 import { formatDate } from "../lib/format";
 import { PlaceholderArt } from "./PlaceholderArt";
@@ -17,18 +19,65 @@ export function SpeciesCard({
   listSearch?: string;
 }) {
   const unlocked = species.status !== "locked";
-  const photo = species.best_photo_thumb_url ?? species.best_photo_url;
+  const availablePhotographers = species.photographers ?? [];
+  const initialPhotographer = availablePhotographers.find((profile) => profile.is_thumbnail);
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(
+    initialPhotographer?.id ?? null,
+  );
+  const [switchingProfileId, setSwitchingProfileId] = useState<number | null>(null);
+
+  useEffect(() => {
+    setSelectedProfileId(
+      (species.photographers ?? []).find((profile) => profile.is_thumbnail)?.id ?? null,
+    );
+  }, [species]);
+
+  const photographers = [...availablePhotographers].sort((left, right) => {
+    if (left.id === selectedProfileId) return -1;
+    if (right.id === selectedProfileId) return 1;
+    return left.name.localeCompare(right.name, "de");
+  });
+  const selectedPhotographer = photographers.find(
+    (profile) => profile.id === selectedProfileId,
+  );
+  const photo = selectedPhotographer?.thumb_url
+    ?? selectedPhotographer?.photo_url
+    ?? species.best_photo_thumb_url
+    ?? species.best_photo_url;
+  const fullPhoto = selectedPhotographer?.photo_url ?? species.best_photo_url;
+  const displayDate = selectedPhotographer?.photo_date ?? species.display_photo_date;
+  const displayLocation = selectedPhotographer?.photo_location ?? species.display_photo_location;
+
+  const choosePhotographer = async (profileId: number) => {
+    if (profileId === selectedProfileId || switchingProfileId !== null) return;
+    const previous = selectedProfileId;
+    setSelectedProfileId(profileId);
+    setSwitchingProfileId(profileId);
+    try {
+      await api.selectSpeciesThumbnailProfile(species.slug, profileId);
+    } catch (error) {
+      setSelectedProfileId(previous);
+      alert(error instanceof Error ? error.message : "Thumbnail konnte nicht geändert werden.");
+    } finally {
+      setSwitchingProfileId(null);
+    }
+  };
 
   return (
-    <Link
-      to={`/arten/${species.slug}`}
-      state={{ speciesSearch: listSearch }}
+    <article
       className={`group relative flex flex-col overflow-hidden rounded-sm border transition-all duration-300 ${
         unlocked
           ? "border-rule-2 bg-paper shadow-[var(--shadow-card)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]"
           : "border-rule bg-paper-2/60 hover:border-rule-2 hover:bg-paper-2"
       }`}
     >
+      <Link
+        to={`/arten/${species.slug}`}
+        state={{ speciesSearch: listSearch }}
+        className="absolute inset-0 z-0"
+        aria-label={`${species.common_name} öffnen`}
+      />
+      <div className="pointer-events-none relative z-[1] flex h-full flex-col">
       {/* Kopfzeile: Name */}
       <div className="px-4 pt-4 text-center">
         <h3
@@ -52,9 +101,9 @@ export function SpeciesCard({
             loading="lazy"
             decoding="async"
             onError={(event) => {
-              if (species.best_photo_url && !event.currentTarget.dataset.fallback) {
+              if (fullPhoto && !event.currentTarget.dataset.fallback) {
                 event.currentTarget.dataset.fallback = "true";
-                event.currentTarget.src = species.best_photo_url;
+                event.currentTarget.src = fullPhoto;
               }
             }}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
@@ -98,12 +147,12 @@ export function SpeciesCard({
           <div className="space-y-1 text-[13px] text-ink-2">
             <p className="flex items-center gap-1.5">
               <span aria-hidden>📅</span>
-              {formatDate(species.display_photo_date) || "ohne Datum"}
+              {formatDate(displayDate) || "ohne Datum"}
             </p>
-            {species.display_photo_location && (
+            {displayLocation && (
               <p className="flex items-center gap-1.5 truncate">
                 <span aria-hidden>📍</span>
-                <span className="truncate">{species.display_photo_location}</span>
+                <span className="truncate">{displayLocation}</span>
               </p>
             )}
             {species.photo_count > 1 && (
@@ -119,9 +168,40 @@ export function SpeciesCard({
 
         <div className="mt-auto pt-3">
           {unlocked ? (
-            <span className="label-caps text-moss-2">
-              ✓ Freigeschaltet
-            </span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="label-caps text-moss-2">
+                ✓ Freigeschaltet
+              </span>
+              {photographers.length > 0 && (
+                <span className="flex -space-x-1.5" aria-label="Fotografiert von">
+                  {photographers.map((profile, index) => {
+                    const selected = profile.id === selectedProfileId;
+                    const className = `pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full border-2 border-paper text-sm shadow-sm transition ${
+                      selected ? "bg-sage/25 ring-1 ring-sage" : "bg-paper-3 hover:-translate-y-0.5 hover:bg-sage/15"
+                    } ${switchingProfileId === profile.id ? "opacity-60" : ""}`;
+                    const title = `${profile.name}${selected ? " · angezeigtes Foto" : " · Foto dauerhaft anzeigen"}`;
+                    return selected || photographers.length === 1 ? (
+                      <span key={profile.id} title={title} className={className} style={{ zIndex: photographers.length - index }}>
+                        {profile.avatar}
+                      </span>
+                    ) : (
+                      <button
+                        key={profile.id}
+                        type="button"
+                        title={title}
+                        aria-label={`${profile.name}: Foto dauerhaft anzeigen`}
+                        disabled={switchingProfileId !== null}
+                        onClick={() => choosePhotographer(profile.id)}
+                        className={className}
+                        style={{ zIndex: photographers.length - index }}
+                      >
+                        {profile.avatar}
+                      </button>
+                    );
+                  })}
+                </span>
+              )}
+            </div>
           ) : photo ? (
             <span className="label-caps text-ochre">
               Gefangenschaft · nicht gewertet
@@ -133,7 +213,8 @@ export function SpeciesCard({
           )}
         </div>
       </div>
-    </Link>
+      </div>
+    </article>
   );
 }
 

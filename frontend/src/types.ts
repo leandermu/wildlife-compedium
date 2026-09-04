@@ -36,6 +36,16 @@ export interface SpeciesListItem {
   best_photo_thumb_url: string | null;
   display_photo_date: string | null;
   display_photo_location: string;
+  photographers: {
+    id: number;
+    name: string;
+    avatar: string;
+    is_thumbnail: boolean;
+    photo_url: string | null;
+    thumb_url: string | null;
+    photo_date: string | null;
+    photo_location: string;
+  }[];
   created_at: string | null;
   updated_at: string | null;
 }
@@ -59,6 +69,22 @@ export interface Photo {
   is_best_photo: boolean;
   photo_metadata: Record<string, unknown>;
   created_at: string;
+}
+
+export interface MapPhoto {
+  id: number;
+  species_id: number;
+  species_slug: string;
+  species_name: string;
+  profile_id: number;
+  profile_name: string;
+  profile_avatar: string;
+  url: string | null;
+  thumb_url: string | null;
+  date: string | null;
+  location_name: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface Observation {
@@ -179,6 +205,21 @@ export interface Dashboard {
   challenges: { label: string; remaining: number; filter: Record<string, string> }[];
   achievements_unlocked: number;
   achievements_total: number;
+}
+
+export interface StorageStats {
+  total_bytes: number;
+  media_bytes: number;
+  database_bytes: number;
+  originals_bytes: number;
+  derivatives_bytes: number;
+  references_bytes: number;
+  other_bytes: number;
+  stored_file_count: number;
+  profile_count: number;
+  species_count: number;
+  observation_count: number;
+  photo_count: number;
 }
 
 export interface Achievement {

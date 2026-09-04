@@ -39,6 +39,17 @@ export function formatNumber(n: number): string {
   return n.toLocaleString("de-DE");
 }
 
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** unitIndex;
+  return `${value.toLocaleString("de-DE", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: unitIndex === 0 ? 0 : value < 10 ? 2 : 1,
+  })} ${units[unitIndex]}`;
+}
+
 export function percent(collected: number, total: number): number {
   return total === 0 ? 0 : Math.round((collected / total) * 100);
 }

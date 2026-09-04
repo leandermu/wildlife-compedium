@@ -167,5 +167,10 @@ def delete_profile(
         .where(Species.created_by_profile_id == profile.id)
         .values(created_by_profile_id=None)
     )
+    db.execute(
+        update(Species)
+        .where(Species.shared_thumbnail_profile_id == profile.id)
+        .values(shared_thumbnail_profile_id=None)
+    )
     db.delete(profile)
     db.commit()

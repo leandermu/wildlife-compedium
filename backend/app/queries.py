@@ -12,7 +12,7 @@ from typing import Any, Iterable, Sequence
 from sqlalchemy import Select, Text, and_, case, exists, func, or_, select
 from sqlalchemy.orm import Session
 
-from .models import Observation, Species, UserPhoto
+from .models import Observation, Profile, Species, UserPhoto
 from .schemas import SpeciesDetail, SpeciesListItem
 from .storage import media_url
 from .text import normalize
@@ -22,11 +22,16 @@ def _photo_agg(profile_id: int | None, wild_only: bool = False):
     filters = [] if profile_id is None else [UserPhoto.profile_id == profile_id]
     if wild_only:
         filters.append(func.coalesce(UserPhoto.encounter_type, "wild") == "wild")
+    photo_at = (
+        func.cast(UserPhoto.date, Text)
+        + " "
+        + func.coalesce(func.cast(UserPhoto.time, Text), "00:00:00")
+    )
     return (
         select(
             UserPhoto.species_id.label("sid"),
             func.count(UserPhoto.id).label("photo_count"),
-            func.min(UserPhoto.date).label("first_photo_date"),
+            func.min(photo_at).label("first_photo_at"),
             func.max(UserPhoto.created_at).label("last_entry_at"),
         )
         .where(*filters)
@@ -213,12 +218,12 @@ class SpeciesQuery:
             )
         if sort == "collected_first":
             return stmt.order_by(
-                self.photos.c.first_photo_date.asc().nullslast(),
+                self.photos.c.first_photo_at.asc().nullslast(),
                 Species.common_name.asc(),
             )
         if sort == "collected_last":
             return stmt.order_by(
-                self.photos.c.first_photo_date.desc().nullslast(),
+                self.photos.c.first_photo_at.desc().nullslast(),
                 Species.common_name.asc(),
             )
         if sort == "status":
@@ -266,10 +271,76 @@ def display_photos(
         .scalars()
         .all()
     )
+    preferred_profiles: dict[int, int | None] = {}
+    if profile_id is None:
+        preferred_profiles = dict(db.execute(
+            select(Species.id, Species.shared_thumbnail_profile_id).where(
+                Species.id.in_(ids)
+            )
+        ).all())
     out: dict[int, UserPhoto] = {}
     for photo in rows:
-        out.setdefault(photo.species_id, photo)
+        selected = out.get(photo.species_id)
+        preferred_profile_id = preferred_profiles.get(photo.species_id)
+        if selected is None or (
+            selected.profile_id != preferred_profile_id
+            and photo.profile_id == preferred_profile_id
+        ):
+            out[photo.species_id] = photo
     return out
+
+
+def photographer_profiles(
+    db: Session,
+    species_ids: Iterable[int],
+    profile_id: int | None,
+    selected_photos: dict[int, UserPhoto],
+) -> dict[int, list[dict[str, Any]]]:
+    """Photographers per species, with the displayed photo's owner first."""
+    ids = list(species_ids)
+    if not ids:
+        return {}
+    filters = [
+        UserPhoto.species_id.in_(ids),
+        Profile.is_shared.is_not(True),
+    ]
+    if profile_id is not None:
+        filters.append(UserPhoto.profile_id == profile_id)
+    rows = db.execute(
+        select(UserPhoto, Profile)
+        .join(Profile, Profile.id == UserPhoto.profile_id)
+        .where(*filters)
+        .order_by(
+            UserPhoto.species_id,
+            UserPhoto.profile_id,
+            UserPhoto.is_best_photo.desc(),
+            UserPhoto.date.asc().nullslast(),
+            UserPhoto.id.asc(),
+        )
+    ).all()
+    grouped: dict[int, list[dict[str, Any]]] = {}
+    seen: set[tuple[int, int]] = set()
+    for photo, owner in rows:
+        key = (photo.species_id, owner.id)
+        if key in seen:
+            continue
+        seen.add(key)
+        selected = selected_photos.get(photo.species_id)
+        grouped.setdefault(photo.species_id, []).append({
+            "id": owner.id,
+            "name": owner.name,
+            "avatar": owner.avatar or "🐾",
+            "is_thumbnail": bool(selected and selected.id == photo.id),
+            "photo_url": media_url(photo.display_key or photo.storage_key),
+            "thumb_url": media_url(
+                photo.thumb_key or photo.display_key or photo.storage_key
+            ),
+            "photo_date": photo.date,
+            "photo_location": photo.location_name,
+        })
+    for badges in grouped.values():
+        badges.sort(key=lambda badge: (not badge["is_thumbnail"], badge["name"].casefold()))
+    return grouped
 
 
 def photo_out(photo: UserPhoto) -> dict[str, Any]:
@@ -303,6 +374,7 @@ def to_list_item(
     photo: UserPhoto | None,
     raw_photo_count: int | None = None,
     raw_obs_count: int | None = None,
+    photographers: list[dict[str, Any]] | None = None,
 ) -> SpeciesListItem:
     return SpeciesListItem(
         id=sp.id,
@@ -328,6 +400,7 @@ def to_list_item(
         ) if photo else None,
         display_photo_date=photo.date if photo else None,
         display_photo_location=photo.location_name if photo else "",
+        photographers=photographers or [],
         created_at=sp.created_at,
         updated_at=sp.updated_at,
     )

@@ -120,6 +120,11 @@ class Species(Base):
     created_by_profile_id: Mapped[int | None] = mapped_column(
         Integer, nullable=True, index=True
     )
+    # In the shared collection this profile's best photo is used for the card.
+    # Kept as a plain nullable id for additive SQLite migrations.
+    shared_thumbnail_profile_id: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, index=True
+    )
 
     search_text: Mapped[str] = mapped_column(Text, default="", index=True)
 

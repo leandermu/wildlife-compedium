@@ -7,9 +7,12 @@ from sqlalchemy.orm import Session
 from app.achievements import evaluate
 from app.db import Base
 from app.models import Observation, Profile, Species, UserPhoto
-from app.queries import SpeciesQuery, derive_status
+from app.queries import SpeciesQuery, derive_status, display_photos, photographer_profiles
 from app.routers.observations import create_observation
-from app.routers.species import facets as species_facets
+from app.routers.species import (
+    facets as species_facets,
+    select_shared_thumbnail_profile,
+)
 from app.schemas import ObservationCreate
 from app.vocab import STATUSES
 
@@ -295,15 +298,27 @@ class ProfileAndFilterTest(unittest.TestCase):
         with Session(self.engine) as db:
             profile = Profile(name="Leander")
             early = Species(slug="frueh", common_name="Früh", group="bird")
+            same_day_early = Species(slug="vormittags", common_name="Vormittags", group="bird")
+            same_day_late = Species(slug="abends", common_name="Abends", group="bird")
             late = Species(slug="spaet", common_name="Spät", group="bird")
             newest_entry = Species(slug="neu", common_name="Neu", group="bird")
-            db.add_all([profile, early, late, newest_entry])
+            db.add_all([profile, early, same_day_early, same_day_late, late, newest_entry])
             db.flush()
             db.add_all([
                 UserPhoto(
                     profile_id=profile.id, species_id=early.id,
                     storage_key="early.jpg", date=dt.date(2020, 1, 1),
                     created_at=dt.datetime(2026, 1, 1),
+                ),
+                UserPhoto(
+                    profile_id=profile.id, species_id=same_day_early.id,
+                    storage_key="morning.jpg", date=dt.date(2024, 6, 1),
+                    time=dt.time(8, 15), created_at=dt.datetime(2026, 1, 2),
+                ),
+                UserPhoto(
+                    profile_id=profile.id, species_id=same_day_late.id,
+                    storage_key="evening.jpg", date=dt.date(2024, 6, 1),
+                    time=dt.time(19, 45), created_at=dt.datetime(2026, 1, 3),
                 ),
                 UserPhoto(
                     profile_id=profile.id, species_id=late.id,
@@ -327,9 +342,61 @@ class ProfileAndFilterTest(unittest.TestCase):
             recent = db.scalars(
                 query.apply_sort(query.base(Species), "recent")
             ).all()
-            self.assertEqual([item.slug for item in first[:2]], ["frueh", "spaet"])
-            self.assertEqual([item.slug for item in last[:2]], ["spaet", "frueh"])
+            self.assertEqual(
+                [item.slug for item in first[:4]],
+                ["frueh", "vormittags", "abends", "spaet"],
+            )
+            self.assertEqual(
+                [item.slug for item in last[:4]],
+                ["spaet", "abends", "vormittags", "frueh"],
+            )
             self.assertEqual(recent[0].slug, "neu")
+
+    def test_thumbnail_photographer_is_listed_before_other_profiles(self) -> None:
+        with Session(self.engine) as db:
+            shared = Profile(name="Gemeinsam", avatar="👥", is_shared=True)
+            first = Profile(name="Angelika", avatar="🦉")
+            second = Profile(name="Leander", avatar="🦊")
+            species = Species(slug="eisvogel", common_name="Eisvogel", group="bird")
+            db.add_all([shared, first, second, species])
+            db.flush()
+            db.add_all([
+                UserPhoto(
+                    profile_id=first.id,
+                    species_id=species.id,
+                    storage_key="angelika.jpg",
+                    date=dt.date(2025, 1, 1),
+                    is_best_photo=True,
+                ),
+                UserPhoto(
+                    profile_id=second.id,
+                    species_id=species.id,
+                    storage_key="leander.jpg",
+                    date=dt.date(2024, 1, 1),
+                    is_best_photo=True,
+                ),
+            ])
+            db.commit()
+
+            selected = display_photos(db, [species.id], None)
+            badges = photographer_profiles(db, [species.id], None, selected)
+            self.assertEqual(selected[species.id].profile_id, second.id)
+            self.assertEqual(
+                [badge["id"] for badge in badges[species.id]],
+                [second.id, first.id],
+            )
+            self.assertTrue(badges[species.id][0]["is_thumbnail"])
+
+            select_shared_thumbnail_profile(
+                species.slug, first.id, db, shared
+            )
+            db.refresh(species)
+            self.assertEqual(species.shared_thumbnail_profile_id, first.id)
+            selected = display_photos(db, [species.id], None)
+            badges = photographer_profiles(db, [species.id], None, selected)
+            self.assertEqual(selected[species.id].profile_id, first.id)
+            self.assertEqual(badges[species.id][0]["id"], first.id)
+            self.assertTrue(badges[species.id][0]["is_thumbnail"])
 
 
 if __name__ == "__main__":

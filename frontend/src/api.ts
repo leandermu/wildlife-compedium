@@ -1,6 +1,6 @@
 import type {
-  Achievement, Activity, AutomaticSpeciesPreview, Dashboard, Facets, Meta, Observation, Page, Photo,
-  Profile, SpeciesDetail, SpeciesListItem,
+  Achievement, Activity, AutomaticSpeciesPreview, Dashboard, Facets, MapPhoto, Meta, Observation, Page, Photo,
+  Profile, SpeciesDetail, SpeciesListItem, StorageStats,
 } from "./types";
 
 const BASE = import.meta.env.VITE_API_BASE ?? "";
@@ -84,6 +84,7 @@ export const api = {
     request<void>(`/api/profiles/${id}`, { method: "DELETE" }),
 
   backupUrl: () => `${BASE}/api/backup/save`,
+  storageStats: () => request<StorageStats>("/api/backup/stats"),
   restoreBackup: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
@@ -106,6 +107,12 @@ export const api = {
   facets: (params: SpeciesQueryParams) =>
     request<Facets>(`/api/species/facets?${toSearchParams(params)}`),
   speciesDetail: (key: string) => request<SpeciesDetail>(`/api/species/${key}`),
+  selectSpeciesThumbnailProfile: (key: string, profileId: number) =>
+    request<{ profile_id: number }>(`/api/species/${key}/thumbnail-profile`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile_id: profileId }),
+    }),
   createSpecies: (body: Record<string, unknown>) =>
     request<SpeciesDetail>("/api/species", json(body)),
   createSpeciesManual: (form: FormData) =>
@@ -132,6 +139,7 @@ export const api = {
     request<void>(`/api/species/${key}`, { method: "DELETE" }),
   uploadPhoto: (fd: FormData) =>
     request<Photo>("/api/photos", { method: "POST", body: fd }),
+  mapPhotos: () => request<MapPhoto[]>("/api/photos/map"),
   updatePhoto: (id: number, body: Record<string, unknown>) =>
     request<Photo>(`/api/photos/${id}`, {
       method: "PATCH",

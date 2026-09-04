@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
-import type { AutomaticSpeciesPreview, Meta, SpeciesDetail, SpeciesListItem } from "../types";
+import type { AutomaticSpeciesPreview, Meta, SpeciesDetail, SpeciesListItem, StorageStats } from "../types";
 import { SectionTitle } from "../components/ui";
-import { formatNumber, formatRelativeTime } from "../lib/format";
+import { formatBytes, formatNumber, formatRelativeTime } from "../lib/format";
 
 const EMPTY = {
   common_name: "", scientific_name: "", group: "other", class_name: "Aves",
@@ -30,6 +30,7 @@ export function AdminPage() {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<SpeciesListItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [storageStats, setStorageStats] = useState<StorageStats | null>(null);
   const [backupInfo, setBackupInfo] = useState<string | null>(null);
   const [backupError, setBackupError] = useState(false);
   const [backupLoading, setBackupLoading] = useState(false);
@@ -38,6 +39,7 @@ export function AdminPage() {
 
   useEffect(() => {
     api.meta().then(setMeta);
+    api.storageStats().then(setStorageStats).catch(() => setStorageStats(null));
   }, []);
 
   useEffect(() => {
@@ -440,6 +442,45 @@ export function AdminPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      {/* Statistiken */}
+      <section className="border-t border-rule pt-10">
+        <SectionTitle>Statistiken</SectionTitle>
+        <div className="paper-card rounded-sm p-5">
+          <div className="grid gap-5 sm:grid-cols-[minmax(12rem,1.2fr)_repeat(4,minmax(7rem,1fr))]">
+            <div>
+              <p className="label-caps text-ink-3">Gesamtspeicherbelegung</p>
+              <p className="mt-1 font-serif text-3xl text-ink">
+                {storageStats ? formatBytes(storageStats.total_bytes) : "…"}
+              </p>
+              {storageStats && (
+                <p className="mt-1 text-[12px] text-ink-3">
+                  {formatNumber(storageStats.stored_file_count)} gespeicherte Dateien
+                </p>
+              )}
+            </div>
+            {[
+              ["Originalfotos", storageStats?.originals_bytes],
+              ["Vorschaubilder", storageStats?.derivatives_bytes],
+              ["Referenzbilder", storageStats?.references_bytes],
+              ["Datenbank", storageStats?.database_bytes],
+            ].map(([label, bytes]) => (
+              <div key={String(label)} className="border-l border-rule pl-4">
+                <p className="label-caps text-ink-3">{label}</p>
+                <p className="mt-1 font-serif text-xl text-ink">
+                  {typeof bytes === "number" ? formatBytes(bytes) : "…"}
+                </p>
+              </div>
+            ))}
+          </div>
+          {storageStats && (
+            <p className="mt-5 border-t border-rule pt-4 text-[13px] text-ink-2">
+              {formatNumber(storageStats.photo_count)} Fotos · {formatNumber(storageStats.observation_count)} Begegnungen · {formatNumber(storageStats.species_count)} Arten · {formatNumber(storageStats.profile_count)} Profile
+              {storageStats.other_bytes > 0 && ` · Sonstige Dateien ${formatBytes(storageStats.other_bytes)}`}
+            </p>
+          )}
         </div>
       </section>
 

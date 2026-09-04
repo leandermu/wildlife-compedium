@@ -10,9 +10,15 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import Observation, Species, UserPhoto
+from ..models import Observation, Profile, Species, UserPhoto
 from ..profiles import CurrentProfile, scope_profile_id
-from ..queries import SpeciesQuery, display_photos, to_detail, to_list_item
+from ..queries import (
+    SpeciesQuery,
+    display_photos,
+    photographer_profiles,
+    to_detail,
+    to_list_item,
+)
 from ..schemas import (
     Facets,
     FacetValue,
@@ -93,8 +99,19 @@ def list_species(
     rows = db.execute(stmt).all()
 
     photos = display_photos(db, [r[0].id for r in rows], scope_id)
+    photographers = photographer_profiles(
+        db, [r[0].id for r in rows], scope_id, photos
+    )
     items = [
-        to_list_item(sp, int(pc), int(oc), photos.get(sp.id), int(raw_pc), int(raw_oc))
+        to_list_item(
+            sp,
+            int(pc),
+            int(oc),
+            photos.get(sp.id),
+            int(raw_pc),
+            int(raw_oc),
+            photographers.get(sp.id),
+        )
         for sp, pc, oc, raw_pc, raw_oc in rows
     ]
     return Page[SpeciesListItem](
@@ -306,6 +323,36 @@ def get_species(
         _get_species(db, key), scope_profile_id(profile),
         bool(profile.exclude_captive_from_progress),
     )
+
+
+@router.patch("/{key}/thumbnail-profile")
+def select_shared_thumbnail_profile(
+    key: str,
+    profile_id: Annotated[int, Body(embed=True)],
+    db: Annotated[Session, Depends(get_db)],
+    profile: CurrentProfile,
+) -> dict[str, int]:
+    if not profile.is_shared:
+        raise HTTPException(
+            409, "Das gemeinsame Thumbnail kann nur im gemeinsamen Profil gewählt werden"
+        )
+    sp = _get_species(db, key)
+    owner = db.get(Profile, profile_id)
+    if owner is None or owner.is_shared:
+        raise HTTPException(422, "Bitte ein persönliches Profil auswählen")
+    has_photo = db.execute(
+        select(UserPhoto.id)
+        .where(
+            UserPhoto.species_id == sp.id,
+            UserPhoto.profile_id == owner.id,
+        )
+        .limit(1)
+    ).first()
+    if has_photo is None:
+        raise HTTPException(409, "Dieses Profil hat die Art noch nicht fotografiert")
+    sp.shared_thumbnail_profile_id = owner.id
+    db.commit()
+    return {"profile_id": owner.id}
 
 
 @router.post("/automatic", response_model=SpeciesDetail, status_code=201)

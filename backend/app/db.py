@@ -175,6 +175,17 @@ def _ensure_species_metadata() -> None:
             )
 
 
+def _ensure_achievement_baseline() -> None:
+    """Synchronise existing progress without creating historical feed entries."""
+    from .achievements import evaluate
+    from .models import Profile
+
+    with SessionLocal() as db:
+        profile_ids = list(db.execute(select(Profile.id)).scalars())
+        for profile_id in profile_ids:
+            evaluate(db, profile_id, emit_activity=False)
+
+
 def init_db() -> None:
     from . import models  # noqa: F401  (register mappers)
 
@@ -186,3 +197,4 @@ def init_db() -> None:
     _ensure_shared_profile()
     _ensure_species_metadata()
     _ensure_linked_encounters()
+    _ensure_achievement_baseline()

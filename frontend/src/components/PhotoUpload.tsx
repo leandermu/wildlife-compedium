@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import type { Profile, SpeciesDetail } from "../types";
+import { LazyLocationPicker } from "./LazyLocationPicker";
 
 /** Foto-Upload mit Metadaten. Das Datum wird, wenn leer, aus den EXIF-Daten
  *  der Datei übernommen (serverseitig). */
@@ -16,6 +17,8 @@ export function PhotoUpload({
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
   const [caption, setCaption] = useState("");
   const [encounterType, setEncounterType] = useState<"wild" | "captive">("wild");
   const [animalSex, setAnimalSex] = useState<"unknown" | "female" | "male">("unknown");
@@ -66,6 +69,10 @@ export function PhotoUpload({
       if (date) fd.append("date", date);
       if (time) fd.append("time", time);
       if (location) fd.append("location_name", location);
+      if (latitude !== null && longitude !== null) {
+        fd.append("latitude", String(latitude));
+        fd.append("longitude", String(longitude));
+      }
       if (caption) fd.append("caption", caption);
       fd.append("encounter_type", encounterType);
       fd.append("animal_sex", animalSex);
@@ -78,6 +85,8 @@ export function PhotoUpload({
       setDate("");
       setTime("");
       setLocation("");
+      setLatitude(null);
+      setLongitude(null);
       setCaption("");
       setEncounterType("wild");
       setAnimalSex("unknown");
@@ -174,6 +183,24 @@ export function PhotoUpload({
           />
         </Field>
       </div>
+      <LazyLocationPicker
+        latitude={latitude}
+        longitude={longitude}
+        onChange={(nextLatitude, nextLongitude) => {
+          setLatitude(nextLatitude);
+          setLongitude(nextLongitude);
+          if (nextLatitude === null && nextLongitude === null && location.startsWith("GPS:")) {
+            setLocation("");
+          }
+          if (
+            nextLatitude !== null
+            && nextLongitude !== null
+            && (!location.trim() || location.startsWith("GPS:"))
+          ) {
+            setLocation(`GPS: ${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)}`);
+          }
+        }}
+      />
       <Field label="Notiz (optional)">
         <input
           value={caption}

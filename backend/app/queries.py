@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any, Iterable, Sequence
 
 from sqlalchemy import Select, Text, and_, case, exists, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from .models import Observation, Profile, Species, UserPhoto
 from .schemas import SpeciesDetail, SpeciesListItem
@@ -260,6 +260,7 @@ def display_photos(
     rows = (
         db.execute(
             select(UserPhoto)
+            .options(selectinload(UserPhoto.observation))
             .where(*filters)
             .order_by(
                 UserPhoto.species_id,
@@ -308,6 +309,7 @@ def photographer_profiles(
         filters.append(UserPhoto.profile_id == profile_id)
     rows = db.execute(
         select(UserPhoto, Profile)
+        .options(selectinload(UserPhoto.observation))
         .join(Profile, Profile.id == UserPhoto.profile_id)
         .where(*filters)
         .order_by(
@@ -326,6 +328,7 @@ def photographer_profiles(
             continue
         seen.add(key)
         selected = selected_photos.get(photo.species_id)
+        latitude, longitude = photo_coordinates(photo)
         grouped.setdefault(photo.species_id, []).append({
             "id": owner.id,
             "name": owner.name,
@@ -337,13 +340,36 @@ def photographer_profiles(
             ),
             "photo_date": photo.date,
             "photo_location": photo.location_name,
+            "photo_latitude": latitude,
+            "photo_longitude": longitude,
         })
     for badges in grouped.values():
         badges.sort(key=lambda badge: (not badge["is_thumbnail"], badge["name"].casefold()))
     return grouped
 
 
+def photo_coordinates(photo: UserPhoto) -> tuple[float | None, float | None]:
+    if (
+        photo.observation is not None
+        and photo.observation.latitude is not None
+        and photo.observation.longitude is not None
+    ):
+        return photo.observation.latitude, photo.observation.longitude
+    metadata = photo.photo_metadata or {}
+    if metadata.get("coordinates_cleared") is True:
+        return None, None
+    try:
+        latitude = float(metadata["latitude"])
+        longitude = float(metadata["longitude"])
+    except (KeyError, TypeError, ValueError):
+        return None, None
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        return None, None
+    return latitude, longitude
+
+
 def photo_out(photo: UserPhoto) -> dict[str, Any]:
+    latitude, longitude = photo_coordinates(photo)
     return {
         "id": photo.id,
         "species_id": photo.species_id,
@@ -354,6 +380,8 @@ def photo_out(photo: UserPhoto) -> dict[str, Any]:
         "date": photo.date,
         "time": photo.time,
         "location_name": photo.location_name,
+        "latitude": latitude,
+        "longitude": longitude,
         "caption": photo.caption,
         "encounter_type": photo.encounter_type or "wild",
         "animal_sex": photo.animal_sex or "unknown",
@@ -376,6 +404,7 @@ def to_list_item(
     raw_obs_count: int | None = None,
     photographers: list[dict[str, Any]] | None = None,
 ) -> SpeciesListItem:
+    latitude, longitude = photo_coordinates(photo) if photo else (None, None)
     return SpeciesListItem(
         id=sp.id,
         slug=sp.slug,
@@ -400,6 +429,8 @@ def to_list_item(
         ) if photo else None,
         display_photo_date=photo.date if photo else None,
         display_photo_location=photo.location_name if photo else "",
+        display_photo_latitude=latitude,
+        display_photo_longitude=longitude,
         photographers=photographers or [],
         created_at=sp.created_at,
         updated_at=sp.updated_at,

@@ -1,12 +1,20 @@
 import datetime as dt
 import unittest
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from app.achievements import evaluate
+from app.achievements import BUILTIN, evaluate
+from app.seed import load_seed_rows
 from app.db import Base
-from app.models import Observation, Profile, Species, UserPhoto
+from app.models import (
+    AchievementActivity,
+    Observation,
+    Profile,
+    ProfileAchievementState,
+    Species,
+    UserPhoto,
+)
 from app.queries import SpeciesQuery, derive_status, display_photos, photographer_profiles
 from app.routers.observations import create_observation
 from app.routers.species import (
@@ -14,7 +22,8 @@ from app.routers.species import (
     select_shared_thumbnail_profile,
 )
 from app.schemas import ObservationCreate
-from app.vocab import STATUSES
+from app.routers.stats import _activity_entries
+from app.vocab import GROUP_CLASSES, STATUSES
 
 
 class ProfileAndFilterTest(unittest.TestCase):
@@ -35,6 +44,41 @@ class ProfileAndFilterTest(unittest.TestCase):
             female_names = {item["id"]: item["name"] for item in evaluate(db, female.id)}
             self.assertEqual(male_names["alpine_hunter"], "Alpenjäger")
             self.assertEqual(female_names["alpine_hunter"], "Alpenjägerin")
+
+    def test_achievement_milestones_fit_the_catalogue(self) -> None:
+        rows = load_seed_rows()
+        field_names = {
+            "habitat": "habitats",
+            "region": "regions",
+            "order": "order_name",
+        }
+        for definition in BUILTIN:
+            rule = definition["rule"]
+            if rule["type"] != "count":
+                continue
+            filters = rule.get("filter", {})
+
+            def matches(row: dict) -> bool:
+                for key, values in filters.items():
+                    field = field_names.get(key, key)
+                    actual = row.get(field)
+                    if key == "class_name" and not actual:
+                        actual = GROUP_CLASSES.get(row.get("group", "other"), "Animalia")
+                    if actual is None:
+                        actual = [] if key in {"habitat", "region", "tag"} else ""
+                    if isinstance(actual, list):
+                        if not any(value in actual for value in values):
+                            return False
+                    elif actual not in values:
+                        return False
+                return True
+
+            available = sum(1 for row in rows if matches(row))
+            self.assertLessEqual(
+                max(rule.get("thresholds", [1])),
+                available,
+                definition["id"],
+            )
 
     def test_achievement_level_starts_at_one_and_rises_per_milestone(self) -> None:
         with Session(self.engine) as db:
@@ -74,6 +118,55 @@ class ProfileAndFilterTest(unittest.TestCase):
             db.commit()
             second_milestone = {item["id"]: item for item in evaluate(db, profile.id)}
             self.assertEqual(second_milestone["photo_volume"]["level"], 3)
+
+    def test_achievement_activity_is_removed_when_progress_no_longer_counts(self) -> None:
+        with Session(self.engine) as db:
+            profile = Profile(
+                name="Leander", gender="male", exclude_captive_from_progress=True
+            )
+            species = [
+                Species(slug=f"insekt-{index}", common_name=f"Insekt {index}", group="insect")
+                for index in range(3)
+            ]
+            db.add_all([profile, *species])
+            db.commit()
+            evaluate(db, profile.id, emit_activity=False)
+
+            photos = [
+                UserPhoto(
+                    profile_id=profile.id,
+                    species_id=item.id,
+                    storage_key=f"insect-{item.id}.jpg",
+                    encounter_type="wild",
+                )
+                for item in species
+            ]
+            db.add_all(photos)
+            db.commit()
+            evaluate(db, profile.id)
+
+            event = db.scalar(select(AchievementActivity))
+            self.assertIsNotNone(event)
+            self.assertEqual((event.achievement_id, event.tier), ("insect_friend", 1))
+            feed_entry = next(
+                entry for entry in _activity_entries(db)
+                if entry.kind == "achievement"
+            )
+            self.assertEqual(feed_entry.achievement_name, "Freund der Kleinen")
+            self.assertEqual(feed_entry.achievement_level, 1)
+
+            for photo in photos:
+                photo.encounter_type = "captive"
+            db.commit()
+            evaluate(db, profile.id)
+            self.assertIsNone(db.scalar(select(AchievementActivity)))
+            self.assertIsNone(db.scalar(select(ProfileAchievementState)))
+
+            profile.exclude_captive_from_progress = False
+            db.commit()
+            evaluate(db, profile.id, emit_activity=False)
+            self.assertIsNone(db.scalar(select(AchievementActivity)))
+            self.assertEqual(db.scalar(select(ProfileAchievementState)).tier, 1)
 
     def test_seen_includes_observation_without_photo_and_systematic_sort_uses_group(self) -> None:
         with Session(self.engine) as db:

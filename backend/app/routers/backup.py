@@ -22,6 +22,7 @@ from starlette.background import BackgroundTask
 from ..config import settings
 from ..db import get_db
 from ..models import (
+    AchievementActivity,
     AchievementState,
     Observation,
     Profile,
@@ -35,17 +36,19 @@ from ..schemas import StorageStatsOut
 
 router = APIRouter(prefix="/api/backup", tags=["backup"])
 
-BACKUP_VERSION = 2
+BACKUP_VERSION = 3
 BACKUP_TABLES: list[tuple[str, type]] = [
     ("profiles", Profile),
     ("species", Species),
     ("observations", Observation),
     ("photos", UserPhoto),
     ("profile_achievements", ProfileAchievementState),
+    ("achievement_activities", AchievementActivity),
     ("legacy_achievements", AchievementState),
     ("settings", Setting),
 ]
 DELETE_ORDER = [
+    AchievementActivity,
     UserPhoto,
     Observation,
     ProfileAchievementState,
@@ -55,6 +58,7 @@ DELETE_ORDER = [
     Profile,
 ]
 ID_MODELS = [
+    AchievementActivity,
     Profile,
     Species,
     Observation,
@@ -237,8 +241,9 @@ def _load_manifest(archive: zipfile.ZipFile) -> dict[str, Any]:
 
     if not isinstance(data, dict) or data.get("format") != "wildlife-compedium-backup":
         raise HTTPException(422, "Das ist kein Wildlife-Compedium-Backup")
-    if data.get("version") != BACKUP_VERSION:
+    if data.get("version") not in {2, BACKUP_VERSION}:
         raise HTTPException(422, "Diese Backup-Version wird nicht unterstützt")
+    data.setdefault("achievement_activities", [])
     for key, _model in BACKUP_TABLES:
         if not isinstance(data.get(key), list):
             raise HTTPException(422, f"Im Backup fehlt der Bereich „{key}“")
@@ -308,6 +313,9 @@ def _validate_relations(data: dict[str, Any], archive_names: set[str]) -> None:
             if thumb_key and f"media/{PurePosixPath(thumb_key).as_posix()}" not in archive_names:
                 row["thumb_key"] = None
         for row in data["profile_achievements"]:
+            if int(row["profile_id"]) not in profile_ids:
+                raise ValueError
+        for row in data["achievement_activities"]:
             if int(row["profile_id"]) not in profile_ids:
                 raise ValueError
     except (KeyError, TypeError, ValueError) as exc:

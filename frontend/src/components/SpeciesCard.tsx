@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import type { SpeciesListItem } from "../types";
 import { formatDate } from "../lib/format";
+import { internalMapUrl } from "../lib/map";
 import { PlaceholderArt } from "./PlaceholderArt";
 import { DifficultyStars, LockIcon } from "./ui";
 
@@ -14,9 +15,11 @@ const GROUP_LABEL: Record<string, string> = {
 export function SpeciesCard({
   species,
   listSearch = "",
+  showPhotographers = false,
 }: {
   species: SpeciesListItem;
   listSearch?: string;
+  showPhotographers?: boolean;
 }) {
   const unlocked = species.status !== "locked";
   const availablePhotographers = species.photographers ?? [];
@@ -47,6 +50,8 @@ export function SpeciesCard({
   const fullPhoto = selectedPhotographer?.photo_url ?? species.best_photo_url;
   const displayDate = selectedPhotographer?.photo_date ?? species.display_photo_date;
   const displayLocation = selectedPhotographer?.photo_location ?? species.display_photo_location;
+  const displayLatitude = selectedPhotographer?.photo_latitude ?? species.display_photo_latitude;
+  const displayLongitude = selectedPhotographer?.photo_longitude ?? species.display_photo_longitude;
 
   const choosePhotographer = async (profileId: number) => {
     if (profileId === selectedProfileId || switchingProfileId !== null) return;
@@ -152,7 +157,20 @@ export function SpeciesCard({
             {displayLocation && (
               <p className="flex items-center gap-1.5 truncate">
                 <span aria-hidden>📍</span>
-                <span className="truncate">{displayLocation}</span>
+                {displayLatitude !== null && displayLongitude !== null ? (
+                  <Link
+                    to={internalMapUrl(
+                      displayLatitude,
+                      displayLongitude,
+                    )}
+                    className="pointer-events-auto truncate underline decoration-rule-2 underline-offset-2 hover:text-moss-2"
+                    title="Auf der eigenen Karte anzeigen"
+                  >
+                    {displayLocation}
+                  </Link>
+                ) : (
+                  <span className="truncate">{displayLocation}</span>
+                )}
               </p>
             )}
             {species.photo_count > 1 && (
@@ -172,7 +190,7 @@ export function SpeciesCard({
               <span className="label-caps text-moss-2">
                 ✓ Freigeschaltet
               </span>
-              {photographers.length > 0 && (
+              {showPhotographers && photographers.length > 0 && (
                 <span className="flex -space-x-1.5" aria-label="Fotografiert von">
                   {photographers.map((profile, index) => {
                     const selected = profile.id === selectedProfileId;

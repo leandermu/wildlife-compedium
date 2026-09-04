@@ -79,8 +79,22 @@ def update_observation(
     obs = db.get(Observation, observation_id)
     if obs is None or not can_access_entry(profile, obs.profile_id):
         raise HTTPException(404, "Beobachtung nicht gefunden")
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    coordinate_update = "latitude" in data or "longitude" in data
+    for field, value in data.items():
         setattr(obs, field, value)
+    if coordinate_update:
+        for photo in obs.photos:
+            metadata = dict(photo.photo_metadata or {})
+            if obs.latitude is None or obs.longitude is None:
+                metadata.pop("latitude", None)
+                metadata.pop("longitude", None)
+                metadata["coordinates_cleared"] = True
+            else:
+                metadata["latitude"] = obs.latitude
+                metadata["longitude"] = obs.longitude
+                metadata.pop("coordinates_cleared", None)
+            photo.photo_metadata = metadata
     sync_photos_from_observation(obs)
     db.commit()
     db.refresh(obs)

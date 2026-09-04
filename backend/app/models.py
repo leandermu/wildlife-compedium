@@ -290,6 +290,26 @@ class ProfileAchievementState(Base):
     unlocked_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_utcnow)
 
 
+class AchievementActivity(Base):
+    """A level completion shown in the shared activity feed."""
+
+    __tablename__ = "achievement_activity"
+    __table_args__ = (
+        UniqueConstraint(
+            "profile_id", "achievement_id", "tier",
+            name="uq_achievement_activity_level",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profile_id: Mapped[int] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    achievement_id: Mapped[str] = mapped_column(String(120), index=True)
+    tier: Mapped[int] = mapped_column(Integer)
+    occurred_at: Mapped[dt.datetime] = mapped_column(DateTime, default=_utcnow)
+
+
 class Setting(Base):
     """Small key/value store (collection title, owner name, …)."""
 

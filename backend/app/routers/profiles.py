@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
+from .. import achievements
 from ..db import get_db
 from ..models import Observation, Profile, Species, UserPhoto
 from ..schemas import ProfileCreate, ProfileOut, ProfileUpdate
@@ -92,7 +93,10 @@ def update_profile(
     if profile.is_shared:
         if payload.exclude_captive_from_progress is not None:
             profile.exclude_captive_from_progress = payload.exclude_captive_from_progress
-        db.commit()
+            db.flush()
+            achievements.evaluate(db, profile.id, emit_activity=False)
+        else:
+            db.commit()
         db.refresh(profile)
         return _out(db, profile)
 
@@ -120,8 +124,10 @@ def update_profile(
 
     if payload.exclude_captive_from_progress is not None:
         profile.exclude_captive_from_progress = payload.exclude_captive_from_progress
-
-    db.commit()
+        db.flush()
+        achievements.evaluate(db, profile.id, emit_activity=False)
+    else:
+        db.commit()
     db.refresh(profile)
     return _out(db, profile)
 

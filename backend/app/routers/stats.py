@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 
 from .. import achievements as ach
 from ..db import get_db
-from ..models import Observation, Profile, Species, UserPhoto
+from ..models import AchievementActivity, Observation, Profile, Species, UserPhoto
 from ..profiles import CurrentProfile, scope_profile_id
-from ..queries import SpeciesQuery, display_photos
+from ..queries import SpeciesQuery, display_photos, photo_coordinates
 from ..schemas import (
     ActivityOut,
     ChallengeHint,
@@ -95,9 +95,34 @@ def _activity_entries(db: Session) -> list[ActivityOut]:
     for species in additions:
         add("added", species.created_by_profile_id, species, species.created_at)
 
+    definitions = {item["id"]: item for item in ach.load_definitions()}
+    achievement_events = db.execute(
+        select(AchievementActivity)
+        .order_by(AchievementActivity.occurred_at.desc(), AchievementActivity.id.desc())
+    ).scalars()
+    for event in achievement_events:
+        profile = profiles.get(event.profile_id)
+        definition = definitions.get(event.achievement_id)
+        if profile is None or definition is None:
+            continue
+        occurred_at = event.occurred_at
+        if occurred_at.tzinfo is None:
+            occurred_at = occurred_at.replace(tzinfo=dt.timezone.utc)
+        entries.append(ActivityOut(
+            kind="achievement",
+            profile_id=profile.id,
+            profile_name=profile.name,
+            profile_avatar=profile.avatar or "🐾",
+            achievement_id=event.achievement_id,
+            achievement_name=ach.achievement_name(definition, profile),
+            achievement_icon=definition.get("icon", "🏅"),
+            achievement_level=event.tier,
+            occurred_at=occurred_at,
+        ))
+
     return sorted(
         entries,
-        key=lambda entry: (entry.occurred_at, entry.species_id),
+        key=lambda entry: (entry.occurred_at, entry.species_id or 0),
         reverse=True,
     )
 
@@ -193,6 +218,7 @@ def dashboard(
             if not sp:
                 continue
             p = photos.get(sid)
+            latitude, longitude = photo_coordinates(p) if p else (None, None)
             recent.append(RecentUnlock(
                 species_id=sid, slug=sp.slug, common_name=sp.common_name,
                 scientific_name=sp.scientific_name,
@@ -200,6 +226,8 @@ def dashboard(
                 thumb_url=media_url(p.thumb_key or p.display_key or p.storage_key) if p else None,
                 date=p.date if p else None,
                 location_name=p.location_name if p else "",
+                latitude=latitude,
+                longitude=longitude,
             ))
 
     # "Nächste Herausforderungen": families/habitats where she is closest to done
@@ -220,7 +248,7 @@ def dashboard(
         coll = int(coll or 0)
         if not family or cnt < 3 or coll == 0 or coll >= cnt:
             continue
-        challenge_filter = {"family": family, "group": group}
+        challenge_filter = {"family": family, "group": group, "status": "locked"}
         if class_name:
             challenge_filter["class_name"] = class_name
         if order_name:

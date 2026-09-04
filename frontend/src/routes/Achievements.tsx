@@ -39,8 +39,13 @@ export function AchievementsPage() {
 
 function Card({ item }: { item: Achievement }) {
   const done = item.tiers.length > 0 && item.tiers.every((t) => t.unlocked);
+  const filterParams = new URLSearchParams();
+  for (const [key, values] of Object.entries(item.filter ?? {})) {
+    values.forEach((value) => filterParams.append(key, String(value)));
+  }
   return (
     <article
+      id={item.id}
       className={`flex flex-col rounded-sm border p-5 transition-colors ${
         done
           ? "border-ochre bg-paper shadow-[var(--shadow-card)]"
@@ -66,6 +71,15 @@ function Card({ item }: { item: Achievement }) {
       </div>
 
       <p className="mt-3 text-[14px] text-ink-2">{item.description}</p>
+
+      {filterParams.size > 0 && (
+        <Link
+          to={`/arten?${filterParams.toString()}`}
+          className="mt-2 self-start text-[12px] text-moss-2 underline decoration-rule-2 underline-offset-2"
+        >
+          Passende Arten anzeigen
+        </Link>
+      )}
 
       <div className="mt-4">
         <div className="mb-1.5 flex items-baseline justify-between text-[13px]">

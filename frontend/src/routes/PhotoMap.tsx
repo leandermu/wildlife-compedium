@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -7,6 +7,7 @@ import { api } from "../api";
 import type { MapPhoto } from "../types";
 import { Empty, Spinner } from "../components/ui";
 import { formatDate } from "../lib/format";
+import { internalMapUrl } from "../lib/map";
 
 interface PhotoPlace {
   key: string;
@@ -34,7 +35,16 @@ function FitPhotoBounds({ places }: { places: PhotoPlace[] }) {
   return null;
 }
 
+function FocusLocation({ latitude, longitude }: { latitude: number; longitude: number }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView([latitude, longitude], 14);
+  }, [latitude, longitude, map]);
+  return null;
+}
+
 export function PhotoMapPage() {
+  const [searchParams] = useSearchParams();
   const [photos, setPhotos] = useState<MapPhoto[] | null>(null);
   const [error, setError] = useState("");
 
@@ -68,6 +78,31 @@ export function PhotoMapPage() {
     ),
     [photos],
   );
+  const focus = useMemo(() => {
+    if (!searchParams.has("lat") || !searchParams.has("lon")) return null;
+    const latitude = Number(searchParams.get("lat"));
+    const longitude = Number(searchParams.get("lon"));
+    if (
+      !Number.isFinite(latitude)
+      || !Number.isFinite(longitude)
+      || latitude < -90
+      || latitude > 90
+      || longitude < -180
+      || longitude > 180
+    ) return null;
+    return { latitude, longitude };
+  }, [searchParams]);
+  const focusedPhotoId = searchParams.has("photo")
+    ? Number(searchParams.get("photo"))
+    : null;
+
+  useEffect(() => {
+    if (!photos || focus || focusedPhotoId === null || !Number.isFinite(focusedPhotoId)) return;
+    document.getElementById(`map-photo-${focusedPhotoId}`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }, [focus, focusedPhotoId, photos]);
 
   if (error) {
     return <Empty title="Karte konnte nicht geladen werden" hint={error} />;
@@ -99,7 +134,7 @@ export function PhotoMapPage() {
         </div>
       </header>
 
-      {places.length > 0 ? (
+      {places.length > 0 || focus ? (
         <section className="wc-map overflow-hidden rounded-sm border border-rule-2 bg-paper-2 shadow-[var(--shadow-card)]">
           <MapContainer
             center={[51.1, 10.4]}
@@ -111,7 +146,23 @@ export function PhotoMapPage() {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <FitPhotoBounds places={places} />
+            {focus ? (
+              <>
+                <FocusLocation latitude={focus.latitude} longitude={focus.longitude} />
+                <CircleMarker
+                  center={[focus.latitude, focus.longitude]}
+                  radius={10}
+                  pathOptions={{
+                    color: "#f8f4ea",
+                    weight: 3,
+                    fillColor: "#a87a2c",
+                    fillOpacity: 0.95,
+                  }}
+                />
+              </>
+            ) : (
+              <FitPhotoBounds places={places} />
+            )}
             {places.map((place) => (
               <CircleMarker
                 key={place.key}
@@ -160,7 +211,12 @@ export function PhotoMapPage() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {withoutCoordinates.map((photo) => (
-              <MapPhotoCard key={photo.id} photo={photo} standalone />
+              <MapPhotoCard
+                key={photo.id}
+                photo={photo}
+                standalone
+                focused={photo.id === focusedPhotoId}
+              />
             ))}
           </div>
         </section>
@@ -172,18 +228,17 @@ export function PhotoMapPage() {
 function MapPhotoCard({
   photo,
   standalone = false,
+  focused = false,
 }: {
   photo: MapPhoto;
   standalone?: boolean;
+  focused?: boolean;
 }) {
-  const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    photo.latitude !== null && photo.longitude !== null
-      ? `${photo.latitude},${photo.longitude}`
-      : photo.location_name,
-  )}`;
-
   return (
-    <article className={standalone ? "overflow-hidden rounded-sm border border-rule bg-paper shadow-[var(--shadow-card)]" : "overflow-hidden rounded-sm border border-rule bg-paper-2"}>
+    <article
+      id={`map-photo-${photo.id}`}
+      className={`${standalone ? "overflow-hidden rounded-sm border border-rule bg-paper shadow-[var(--shadow-card)]" : "overflow-hidden rounded-sm border border-rule bg-paper-2"} ${focused ? "ring-2 ring-ochre ring-offset-2" : ""}`}
+    >
       {photo.thumb_url || photo.url ? (
         <Link to={`/arten/${photo.species_slug}`} className="block aspect-[4/3] overflow-hidden bg-paper-3">
           <img
@@ -209,14 +264,14 @@ function MapPhotoCard({
             {photo.profile_avatar}
           </span>
         </div>
-        <a
-          href={mapUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 inline-block text-[12px] text-moss-2 underline decoration-rule-2 underline-offset-2"
-        >
-          In Google Maps öffnen ↗
-        </a>
+        {photo.latitude !== null && photo.longitude !== null && (
+          <Link
+            to={internalMapUrl(photo.latitude, photo.longitude, photo.id)}
+            className="mt-2 inline-block text-[12px] text-moss-2 underline decoration-rule-2 underline-offset-2"
+          >
+            Fundort fokussieren
+          </Link>
+        )}
       </div>
     </article>
   );

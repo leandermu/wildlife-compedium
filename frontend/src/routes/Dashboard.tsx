@@ -5,6 +5,7 @@ import type { Dashboard as DashboardData } from "../types";
 import { formatDate, formatNumber, percent } from "../lib/format";
 import { ActivityList } from "../components/ActivityList";
 import { ProgressBar, SectionTitle, Spinner } from "../components/ui";
+import { internalMapUrl } from "../lib/map";
 
 const GROUP_ICON: Record<string, string> = {
   bird: "🐦", mammal: "🦌", butterfly: "🦋", insect: "🐝",
@@ -46,11 +47,21 @@ export function Dashboard() {
         <p className="label-caps">
           {isShared ? "Eure Sammlung der Tierwelt" : "Deine Sammlung der Tierwelt"}
         </p>
-        <h1 className="mt-3 font-serif text-4xl leading-tight text-ink sm:text-5xl">
-          {formatNumber(data.collected)}
-          <span className="text-ink-3"> / {formatNumber(data.total_species)}</span>
-          <span className="ml-3 font-sans text-lg font-medium text-ink-3">Arten entdeckt</span>
-        </h1>
+        <Link
+          to="/arten?status=unlocked"
+          className="group mt-3 inline-block rounded-sm px-2 py-1 transition hover:bg-paper-2"
+          title="Alle fotografierten Arten anzeigen"
+        >
+          <h1 className="font-serif text-4xl leading-tight text-ink sm:text-5xl">
+            {formatNumber(data.collected)}
+            <span className="ml-3 font-sans text-lg font-medium text-ink-3 group-hover:text-moss-2">
+              {data.collected === 1 ? "Art fotografiert" : "Arten fotografiert"}
+            </span>
+            <span className="ml-2 font-sans text-sm font-normal text-ink-3">
+              von {formatNumber(data.total_species)}
+            </span>
+          </h1>
+        </Link>
 
         <div className="mx-auto mt-8 max-w-2xl">
           <ProgressBar collected={data.collected} total={data.total_species} thick />
@@ -169,12 +180,11 @@ export function Dashboard() {
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
             {data.recent.map((r) => (
-              <Link
+              <article
                 key={r.species_id}
-                to={`/arten/${r.slug}`}
                 className="group overflow-hidden rounded-sm border border-rule-2 bg-paper shadow-[var(--shadow-card)] transition-transform hover:-translate-y-0.5"
               >
-                <div className="aspect-square overflow-hidden bg-paper-2">
+                <Link to={`/arten/${r.slug}`} className="block aspect-square overflow-hidden bg-paper-2">
                   {r.thumb_url && (
                     <img
                       src={r.thumb_url}
@@ -189,15 +199,27 @@ export function Dashboard() {
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   )}
-                </div>
+                </Link>
                 <div className="px-3 py-2">
-                  <p className="truncate font-serif text-[15px] text-ink">{r.common_name}</p>
+                  <Link to={`/arten/${r.slug}`} className="block truncate font-serif text-[15px] text-ink hover:text-moss-2">
+                    {r.common_name}
+                  </Link>
                   <p className="truncate text-[12px] text-ink-3">
                     {formatDate(r.date)}
-                    {r.location_name && ` · ${r.location_name}`}
+                    {r.location_name && (
+                      <>
+                        {" · "}
+                        <Link
+                          to={internalMapUrl(r.latitude, r.longitude)}
+                          className="underline decoration-rule-2 underline-offset-2 hover:text-moss-2"
+                        >
+                          {r.location_name}
+                        </Link>
+                      </>
+                    )}
                   </p>
                 </div>
-              </Link>
+              </article>
             ))}
           </div>
         )}

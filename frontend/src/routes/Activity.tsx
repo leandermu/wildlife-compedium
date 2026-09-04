@@ -54,7 +54,7 @@ export function ActivityPage() {
       </div>
 
       {entries.length === 0 ? (
-        <Empty title="Noch keine Aktivitäten" hint="Fotos, Begegnungen und neue Arten erscheinen hier." />
+        <Empty title="Noch keine Aktivitäten" hint="Fotos, Begegnungen, neue Arten und erreichte Level erscheinen hier." />
       ) : (
         <>
           <ActivityList entries={entries} />

@@ -19,11 +19,54 @@ from app.routers.photos import (
     ensure_browser_derivatives,
     map_photos,
     upload_photo,
+    update_photo,
 )
+from app.schemas import PhotoUpdate
 from app.storage import LocalStorage
 
 
 class PhotoMetadataTest(unittest.TestCase):
+    def test_manual_photo_coordinates_are_saved_on_the_linked_encounter(self) -> None:
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(engine)
+        try:
+            with Session(engine) as db:
+                profile = Profile(name="Leander")
+                species = Species(slug="fuchs", common_name="Fuchs", group="mammal")
+                db.add_all([profile, species])
+                db.flush()
+                observation = Observation(profile_id=profile.id, species_id=species.id)
+                db.add(observation)
+                db.flush()
+                photo = UserPhoto(
+                    profile_id=profile.id,
+                    species_id=species.id,
+                    observation_id=observation.id,
+                    storage_key="fuchs.jpg",
+                )
+                db.add(photo)
+                db.commit()
+
+                result = update_photo(
+                    photo.id,
+                    PhotoUpdate(
+                        location_name="Isarauen",
+                        latitude=48.123456,
+                        longitude=11.654321,
+                    ),
+                    db,
+                    profile,
+                )
+
+                self.assertEqual((result.latitude, result.longitude), (48.123456, 11.654321))
+                self.assertEqual(observation.location_name, "Isarauen")
+                self.assertEqual(
+                    (observation.latitude, observation.longitude),
+                    (48.123456, 11.654321),
+                )
+        finally:
+            engine.dispose()
+
     def test_map_photos_respects_profile_scope_and_both_coordinate_sources(self) -> None:
         engine = create_engine("sqlite:///:memory:")
         Base.metadata.create_all(engine)

@@ -35,7 +35,17 @@ export function SpeciesList() {
   const [facets, setFacets] = useState<Facets | null>(null);
   const [queryInput, setQueryInput] = useState(searchParams.get("q") ?? "");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [isShared, setIsShared] = useState(false);
   const requestId = useRef(0);
+
+  useEffect(() => {
+    api.profiles().then((profiles) => {
+      const activeId = localStorage.getItem("wc-profile-id");
+      setIsShared(Boolean(
+        profiles.find((profile) => String(profile.id) === activeId)?.is_shared,
+      ));
+    }).catch(() => setIsShared(false));
+  }, []);
 
   const filters = useMemo<SpeciesQueryParams>(() => {
     const out: SpeciesQueryParams = {};
@@ -264,7 +274,12 @@ export function SpeciesList() {
           <>
             <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-4">
               {items.map((s) => (
-                <SpeciesCard key={s.id} species={s} listSearch={searchParams.toString()} />
+                <SpeciesCard
+                  key={s.id}
+                  species={s}
+                  listSearch={searchParams.toString()}
+                  showPhotographers={isShared}
+                />
               ))}
             </div>
             {page < pages && (

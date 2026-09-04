@@ -36,6 +36,8 @@ export interface SpeciesListItem {
   best_photo_thumb_url: string | null;
   display_photo_date: string | null;
   display_photo_location: string;
+  display_photo_latitude: number | null;
+  display_photo_longitude: number | null;
   photographers: {
     id: number;
     name: string;
@@ -45,6 +47,8 @@ export interface SpeciesListItem {
     thumb_url: string | null;
     photo_date: string | null;
     photo_location: string;
+    photo_latitude: number | null;
+    photo_longitude: number | null;
   }[];
   created_at: string | null;
   updated_at: string | null;
@@ -60,6 +64,8 @@ export interface Photo {
   date: string | null;
   time: string | null;
   location_name: string;
+  latitude: number | null;
+  longitude: number | null;
   caption: string;
   encounter_type: "wild" | "captive";
   animal_sex: "unknown" | "female" | "male";
@@ -173,13 +179,17 @@ export interface ProgressBucket {
 }
 
 export interface Activity {
-  kind: "photographed" | "seen" | "added";
+  kind: "photographed" | "seen" | "added" | "achievement";
   profile_id: number;
   profile_name: string;
   profile_avatar: string;
-  species_id: number;
+  species_id: number | null;
   species_slug: string;
   species_name: string;
+  achievement_id: string;
+  achievement_name: string;
+  achievement_icon: string;
+  achievement_level: number | null;
   occurred_at: string;
 }
 
@@ -200,6 +210,8 @@ export interface Dashboard {
     thumb_url: string | null;
     date: string | null;
     location_name: string;
+    latitude: number | null;
+    longitude: number | null;
   }[];
   activity: Activity[];
   challenges: { label: string; remaining: number; filter: Record<string, string> }[];
@@ -232,6 +244,7 @@ export interface Achievement {
   progress: number;
   target: number;
   level: number;
+  filter: Record<string, (string | number)[]>;
   unlocked: boolean;
   unlocked_at: string | null;
   tiers: { threshold: number; label: string; unlocked: boolean }[];

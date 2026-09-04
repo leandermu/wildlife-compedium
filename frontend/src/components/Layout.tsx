@@ -502,7 +502,7 @@ export function Layout() {
           <p className="font-serif italic text-ink-3">
             „Ein Tier ist erst durch das eigene Foto wirklich gesammelt."
           </p>
-          <p className="mt-2 text-[11px] tracking-wide text-ink-3">v2.1.1</p>
+          <p className="mt-2 text-[11px] tracking-wide text-ink-3">v2.2.0</p>
         </div>
       </footer>
     </div>

@@ -20,10 +20,16 @@ import json
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.orm import Session
 
-from .models import Profile, ProfileAchievementState, Species, UserPhoto
+from .models import (
+    AchievementActivity,
+    Profile,
+    ProfileAchievementState,
+    Species,
+    UserPhoto,
+)
 from .queries import SpeciesQuery
 from .vocab import GROUPS
 
@@ -55,22 +61,22 @@ def _tiered(id_, name, desc, icon, category, filt, thresholds):
 BUILTIN: list[dict[str, Any]] = [
     _tiered("bird_watcher", "Vogelbeobachterin",
             "Sammle Vogelarten für dein Compedium.", "🐦", "Sammlung",
-            {"group": ["bird"]}, [10, 25, 50, 100, 250]),
+            {"group": ["bird"]}, [10, 25, 50, 75]),
     _tiered("mammal_tracker", "Spurenleserin",
-            "Säugetiere sind scheu – jedes Foto zählt doppelt.", "🦌", "Sammlung",
-            {"group": ["mammal"]}, [5, 10, 25, 50]),
+            "Sammle verschiedene Säugetierarten.", "🦌", "Sammlung",
+            {"group": ["mammal"]}, [5, 10, 20, 30]),
     _tiered("butterfly_collector", "Schmetterlingssammlerin",
             "Falter über Falter.", "🦋", "Sammlung",
-            {"group": ["butterfly"]}, [10, 25, 50, 100]),
+            {"group": ["butterfly"]}, [5, 10, 15]),
     _tiered("insect_friend", "Freundin der Kleinen",
             "Insekten und andere Sechsbeiner.", "🐝", "Sammlung",
-            {"group": ["insect"]}, [5, 10, 25, 50]),
+            {"group": ["insect"]}, [3, 5, 10]),
     _tiered("bavaria_native", "Bayerische Heimatforscherin",
             "Arten, die in Bayern vorkommen.", "🥨", "Region",
-            {"region": ["bavaria"]}, [25, 50, 100, 250]),
+            {"region": ["bavaria"]}, [25, 50, 100, 125]),
     _tiered("water_world", "Am Wasser",
             "Arten an Seen, Flüssen und Bächen.", "💧", "Lebensraum",
-            {"habitat": ["water"]}, [10, 25, 50]),
+            {"habitat": ["water"]}, [10, 25, 40]),
     _tiered("forest_walker", "Waldgängerin",
             "Arten des Waldes.", "🌲", "Lebensraum",
             {"habitat": ["forest"]}, [10, 25, 50]),
@@ -79,7 +85,7 @@ BUILTIN: list[dict[str, Any]] = [
             {"difficulty": [5]}, [1, 3, 5, 10]),
     _tiered("raptor_specialist", "Greifvogelspezialistin",
             "Adler, Bussarde, Milane und Falken.", "🦅", "Herausforderung",
-            {"tag": ["greifvogel"]}, [3, 6, 10]),
+            {"class_name": ["Aves"], "order": ["Greifvögel"]}, [3, 6, 10]),
     {
         "id": "night_master", "name": "Meisterin der Nacht",
         "description": "Fotografiere die Nachtjäger Bayerns.",
@@ -137,7 +143,9 @@ BUILTIN: list[dict[str, Any]] = [
         "id": "quest_small_hunters", "name": "Kleine Jäger",
         "description": "Fotografiere 10 Raubtiere.",
         "icon": "🦊", "kind": "quest", "category": "Fotoquest",
-        "rule": {"type": "count", "filter": {"tag": ["raubtier"]}, "thresholds": [10]},
+        "rule": {"type": "count", "filter": {
+            "class_name": ["Mammalia"], "order": ["Raubtiere"]
+        }, "thresholds": [10]},
     },
     {
         "id": "quest_winter", "name": "Winterlicht",
@@ -177,6 +185,7 @@ def _collected_count(
     stmt = sq.apply_filters(
         sq.base(func.count(func.distinct(Species.id))),
         group=filt.get("group"), habitat=filt.get("habitat"), region=filt.get("region"),
+        class_name=filt.get("class_name"), order=filt.get("order"),
         family=filt.get("family"), tag=filt.get("tag"), difficulty=filt.get("difficulty"),
         status=["unlocked"],
     )
@@ -230,12 +239,26 @@ def _seasonal_progress(
     return len({sid for sid, d in rows if d and d.month in months})
 
 
-def evaluate(db: Session, profile_id: int) -> list[dict[str, Any]]:
+def achievement_name(definition: dict[str, Any], profile: Profile | None) -> str:
+    use_male_name = profile is None or (profile.gender or "male") == "male"
+    return (
+        MALE_NAMES.get(definition["name"], definition["name"])
+        if use_male_name
+        else definition["name"]
+    )
+
+
+def evaluate(
+    db: Session,
+    profile_id: int,
+    *,
+    emit_activity: bool = True,
+) -> list[dict[str, Any]]:
     definitions = load_definitions()
     profile = db.get(Profile, profile_id)
     wild_only = bool(profile and profile.exclude_captive_from_progress)
     scope_id = None if profile and profile.is_shared else profile_id
-    use_male_names = profile is None or (profile.gender or "male") == "male"
+    emit_activity = emit_activity and not bool(profile and profile.is_shared)
     state = {
         s.achievement_id: s
         for s in db.execute(
@@ -304,8 +327,24 @@ def evaluate(db: Session, profile_id: int) -> list[dict[str, Any]]:
             })
 
         st = state.get(d["id"])
+        previous_tier = st.tier if st else 0
         unlocked_at = st.unlocked_at if st else None
-        if unlocked and (st is None or st.tier < current_tier):
+        if current_tier < previous_tier:
+            db.execute(
+                delete(AchievementActivity).where(
+                    AchievementActivity.profile_id == profile_id,
+                    AchievementActivity.achievement_id == d["id"],
+                    AchievementActivity.tier > current_tier,
+                )
+            )
+            if current_tier == 0 and st is not None:
+                db.delete(st)
+                st = None
+                unlocked_at = None
+            elif st is not None:
+                st.tier = current_tier
+            dirty = True
+        elif current_tier > previous_tier:
             if st is None:
                 st = ProfileAchievementState(
                     profile_id=profile_id,
@@ -316,18 +355,34 @@ def evaluate(db: Session, profile_id: int) -> list[dict[str, Any]]:
                 unlocked_at = st.unlocked_at = dt.datetime.now(dt.timezone.utc)
             else:
                 st.tier = current_tier
-                st.unlocked_at = dt.datetime.now(dt.timezone.utc)
+                if emit_activity:
+                    st.unlocked_at = dt.datetime.now(dt.timezone.utc)
                 unlocked_at = st.unlocked_at
+            if emit_activity:
+                already_logged = db.execute(
+                    select(AchievementActivity.id).where(
+                        AchievementActivity.profile_id == profile_id,
+                        AchievementActivity.achievement_id == d["id"],
+                        AchievementActivity.tier == current_tier,
+                    )
+                ).first()
+                if not already_logged:
+                    db.add(AchievementActivity(
+                        profile_id=profile_id,
+                        achievement_id=d["id"],
+                        tier=current_tier,
+                    ))
             dirty = True
 
         results.append({
             "id": d["id"],
-            "name": MALE_NAMES.get(d["name"], d["name"]) if use_male_names else d["name"],
+            "name": achievement_name(d, profile),
             "description": d["description"],
             "icon": d.get("icon", "🏅"), "kind": d.get("kind", "achievement"),
             "category": d.get("category", ""),
             "progress": progress, "target": target,
             "level": current_tier + 1,
+            "filter": rule.get("filter", {}) if rtype == "count" else {},
             "unlocked": unlocked, "unlocked_at": unlocked_at,
             "tiers": tiers, "species": species_detail,
             "starts_on": d.get("starts_on"), "ends_on": d.get("ends_on"),

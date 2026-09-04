@@ -61,6 +61,8 @@ class PhotoUpdate(BaseModel):
     animal_sex: str | None = Field(default=None, pattern="^(unknown|female|male)$")
     measurement: str | None = Field(default=None, max_length=80)
     observed_weight: str | None = Field(default=None, max_length=80)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
 
 
 class PhotoOut(ORMModel):
@@ -73,6 +75,8 @@ class PhotoOut(ORMModel):
     date: dt.date | None = None
     time: dt.time | None = None
     location_name: str = ""
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
     caption: str = ""
     encounter_type: str = "wild"
     animal_sex: str = "unknown"
@@ -105,8 +109,8 @@ class ObservationBase(BaseModel):
     date: dt.date | None = None
     time: dt.time | None = None
     location_name: str = ""
-    latitude: float | None = None
-    longitude: float | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
     notes: str = ""
     encounter_type: str = Field(default="wild", pattern="^(wild|captive)$")
     animal_sex: str = Field(default="unknown", pattern="^(unknown|female|male)$")
@@ -123,8 +127,8 @@ class ObservationUpdate(BaseModel):
     date: dt.date | None = None
     time: dt.time | None = None
     location_name: str | None = None
-    latitude: float | None = None
-    longitude: float | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
     notes: str | None = None
     encounter_type: str | None = Field(default=None, pattern="^(wild|captive)$")
     animal_sex: str | None = Field(default=None, pattern="^(unknown|female|male)$")
@@ -234,6 +238,8 @@ class PhotographerProfile(BaseModel):
     thumb_url: str | None = None
     photo_date: dt.date | None = None
     photo_location: str = ""
+    photo_latitude: float | None = None
+    photo_longitude: float | None = None
 
 
 class SpeciesListItem(ORMModel):
@@ -260,6 +266,8 @@ class SpeciesListItem(ORMModel):
     best_photo_thumb_url: str | None = None
     display_photo_date: dt.date | None = None
     display_photo_location: str = ""
+    display_photo_latitude: float | None = None
+    display_photo_longitude: float | None = None
     photographers: list[PhotographerProfile] = Field(default_factory=list)
     created_at: dt.datetime | None = None
     updated_at: dt.datetime | None = None
@@ -329,6 +337,8 @@ class RecentUnlock(BaseModel):
     thumb_url: str | None = None
     date: dt.date | None = None
     location_name: str = ""
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class ChallengeHint(BaseModel):
@@ -342,9 +352,13 @@ class ActivityOut(BaseModel):
     profile_id: int
     profile_name: str
     profile_avatar: str
-    species_id: int
-    species_slug: str
-    species_name: str
+    species_id: int | None = None
+    species_slug: str = ""
+    species_name: str = ""
+    achievement_id: str = ""
+    achievement_name: str = ""
+    achievement_icon: str = "🏅"
+    achievement_level: int | None = None
     occurred_at: dt.datetime
 
 
@@ -395,6 +409,7 @@ class AchievementOut(BaseModel):
     progress: int
     target: int
     level: int = 1
+    filter: dict[str, list[str | int]] = Field(default_factory=dict)
     unlocked: bool
     unlocked_at: dt.datetime | None = None
     tiers: list[AchievementTierOut] = Field(default_factory=list)

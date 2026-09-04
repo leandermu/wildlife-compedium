@@ -108,6 +108,25 @@ class BackupRoundtripTest(unittest.TestCase):
 
         engine.dispose()
 
+    def test_version_two_backup_is_upgraded_without_activity_history(self) -> None:
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(engine)
+        with Session(engine) as db:
+            self._collection(db)
+            data = _manifest(db)
+        data["version"] = 2
+        data.pop("achievement_activities")
+
+        archive_bytes = io.BytesIO()
+        with zipfile.ZipFile(archive_bytes, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("backup.json", json.dumps(data, ensure_ascii=False))
+        archive_bytes.seek(0)
+        with zipfile.ZipFile(archive_bytes) as archive:
+            restored = _load_manifest(archive)
+
+        self.assertEqual(restored["achievement_activities"], [])
+        engine.dispose()
+
     def test_save_and_load_endpoints_replace_database_and_media_together(self) -> None:
         engine = create_engine("sqlite:///:memory:")
         Base.metadata.create_all(engine)

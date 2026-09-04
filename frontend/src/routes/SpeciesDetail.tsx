@@ -4,8 +4,10 @@ import { api } from "../api";
 import type { Observation, Photo, Profile, SpeciesDetail } from "../types";
 import { PlaceholderArt } from "../components/PlaceholderArt";
 import { PhotoUpload } from "../components/PhotoUpload";
+import { LazyLocationPicker } from "../components/LazyLocationPicker";
 import { DifficultyStars, LockIcon, SectionTitle, Spinner } from "../components/ui";
 import { formatDate, formatDateLong } from "../lib/format";
+import { internalMapUrl } from "../lib/map";
 
 const GROUP_LABEL: Record<string, string> = {
   bird: "Vögel", mammal: "Säugetiere", butterfly: "Schmetterlinge", insect: "Insekten",
@@ -50,6 +52,8 @@ export function SpeciesDetailPage() {
   const [obsDate, setObsDate] = useState("");
   const [obsTime, setObsTime] = useState("");
   const [obsPlace, setObsPlace] = useState("");
+  const [obsLatitude, setObsLatitude] = useState<number | null>(null);
+  const [obsLongitude, setObsLongitude] = useState<number | null>(null);
   const [obsNote, setObsNote] = useState("");
   const [obsEncounterType, setObsEncounterType] = useState<"wild" | "captive">("wild");
   const [obsAnimalSex, setObsAnimalSex] = useState<"unknown" | "female" | "male">("unknown");
@@ -127,6 +131,8 @@ export function SpeciesDetailPage() {
       date: obsDate || null,
       time: obsTime || null,
       location_name: obsPlace,
+      latitude: obsLatitude,
+      longitude: obsLongitude,
       notes: obsNote,
       encounter_type: obsEncounterType,
       animal_sex: obsAnimalSex,
@@ -137,6 +143,8 @@ export function SpeciesDetailPage() {
     setObsDate("");
     setObsTime("");
     setObsPlace("");
+    setObsLatitude(null);
+    setObsLongitude(null);
     setObsNote("");
     setObsEncounterType("wild");
     setObsAnimalSex("unknown");
@@ -234,15 +242,13 @@ export function SpeciesDetailPage() {
                     {hero?.location_name && (
                       <>
                         📍{" "}
-                        <a
-                          href={photoMapUrl(hero)}
-                          target="_blank"
-                          rel="noreferrer"
+                        <Link
+                          to={internalMapUrl(hero.latitude, hero.longitude, hero.id)}
                           className="underline decoration-rule-2 underline-offset-2 hover:text-moss-2"
-                          title="In Google Maps öffnen"
+                          title="Auf der eigenen Karte anzeigen"
                         >
                           {hero.location_name} ↗
-                        </a>
+                        </Link>
                       </>
                     )}
                     {hero?.date && ` · 📅 ${formatDate(hero.date)}`}
@@ -323,15 +329,13 @@ export function SpeciesDetailPage() {
                     <figcaption className="space-y-1 px-3 py-2 text-[12px] text-ink-3">
                       <p className="text-ink-2">{formatDate(p.date) || "ohne Datum"}</p>
                       {p.location_name && (
-                        <a
-                          href={photoMapUrl(p)}
-                          target="_blank"
-                          rel="noreferrer"
+                        <Link
+                          to={internalMapUrl(p.latitude, p.longitude, p.id)}
                           className="block truncate underline decoration-rule-2 underline-offset-2 hover:text-moss-2"
-                          title="In Google Maps öffnen"
+                          title="Auf der eigenen Karte anzeigen"
                         >
                           {p.location_name} ↗
-                        </a>
+                        </Link>
                       )}
                       {p.caption && <p className="truncate italic">{p.caption}</p>}
                       <div className="no-print flex items-center gap-3 pt-1">
@@ -459,15 +463,13 @@ export function SpeciesDetailPage() {
                     </button>
                     {o.location_name && (
                       o.latitude !== null && o.longitude !== null ? (
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${o.latitude},${o.longitude}`}
-                          target="_blank"
-                          rel="noreferrer"
+                        <Link
+                          to={internalMapUrl(o.latitude, o.longitude)}
                           className="text-ink-3 underline decoration-rule-2 underline-offset-2 hover:text-moss-2"
-                          title="In Google Maps öffnen"
+                          title="Auf der eigenen Karte anzeigen"
                         >
                           {o.location_name} ↗
-                        </a>
+                        </Link>
                       ) : <p className="text-ink-3">{o.location_name}</p>
                     )}
                     {o.notes && <p className="italic text-ink-3">{o.notes}</p>}
@@ -523,6 +525,24 @@ export function SpeciesDetailPage() {
                   className="rounded-sm border border-rule bg-paper px-2 py-1.5 text-[13px] focus:outline-none"
                 />
               </div>
+              <LazyLocationPicker
+                latitude={obsLatitude}
+                longitude={obsLongitude}
+                onChange={(nextLatitude, nextLongitude) => {
+                  setObsLatitude(nextLatitude);
+                  setObsLongitude(nextLongitude);
+                  if (nextLatitude === null && nextLongitude === null && obsPlace.startsWith("GPS:")) {
+                    setObsPlace("");
+                  }
+                  if (
+                    nextLatitude !== null
+                    && nextLongitude !== null
+                    && (!obsPlace.trim() || obsPlace.startsWith("GPS:"))
+                  ) {
+                    setObsPlace(`GPS: ${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)}`);
+                  }
+                }}
+              />
               <input
                 value={obsNote}
                 onChange={(e) => setObsNote(e.target.value)}
@@ -622,6 +642,8 @@ export function SpeciesDetailPage() {
           date={editingPhoto.date ?? ""}
           time={editingPhoto.time?.slice(0, 5) ?? ""}
           location={editingPhoto.location_name}
+          latitude={editingPhoto.latitude}
+          longitude={editingPhoto.longitude}
           note={editingPhoto.caption}
           encounterType={editingPhoto.encounter_type}
           animalSex={editingPhoto.animal_sex}
@@ -634,6 +656,8 @@ export function SpeciesDetailPage() {
               date: values.date || null,
               time: values.time || null,
               location_name: values.location,
+              latitude: values.latitude,
+              longitude: values.longitude,
               caption: values.note,
               encounter_type: values.encounterType,
               animal_sex: values.animalSex,
@@ -653,6 +677,8 @@ export function SpeciesDetailPage() {
           date={editingObservation.date ?? ""}
           time={editingObservation.time?.slice(0, 5) ?? ""}
           location={editingObservation.location_name}
+          latitude={editingObservation.latitude}
+          longitude={editingObservation.longitude}
           note={editingObservation.notes}
           encounterType={editingObservation.encounter_type}
           animalSex={editingObservation.animal_sex}
@@ -670,6 +696,8 @@ export function SpeciesDetailPage() {
               date: values.date || null,
               time: values.time || null,
               location_name: values.location,
+              latitude: values.latitude,
+              longitude: values.longitude,
               notes: values.note,
               encounter_type: values.encounterType,
               animal_sex: values.animalSex,
@@ -686,13 +714,15 @@ export function SpeciesDetailPage() {
 }
 
 function EditEntryDialog({
-  title, date, time, location, note, encounterType, animalSex,
+  title, date, time, location, latitude, longitude, note, encounterType, animalSex,
   measurement, observedWeight, isFish, onClose, onSave, onDelete,
 }: {
   title: string;
   date: string;
   time: string;
   location: string;
+  latitude: number | null;
+  longitude: number | null;
   note: string;
   encounterType: "wild" | "captive";
   animalSex: "unknown" | "female" | "male";
@@ -700,16 +730,16 @@ function EditEntryDialog({
   observedWeight: string;
   isFish: boolean;
   onClose: () => void;
-  onSave: (values: { date: string; time: string; location: string; note: string; encounterType: "wild" | "captive"; animalSex: "unknown" | "female" | "male"; measurement: string; observedWeight: string }) => Promise<void>;
+  onSave: (values: { date: string; time: string; location: string; latitude: number | null; longitude: number | null; note: string; encounterType: "wild" | "captive"; animalSex: "unknown" | "female" | "male"; measurement: string; observedWeight: string }) => Promise<void>;
   onDelete?: () => Promise<void>;
 }) {
-  const [values, setValues] = useState({ date, time, location, note, encounterType, animalSex, measurement, observedWeight });
+  const [values, setValues] = useState({ date, time, location, latitude, longitude, note, encounterType, animalSex, measurement, observedWeight });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/55 p-4" role="dialog" aria-modal="true">
       <form
-        className="w-full max-w-lg space-y-4 rounded-xl border border-rule bg-paper p-5 shadow-2xl"
+        className="max-h-[calc(100vh-2rem)] w-full max-w-2xl space-y-4 overflow-y-auto rounded-xl border border-rule bg-paper p-5 shadow-2xl"
         onSubmit={async (event) => {
           event.preventDefault();
           setBusy(true);
@@ -746,6 +776,20 @@ function EditEntryDialog({
           <input value={values.location} onChange={(e) => setValues((current) => ({ ...current, location: e.target.value }))}
             className="mt-1 w-full rounded-sm border border-rule bg-paper px-3 py-2 text-sm text-ink" />
         </label>
+        <LazyLocationPicker
+          latitude={values.latitude}
+          longitude={values.longitude}
+          onChange={(nextLatitude, nextLongitude) => setValues((current) => ({
+            ...current,
+            latitude: nextLatitude,
+            longitude: nextLongitude,
+            location: nextLatitude !== null && nextLongitude !== null && (!current.location.trim() || current.location.startsWith("GPS:"))
+              ? `GPS: ${nextLatitude.toFixed(5)}, ${nextLongitude.toFixed(5)}`
+              : nextLatitude === null && nextLongitude === null && current.location.startsWith("GPS:")
+                ? ""
+                : current.location,
+          }))}
+        />
         <label className="block text-xs text-ink-3">Notiz
           <textarea rows={3} value={values.note} onChange={(e) => setValues((current) => ({ ...current, note: e.target.value }))}
             className="mt-1 w-full rounded-sm border border-rule bg-paper px-3 py-2 text-sm text-ink" />
@@ -846,15 +890,6 @@ function metadataValue(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function photoMapUrl(photo: Photo): string {
-  const latitude = Number(photo.photo_metadata?.latitude);
-  const longitude = Number(photo.photo_metadata?.longitude);
-  const query = Number.isFinite(latitude) && Number.isFinite(longitude)
-    ? `${latitude},${longitude}`
-    : photo.location_name;
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-}
-
 function flattenMetadata(value: unknown, prefix = ""): Array<[string, string]> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
   return Object.entries(value as Record<string, unknown>).flatMap(([key, item]) => {
@@ -875,10 +910,10 @@ function PhotoInfo({ photo }: { photo: Photo }) {
     ...flattenMetadata(metadata.exif, "EXIF"),
     ...flattenMetadata(metadata.exif_ifds, "EXIF"),
   ];
-  const latitude = Number(metadata.latitude);
-  const longitude = Number(metadata.longitude);
-  const hasGps = Number.isFinite(latitude) && Number.isFinite(longitude);
-  const hasMapLocation = hasGps || Boolean(photo.location_name.trim());
+  const hasMapLocation = (
+    photo.latitude !== null
+    && photo.longitude !== null
+  ) || Boolean(photo.location_name.trim());
 
   return (
     <aside className="max-h-[45vh] w-full shrink-0 overflow-y-auto bg-paper p-5 text-ink lg:max-h-[calc(100vh-3rem)] lg:w-96">
@@ -896,14 +931,12 @@ function PhotoInfo({ photo }: { photo: Photo }) {
       </dl>
 
       {hasMapLocation && (
-        <a
-          href={photoMapUrl(photo)}
-          target="_blank"
-          rel="noreferrer"
+        <Link
+          to={internalMapUrl(photo.latitude, photo.longitude, photo.id)}
           className="mt-4 inline-flex text-[13px] text-moss-2 underline decoration-rule-2 underline-offset-2"
         >
-          Aufnahmeort in Google Maps öffnen ↗
-        </a>
+          Aufnahmeort auf der eigenen Karte öffnen ↗
+        </Link>
       )}
 
       {exifRows.length > 0 && (

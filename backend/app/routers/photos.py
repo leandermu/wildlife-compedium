@@ -13,6 +13,7 @@ from pillow_heif import register_heif_opener
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, selectinload
 
+from .. import achievements
 from ..db import get_db
 from ..encounters import sync_observation_from_photo
 from ..models import Observation, Profile, Species, UserPhoto
@@ -22,7 +23,7 @@ from ..profiles import (
     resolve_entry_profile,
     scope_profile_id,
 )
-from ..queries import photo_out
+from ..queries import photo_coordinates, photo_out
 from ..schemas import PhotoMapOut, PhotoOut, PhotoUpdate
 from ..storage import ALLOWED_SUFFIXES, LocalStorage, get_storage, media_url
 
@@ -377,6 +378,7 @@ async def upload_photo(
         photo.observation = observation
         sync_observation_from_photo(photo)
     db.commit()
+    achievements.evaluate(db, owner.id)
     db.refresh(photo)
     return PhotoOut(**photo_out(photo))
 
@@ -389,31 +391,13 @@ def list_photos(
     limit: int = 100,
     offset: int = 0,
 ) -> list[PhotoOut]:
-    stmt = select(UserPhoto)
+    stmt = select(UserPhoto).options(selectinload(UserPhoto.observation))
     if (profile_id := scope_profile_id(profile)) is not None:
         stmt = stmt.where(UserPhoto.profile_id == profile_id)
     if species_id:
         stmt = stmt.where(UserPhoto.species_id == species_id)
     stmt = stmt.order_by(UserPhoto.created_at.desc()).offset(offset).limit(limit)
     return [PhotoOut(**photo_out(p)) for p in db.execute(stmt).scalars()]
-
-
-def _map_coordinates(photo: UserPhoto) -> tuple[float | None, float | None]:
-    if (
-        photo.observation is not None
-        and photo.observation.latitude is not None
-        and photo.observation.longitude is not None
-    ):
-        return photo.observation.latitude, photo.observation.longitude
-    metadata = photo.photo_metadata or {}
-    try:
-        latitude = float(metadata["latitude"])
-        longitude = float(metadata["longitude"])
-    except (KeyError, TypeError, ValueError):
-        return None, None
-    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
-        return None, None
-    return latitude, longitude
 
 
 @router.get("/map", response_model=list[PhotoMapOut])
@@ -437,7 +421,7 @@ def map_photos(
     }
     result: list[PhotoMapOut] = []
     for photo in photos:
-        latitude, longitude = _map_coordinates(photo)
+        latitude, longitude = photo_coordinates(photo)
         if not photo.location_name.strip() and latitude is None:
             continue
         owner = owners.get(photo.profile_id)
@@ -474,6 +458,9 @@ def update_photo(
     if photo is None or not can_access_entry(profile, photo.profile_id):
         raise HTTPException(404, "Foto nicht gefunden")
     data = payload.model_dump(exclude_unset=True)
+    coordinate_update = "latitude" in data or "longitude" in data
+    latitude = data.pop("latitude", None)
+    longitude = data.pop("longitude", None)
     if "observation_id" in data:
         new_observation_id = data.pop("observation_id")
         observation = db.get(Observation, new_observation_id) if new_observation_id else None
@@ -498,6 +485,20 @@ def update_photo(
         photo.is_best_photo = True
     for field, value in data.items():
         setattr(photo, field, value)
+    if coordinate_update:
+        metadata = dict(photo.photo_metadata or {})
+        if latitude is None or longitude is None:
+            metadata.pop("latitude", None)
+            metadata.pop("longitude", None)
+            metadata["coordinates_cleared"] = True
+        else:
+            metadata["latitude"] = latitude
+            metadata["longitude"] = longitude
+            metadata.pop("coordinates_cleared", None)
+        photo.photo_metadata = metadata
+        if photo.observation is not None:
+            photo.observation.latitude = latitude
+            photo.observation.longitude = longitude
     if "encounter_type" in data:
         photo.photo_metadata = {
             **(photo.photo_metadata or {}),
@@ -505,6 +506,7 @@ def update_photo(
         }
     sync_observation_from_photo(photo)
     db.commit()
+    achievements.evaluate(db, photo.profile_id)
     db.refresh(photo)
     return PhotoOut(**photo_out(photo))
 
@@ -554,3 +556,4 @@ def delete_photo(
         if nxt:
             nxt.is_best_photo = True
     db.commit()
+    achievements.evaluate(db, owner_profile_id)
